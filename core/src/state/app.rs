@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use crate::{db::{s3::obtain_s3_conn, sql::obtain_sql_conn}, state::env::{EnvironmentVariable, env_var_required}};
+use crate::{db::{s3::connection::obtain_s3_conn, sql::connection::obtain_sql_conn}, state::env::{EnvironmentVariable, env_var_required}};
 
+#[derive(Debug)]
 pub struct AppRuntimeConfig {
-    pub sql_conn_url: String,
+    pub sql_conn_uri: String,
     pub s3_endpoint: String,
     pub s3_region: String,
     pub s3_bucket: String,
@@ -13,23 +14,33 @@ pub struct AppRuntimeConfig {
     pub s3_secret_key: String
 }
 
-#[derive(Clone)]
-pub struct AppState {
-    pub config: Arc<AppRuntimeConfig>,
-    pub sql: sea_orm::DatabaseConnection,
-    pub s3: aws_sdk_s3::Client
-}
+impl AppRuntimeConfig {
+    pub fn load_sync() -> Self {
+        if let Some(_) = dotenv::dotenv().ok() {
+            tracing::info!("loaded .env file")
+        }
 
-impl AppState {
-    pub async fn init() -> Result<Self> {
-        let config = AppRuntimeConfig {
-            sql_conn_url: env_var_required(EnvironmentVariable::SqlConnUrl),
+        Self {
+            sql_conn_uri: env_var_required(EnvironmentVariable::SqlConnUrl),
             s3_endpoint: env_var_required(EnvironmentVariable::S3Endpoint),
             s3_region: env_var_required(EnvironmentVariable::S3Region),
             s3_bucket: env_var_required(EnvironmentVariable::S3Bucket),
             s3_access_key: env_var_required(EnvironmentVariable::S3AccessKey),
             s3_secret_key: env_var_required(EnvironmentVariable::S3SecretKey)
-        };
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct AppState {
+    pub sql: toasty::Db,
+    pub config: Arc<AppRuntimeConfig>,
+    pub s3: aws_sdk_s3::Client
+}
+
+impl AppState {
+    pub async fn init() -> Result<Self> {
+        let config = AppRuntimeConfig::load_sync();
 
         let (sql, s3) = tokio::try_join!(
             obtain_sql_conn(&config),

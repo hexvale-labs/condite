@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use aws_config::{BehaviorVersion, Region};
 use aws_sdk_s3::{Client, config::Credentials};
 

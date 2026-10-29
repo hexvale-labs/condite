@@ -1,0 +1,5 @@
+migrate name:
+    cargo run --bin migrate -- migration generate --name "{{name}}"
+
+run:
+    cargo run
