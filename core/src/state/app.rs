@@ -31,15 +31,15 @@ impl AppState {
             s3_secret_key: env_var_required(EnvironmentVariable::S3SecretKey)
         };
 
-        let (sql, s3) = tokio::join!(
+        let (sql, s3) = tokio::try_join!(
             obtain_sql_conn(&config),
             obtain_s3_conn(&config)
-        );
+        )?;
 
         Ok(Self {
             config: Arc::new(config),
-            sql: sql.unwrap(),
-            s3: s3.unwrap()
+            sql,
+            s3
         })
     }
 }
