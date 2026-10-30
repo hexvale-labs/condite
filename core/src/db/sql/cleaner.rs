@@ -51,7 +51,8 @@ async fn clean_records(state: &mut AppState) -> Result<CleanRecordsResult> {
         assert_eq!(target_s3_identifiers.len(), expired.len() * 2);
 
         if expired.len() <= 0 { break; }
-        state.s3
+        
+        let response = state.s3
             .delete_objects()
             .bucket(&state.config.s3_bucket)
             .delete(
@@ -61,6 +62,13 @@ async fn clean_records(state: &mut AppState) -> Result<CleanRecordsResult> {
             )
             .send()
             .await?;
+
+        let errors = response.errors();
+        
+        if errors.len() > 0 {
+            let errors_strings = errors.iter().map(|e| format!("{:?}", e)).collect::<Vec<String>>();
+            anyhow::bail!(format!("failed deleting all S3 objects\nerrors: {}", errors_strings.join("\n\n")));
+        }
 
         UploadRecord::filter(UploadRecord::fields().id().in_list(expired.as_slice())).delete().exec(&mut state.sql).await?;
         res.affected_rows += expired.len() as u32;
