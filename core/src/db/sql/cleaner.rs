@@ -4,7 +4,7 @@ use anyhow::Result;
 use aws_sdk_s3::types::ObjectIdentifier;
 use jiff::{Timestamp, ToSpan};
 
-use crate::{db::sql::{UploadRecord, UploadStatus}, state::app::AppState};
+use crate::{db::sql::{UploadRecord, UploadStatus, upload::get_s3_key}, state::app::AppState};
 
 struct CleanRecordsResult {
     affected_rows: u32
@@ -37,18 +37,14 @@ async fn clean_records(state: &mut AppState) -> Result<CleanRecordsResult> {
             .filter(UploadRecord::fields().status().eq(UploadStatus::Pending))
             .order_by(UploadRecord::fields().created_at().asc())
             .limit(MAX_DELETE_OBJECTS)
-            .select(UploadRecord::fields().id())
+            .select((UploadRecord::fields().id(), UploadRecord::fields().mime_type()))
             .exec(&mut state.sql)
             .await?;
 
         let mut target_s3_identifiers: Vec<ObjectIdentifier> = Vec::with_capacity(expired.len() * 2);
-        for id in &expired {
-            target_s3_identifiers.push(ObjectIdentifier::builder().key(format!("uploads/{}", id)).build()?);
-            target_s3_identifiers.push(ObjectIdentifier::builder().key(format!("pending/{}", id)).build()?);
+        for (id, mime) in &expired {
+            target_s3_identifiers.push(aws_sdk_s3::types::ObjectIdentifier::builder().key(get_s3_key(&id, &mime, &UploadStatus::Pending)).build()?);
         }
-
-        // TODO: extract this into an unit test?
-        assert_eq!(target_s3_identifiers.len(), expired.len() * 2);
 
         if expired.len() <= 0 { break; }
         
@@ -70,7 +66,14 @@ async fn clean_records(state: &mut AppState) -> Result<CleanRecordsResult> {
             anyhow::bail!(format!("failed deleting all S3 objects\nerrors: {}", errors_strings.join("\n\n")));
         }
 
-        UploadRecord::filter(UploadRecord::fields().id().in_list(expired.as_slice())).delete().exec(&mut state.sql).await?;
+        let ids: Vec<_> = expired.iter().map(|(id, _)| *id).collect();
+        UploadRecord::filter(
+            UploadRecord::fields().id().in_list(ids.as_slice())
+        )
+            .delete()
+            .exec(&mut state.sql)
+            .await?;
+
         res.affected_rows += expired.len() as u32;
 
         if expired.len() < MAX_DELETE_OBJECTS { break; }

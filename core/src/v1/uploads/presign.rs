@@ -8,14 +8,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::{db::sql::UploadRecord, state::app::AppState};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Payload {
     size_bytes: u64,
     mime_type: String,
     filename: String
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Response {
     request_id: String,
     uri: String,
@@ -23,6 +23,7 @@ pub struct Response {
     expires_at_utc: Timestamp
 }
 
+#[tracing::instrument(skip(state))]
 pub async fn handler(
     State(mut state): State<AppState>,
     Json(payload): Json<Payload>
