@@ -24,16 +24,9 @@ pub async fn obtain_s3_conn(config: &AppRuntimeConfig) -> Result<Client> {
         .load()
         .await;
 
-    let client = Client::new(&aws_config);
-
-    // test the connection
-    let _ = client
-        .list_objects()
-        .bucket(&config.s3_bucket)
-        .max_keys(1)
-        .send()
-        .await
-        .with_context(|| "Failed connecting to S3")?;
-
-    Ok(client)
+    Ok(Client::from_conf(
+        aws_sdk_s3::config::Builder::from(&aws_config)
+            .force_path_style(true)
+            .build(),
+    ))
 }

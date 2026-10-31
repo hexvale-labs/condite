@@ -2,7 +2,7 @@ use jiff::Timestamp;
 
 use crate::db::sql::UploadStatus;
 
-#[derive(Debug, toasty::Model)]
+#[derive(Debug, serde::Serialize, toasty::Model)]
 #[table = "uploads"]
 pub struct UploadRecord {
     #[key]
