@@ -1,25 +1,57 @@
-use axum::{Router, routing};
-
+pub mod control;
 pub mod db;
+mod shutdown_waiter;
 pub mod state;
 pub mod v1;
 
-pub async fn start_app() -> anyhow::Result<()> {
-    let state = state::app::AppState::init().await?;
+use axum::{Router, routing};
 
-    let app = app_router(state);
+use crate::v1::{
+    health,
+    uploads::{confirm, presign},
+};
 
-    let lis = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
-    axum::serve(lis, app).await?;
-    Ok(())
+pub async fn start_app() {
+    tracing::info!("starting up...");
+    let state = state::app::AppState::init()
+        .await
+        .expect("the state to be initialized");
+
+    state
+        .tasks
+        .spawn(db::sql::cleaner_task_supervisor(state.clone()));
+    state
+        .tasks
+        .spawn(control::serve_sock_supervisor(state.clone()));
+    state
+        .tasks
+        .spawn(shutdown_waiter::wait_for_shutdown(state.ct.clone()));
+
+    if let Err(e) = serve_http(state.clone()).await {
+        tracing::error!("failed running app: {}", e);
+    }
+
+    // Also stop background tasks if binding or serving HTTP failed.
+    state.ct.cancel();
+    state.tasks.close();
+    tracing::info!("waiting for tasks to finish");
+    state.tasks.wait().await;
 }
 
-pub fn app_router(state: state::app::AppState) -> Router {
-    Router::new()
-        .route("/", routing::get(|| async { "Hello, world!" }))
+async fn serve_http(state: state::app::AppState) -> std::io::Result<()> {
+    let app = Router::new()
         .route(
-            "/v1/uploads/presign",
-            routing::post(v1::uploads::presign::presign),
+            "/",
+            routing::get(|| async { "online! inspect /v1/health for statistics." }),
         )
-        .with_state(state)
+        .route("/v1/uploads", routing::post(presign::handler))
+        .route("/v1/uploads/{id}/confirm", routing::post(confirm::handler))
+        .route("/v1/health", routing::get(health::handler))
+        .with_state(state.clone());
+
+    let lis = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
+    // Axum drains its own connection tasks before this returns.
+    axum::serve(lis, app)
+        .with_graceful_shutdown(state.ct.cancelled_owned())
+        .await
 }

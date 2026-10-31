@@ -1,55 +1,47 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use aws_sdk_s3::presigning::PresigningConfig;
-use axum::{Json, extract::State, http::StatusCode};
-use chrono::{DateTime, Duration, Utc};
+use axum::{Json, extract::State};
+use axum_anyhow::ApiResult;
+use jiff::{Span, Timestamp};
 use serde::{Deserialize, Serialize};
 
-use crate::state::app::AppState;
+use crate::{db::sql::UploadRecord, state::app::AppState};
 
-#[derive(Deserialize)]
-pub(crate) struct Payload {
+#[derive(Deserialize, Debug)]
+pub struct Payload {
     size_bytes: u64,
     mime_type: String,
-    #[serde(rename = "filename")]
-    _filename: String,
+    filename: String
 }
 
-#[derive(Serialize)]
-pub(crate) struct Response {
+#[derive(Serialize, Debug)]
+pub struct Response {
+    request_id: String,
     uri: String,
     headers: HashMap<String, String>,
-    expires_at_utc: DateTime<Utc>,
+    expires_at_utc: Timestamp
 }
 
-pub(crate) async fn presign(
-    State(state): State<AppState>,
-    Json(payload): Json<Payload>,
-) -> Result<Json<Response>, (StatusCode, &'static str)> {
-    let expires_in = Duration::minutes(2);
-    let expires_at_utc = Utc::now() + expires_in;
+#[tracing::instrument(skip(state))]
+pub async fn handler(
+    State(mut state): State<AppState>,
+    Json(payload): Json<Payload>
+) -> ApiResult<Json<Response>> {
+    let expires_in = Span::new().minutes(2);
+    let expires_at_utc = Timestamp::now() + expires_in;
 
-    const MAX_UPLOAD_BYTES: u64 = 100 * 1024 * 1024;
-    if payload.size_bytes > MAX_UPLOAD_BYTES {
-        return Err((StatusCode::BAD_REQUEST, "Upload exceeds the 100 MiB limit"));
-    }
-    let content_length = i64::try_from(payload.size_bytes)
-        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid upload size"))?;
+    // TODO: Limit file size, filename length
 
     let id = uuid::Uuid::now_v7();
-    let presigned = state
-        .s3
+    let presigned = state.s3
         .put_object()
         .bucket(&state.config.s3_bucket)
         .key(format!("pending/{}", id))
-        .set_content_length(Some(content_length))
-        .set_content_type(Some(payload.mime_type))
-        .presigned(
-            PresigningConfig::expires_in(expires_in.to_std().map_err(|_| internal_error())?)
-                .map_err(|_| internal_error())?,
-        )
-        .await
-        .map_err(|_| internal_error())?;
+        .set_content_length(Some(payload.size_bytes as i64))
+        .set_content_type(Some(payload.mime_type.clone()))
+        .presigned(PresigningConfig::expires_in(Duration::try_from(expires_in)?)?)
+        .await?;
 
     let uri = presigned.uri().to_owned();
     let mut headers: HashMap<String, String> = HashMap::new();
@@ -57,17 +49,17 @@ pub(crate) async fn presign(
         headers.insert(name.to_owned(), value.to_owned());
     }
 
-    // TODO: Track in DB
+    toasty::create!(UploadRecord {
+        id: id,
+        filename: payload.filename.clone(),
+        mime_type: payload.mime_type.clone(),
+        size_bytes: payload.size_bytes
+    }).exec(&mut state.sql).await?;
 
     Ok(Json(Response {
+        request_id: id.to_string(),
         uri,
         headers,
-        expires_at_utc,
+        expires_at_utc
     }))
-}
-fn internal_error() -> (StatusCode, &'static str) {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "Failed to create upload URL",
-    )
 }

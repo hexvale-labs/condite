@@ -1,0 +1,11 @@
+version = 1
+
+[[migrations]]
+id = 2392639636381148052
+name = "0000_initial migration.sql"
+snapshot_name = "0000_snapshot.toml"
+
+[[migrations]]
+id = 7037696958424098178
+name = "0001_rename uploaded to confirmed, make it a string instead of a native enum as they suck.sql"
+snapshot_name = "0001_snapshot.toml"
