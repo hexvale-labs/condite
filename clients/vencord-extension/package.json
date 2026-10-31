@@ -1,0 +1,13 @@
+{
+  "name": "condite-vencord-extension",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.15.0",
+  "scripts": {
+    "setup": "node tooling.mjs setup",
+    "sync": "node tooling.mjs sync",
+    "check": "node tooling.mjs check",
+    "build": "node tooling.mjs build",
+    "build:web": "node tooling.mjs build:web"
+  }
+}
