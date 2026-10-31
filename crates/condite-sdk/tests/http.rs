@@ -173,3 +173,29 @@ async fn partial_upload_failure_preserves_identity_without_cleanup_or_retry() {
     assert!(calls.iter().all(|call| !call.starts_with("DELETE")));
     server.abort();
 }
+
+#[tokio::test]
+async fn rejects_malformed_signed_uploads_before_network() {
+    let (client, state, server) = fixture().await;
+    for (suffix, headers) in [
+        ("#fragment", vec![("content-type", "text/plain")]),
+        ("", vec![("bad header", "value")]),
+        ("", vec![("content-type", "text/plain\r\ninjected: value")]),
+    ] {
+        let signed = condite_sdk::PresignResponse {
+            request_id: "id".into(),
+            uri: format!("{}/storage{suffix}", state.base),
+            headers: headers
+                .into_iter()
+                .map(|(k, v)| (k.into(), v.into()))
+                .collect(),
+            expires_at_utc: "later".into(),
+        };
+        assert!(matches!(
+            client.put_upload(&signed, b"abc".to_vec()).await,
+            Err(Error::Input(_))
+        ));
+    }
+    assert!(state.calls.lock().unwrap().is_empty());
+    server.abort();
+}

@@ -9,6 +9,7 @@ use axum::{
 use axum_anyhow::{ApiResult, not_found};
 use uuid::Uuid;
 
+#[tracing::instrument(name = "uploads.delete", skip_all, fields(upload_id = %id), err(Debug, level = "warn"))]
 pub async fn handler(
     State(mut state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -16,6 +17,7 @@ pub async fn handler(
     let upload = match UploadRecord::get_by_id(&mut state.sql, &id).await {
         Ok(upload) => upload,
         Err(e) if e.is_record_not_found() => {
+            tracing::debug!("Upload record not found");
             return Err(not_found(
                 "upload not found",
                 "upload record does not exist",
@@ -36,5 +38,6 @@ pub async fn handler(
         .delete()
         .exec(&mut state.sql)
         .await?;
+    tracing::info!("Upload objects and database record deleted");
     Ok(StatusCode::NO_CONTENT)
 }

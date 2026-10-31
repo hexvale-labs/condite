@@ -109,9 +109,10 @@ impl Client {
         if !matches!(url.scheme(), "http" | "https")
             || !url.username().is_empty()
             || url.password().is_some()
+            || url.fragment().is_some()
         {
             return Err(Error::Input(
-                "signed URL must be HTTP(S) without credentials".into(),
+                "signed URL must be HTTP(S) without credentials or fragment".into(),
             ));
         }
         let mut request = self.storage.request(Method::PUT, url);
@@ -128,6 +129,12 @@ impl Client {
             if name.eq_ignore_ascii_case("host") || name.eq_ignore_ascii_case("content-length") {
                 continue;
             }
+            let name = name
+                .parse::<reqwest::header::HeaderName>()
+                .map_err(|_| Error::Input("invalid signed header name".into()))?;
+            let value = value
+                .parse::<reqwest::header::HeaderValue>()
+                .map_err(|_| Error::Input("invalid signed header value".into()))?;
             request = request.header(name, value);
         }
         Self::checked(request.body(data).send().await?).await?;

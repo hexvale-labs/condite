@@ -1,10 +1,24 @@
 # Condite
 
-Condite is planned as self-hosted file storage with a web panel for managing files and their lifetimes. You bring your own S3-compatible storage credentials; Condite uses your bucket to store and serve files.
+Self-hosted file storage backed by your own S3-compatible bucket. The current
+project includes a Rust HTTP service, Rust/Node/browser SDKs, and an SSR web
+console for listing, uploading, confirming and deleting files.
 
-The project will also support extensions that connect other apps to your storage. The first planned extension is for Vencord: it will intercept Discord's file upload handler and route uploads to Condite.
+This is early software: the API has no authentication or owner isolation.
+Deploy the API and dashboard behind trusted access. Download links currently
+expire; public/private visibility is [planned](docs/file-visibility-architecture.md).
+The Vencord upload extension is also planned.
 
-The current codebase is an early Rust service with S3 upload URL generation. See [`crates/condite-core/README.md`](crates/condite-core/README.md) for setup and API details.
+## Start here
+
+- [Core setup and API](crates/condite-core/README.md): database, bucket and server.
+- [Dashboard setup](frontends/dashboard/README.md): SDK build, development and deployment.
+- [Development guide](docs/development.md): repository map, checks and change workflow.
+- [SDK build and tests](scripts/sdk/README.md): native addon and browser WASM prerequisites.
+- SDK usage: [Rust](crates/condite-sdk/README.md),
+  [Node/Electron](crates/condite-sdk-node/README.md),
+  [browser](crates/condite-sdk-wasm/README.md).
+- [CI details](docs/ci.md) and [sharing proposal](docs/file-visibility-architecture.md).
 
 ## Local development
 
@@ -38,27 +52,25 @@ Local justfiles in `crates/condite-core`, `frontends/dashboard`, and `scripts/sd
 provide `install`, `build`, `doctor`, and `run` (apps). Install commands
 preserve existing `.env` files. Run `just` anywhere for the relevant command list.
 
-## Repository layout
+## Run the service
 
-- `Cargo.toml` and `Cargo.lock`: Rust workspace and shared dependency lockfile.
-- `crates/condite-core/`: service library, server and migration binaries, integration
-  tests, and Toasty migrations.
-- `justfile`: development commands; run `just run`, `just migrate <name>`, or
-  `just check-rust` from the repository root.
+Install stable Rust and [Just](https://just.systems), provision an S3-compatible
+bucket, then:
 
-Rust packages live under `crates/`, following the
-[Cargo workspace convention](https://doc.rust-lang.org/cargo/reference/workspaces.html).
-Each package keeps the standard `src/`, `src/bin/`, and `tests/` layout.
-Add future Rust packages under `crates/`.
+```sh
+cp crates/condite-core/.env.example crates/condite-core/.env
+# Edit .env with your database URL and real bucket credentials.
+just run
+```
 
-Run `cargo check --locked --workspace` from the repository root. Build artifacts
-are shared in the root `target/` directory. The run and migration recipes execute
-inside the service directory so its `.env` and `Toasty.toml` remain local to it.
+The example uses a local Turso database. Startup applies embedded migrations and
+binds to `0.0.0.0:8080`. `GET /v1/health` reports process health; it does not probe
+storage. See the core README for storage permissions and browser CORS requirements.
 
-## Dashboard
+## Repository
 
-The SSR admin console lives in [`frontends/dashboard`](frontends/dashboard/README.md).
-It uses Astro, SolidJS v2 RC, Tailwind and the generated SDKs, with Bun for
-development and Node in production. Public/private file delivery is planned in
-[the visibility proposal](docs/file-visibility-architecture.md); no public domain
-is chosen yet.
+Rust packages live under `crates/`; the Cargo workspace defaults to `condite-core`.
+Use `--workspace` to check all packages. The dashboard lives in
+`frontends/dashboard/`; root npm commands build and test the SDKs only.
+The independent Rust consumer in `examples/sdk-consumer/` has its own workspace
+and lockfile. Core is AGPL-3.0-or-later; shared types and SDK crates are MIT.

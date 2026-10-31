@@ -13,13 +13,18 @@ use crate::{
 };
 
 pub async fn execute_command(state: &AppState, command: ControlCommand) -> Result<ControlResponse> {
+    tracing::debug!(?command, "Executing control command");
     match command {
         ControlCommand::Status => Ok(ControlResponse::Status(state.health()?)),
         ControlCommand::Shutdown => {
+            tracing::info!("Shutdown requested through control socket");
             state.ct.cancel();
             Ok(ControlResponse::Success)
         }
-        _ => Ok(ControlResponse::CommandNotImplemented),
+        _ => {
+            tracing::warn!(?command, "Control command is not implemented");
+            Ok(ControlResponse::CommandNotImplemented)
+        }
     }
 }
 
@@ -62,15 +67,18 @@ pub async fn serve_sock_supervisor(state: AppState) {
 
         match result {
             Ok(_) => {
-                tracing::error!("sock server somehow exited normally, restarting");
+                tracing::error!("Control socket server exited unexpectedly");
             }
             Err(e) => {
-                tracing::error!("sock server error: {}", e);
+                tracing::error!(error = %e, "Control socket server failed");
             }
         }
 
         // prevent CPU starving if for any reason it ceases to even initialize
-        tracing::info!("restarting sock server in {}s", RESTART_TIME);
+        tracing::info!(
+            delay_secs = RESTART_TIME,
+            "Scheduling control socket server restart"
+        );
         tokio::select! {
             biased;
             _ = ct.cancelled() => return,
@@ -104,7 +112,7 @@ async fn serve_sock(state: &AppState) -> Result<()> {
 
         let listener = UnixListener::bind(&sock_path)
             .with_context(|| format!("couldn't bind socket in {}", sock_path.display()))?;
-        tracing::info!("created sock at {}", sock_path.display());
+        tracing::info!(path = %sock_path.display(), "Control socket listening");
 
         loop {
             let (stream, _) = tokio::select! {
@@ -116,26 +124,26 @@ async fn serve_sock(state: &AppState) -> Result<()> {
             let tasks = state.tasks.clone();
             tasks.spawn(async move {
                 if let Err(e) = handle_sock_request(state, stream).await {
-                    tracing::error!("failed handling sock request: {}", e);
+                    tracing::warn!(error = %e, "Control socket request failed");
                 }
             });
         }
     }
     .await;
 
-    tracing::info!("cleaning up socket");
+    tracing::debug!(path = %sock_path.display(), "Removing control socket");
     if let Err(e) = fs::remove_file(&sock_path).await
         && e.kind() != ErrorKind::NotFound
     {
-        tracing::warn!("couldn't remove socket {}: {}", sock_path.display(), e);
+        tracing::warn!(path = %sock_path.display(), error = %e, "Failed to remove control socket");
     }
     if let Err(e) = fs::remove_dir(&directory).await
         && e.kind() != ErrorKind::NotFound
     {
         tracing::warn!(
-            "couldn't remove socket directory {}: {}",
-            directory.display(),
-            e
+            path = %directory.display(),
+            error = %e,
+            "Failed to remove control socket directory"
         );
     }
 

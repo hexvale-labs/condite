@@ -20,3 +20,9 @@
 - Run `bun run check`, `bun run build`, `bun run test:unit` and `bun run test`.
   Verify JS-disabled SSR, hydration, API flows, both locales, keyboard and layout
   stability. Document real-device limitations honestly.
+
+- For transport changes, read `src/lib/proxy.ts`: route allowlist, write-origin
+  checks, body limit and raw-byte forwarding are intentional. Update focused
+  transport tests alongside new routes; never JSON-round-trip u64 values.
+- Keep `CONDITE_API_URL` server-side. `DASHBOARD_ORIGIN` is a build-time host
+  validation setting, not a storage URL or authentication mechanism.
