@@ -1,0 +1,45 @@
+{
+  "name": "@condite/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.4",
+  "engines": {
+    "node": ">=22.23.4",
+    "bun": ">=1.4.4"
+  },
+  "scripts": {
+    "dev": "bun --bun astro dev",
+    "check": "bun --bun astro check",
+    "build": "bun --bun astro build",
+    "start": "node ./dist/server/entry.mjs",
+    "test": "playwright test",
+    "test:unit": "bun test tests/transport.test.ts",
+    "test:dev": "DASHBOARD_DEV=1 playwright test"
+  },
+  "dependencies": {
+    "@astrojs/node": "11.1.9",
+    "@fontsource-variable/public-sans": "5.3.0",
+    "@solidjs/web": "2.0.0-rc.20",
+    "@tailwindcss/vite": "4.3.3",
+    "astro": "7.4.4",
+    "astro-solid-next": "0.1.0",
+    "condite-sdk-node": "file:../../crates/condite-sdk-node/dist",
+    "condite-sdk-wasm": "file:../../crates/condite-sdk-wasm/dist",
+    "solid-js": "2.0.0-rc.20",
+    "tailwindcss": "4.3.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.64.1",
+    "@solidjs/vite-plugin": "3.0.0-next.54",
+    "@types/node": "22.19.15",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "@solidjs/vite-plugin": "3.0.0-next.54",
+    "@solidjs/compiler": "2.0.0-rc.20",
+    "@solidjs/babel-plugin": "2.0.0-rc.20"
+  }
+}
