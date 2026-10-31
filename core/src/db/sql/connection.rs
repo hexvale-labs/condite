@@ -1,10 +1,9 @@
-use anyhow::{Result};
+use anyhow::Result;
 use toasty::Db;
 
 use crate::state::app::AppRuntimeConfig;
 
-static MIGRATIONS: toasty::migration::MigrationSet = 
-    toasty::embed_migrations!();
+static MIGRATIONS: toasty::migration::MigrationSet = toasty::embed_migrations!();
 
 #[tracing::instrument(skip(config))]
 pub async fn obtain_sql_conn(config: &AppRuntimeConfig) -> Result<Db> {
@@ -15,7 +14,11 @@ pub async fn obtain_sql_conn(config: &AppRuntimeConfig) -> Result<Db> {
         .await?;
 
     let report = MIGRATIONS.apply(&db).await?;
-    tracing::info!("applied {} migrations | skipped {}", report.applied(), report.skipped());
+    tracing::info!(
+        "applied {} migrations | skipped {}",
+        report.applied(),
+        report.skipped()
+    );
 
     Ok(db)
 }

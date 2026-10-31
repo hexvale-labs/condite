@@ -6,7 +6,7 @@ pub enum EnvironmentVariable {
     S3Region,
     S3Bucket,
     S3AccessKey,
-    S3SecretKey
+    S3SecretKey,
 }
 
 impl fmt::Display for EnvironmentVariable {
@@ -25,5 +25,6 @@ impl fmt::Display for EnvironmentVariable {
 }
 
 pub fn env_var_required(var: EnvironmentVariable) -> String {
-    std::env::var(var.to_string()).unwrap_or_else(|_| panic!("Environment variable '{}' not defined!", var))
+    std::env::var(var.to_string())
+        .unwrap_or_else(|_| panic!("Environment variable '{}' not defined!", var))
 }

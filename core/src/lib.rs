@@ -38,8 +38,8 @@ pub async fn start_app() {
     state.tasks.wait().await;
 }
 
-async fn serve_http(state: state::app::AppState) -> std::io::Result<()> {
-    let app = Router::new()
+pub fn app_router(state: state::app::AppState) -> Router {
+    Router::new()
         .route(
             "/",
             routing::get(|| async { "online! inspect /v1/health for statistics." }),
@@ -47,8 +47,11 @@ async fn serve_http(state: state::app::AppState) -> std::io::Result<()> {
         .route("/v1/uploads", routing::post(presign::handler))
         .route("/v1/uploads/{id}/confirm", routing::post(confirm::handler))
         .route("/v1/health", routing::get(health::handler))
-        .with_state(state.clone());
+        .with_state(state)
+}
 
+async fn serve_http(state: state::app::AppState) -> std::io::Result<()> {
+    let app = app_router(state.clone());
     let lis = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
     // Axum drains its own connection tasks before this returns.
     axum::serve(lis, app)

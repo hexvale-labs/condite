@@ -2,5 +2,5 @@
 #[column(type = text)]
 pub enum UploadStatus {
     Pending,
-    Confirmed
+    Confirmed,
 }
