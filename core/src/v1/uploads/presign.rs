@@ -31,14 +31,29 @@ pub async fn handler(
     let expires_in = Span::new().minutes(2);
     let expires_at_utc = Timestamp::now() + expires_in;
 
-    // TODO: Limit file size, filename length
+    if payload.size_bytes > 104_857_600
+        || payload.filename.is_empty()
+        || payload.filename.len() > 255
+        || payload.mime_type.is_empty()
+        || payload.mime_type.len() > 255
+        || payload.mime_type.bytes().any(|b| b.is_ascii_control())
+    {
+        return Err(axum_anyhow::bad_request(
+            "invalid upload",
+            "maximum size is 100 MiB; filename and MIME type must be valid and at most 255 bytes",
+        ));
+    }
 
     let id = uuid::Uuid::now_v7();
     let presigned = state
         .s3
         .put_object()
         .bucket(&state.config.s3_bucket)
-        .key(format!("pending/{}", id))
+        .key(crate::db::sql::get_s3_key(
+            &id,
+            &payload.mime_type,
+            &crate::db::sql::UploadStatus::Pending,
+        ))
         .set_content_length(Some(payload.size_bytes as i64))
         .set_content_type(Some(payload.mime_type.clone()))
         .presigned(PresigningConfig::expires_in(Duration::try_from(

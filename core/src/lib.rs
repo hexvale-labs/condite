@@ -8,7 +8,7 @@ use axum::{Router, routing};
 
 use crate::v1::{
     health,
-    uploads::{confirm, presign},
+    uploads::{confirm, delete, list, presign},
 };
 
 pub async fn start_app() {
@@ -44,7 +44,11 @@ pub fn app_router(state: state::app::AppState) -> Router {
             "/",
             routing::get(|| async { "online! inspect /v1/health for statistics." }),
         )
-        .route("/v1/uploads", routing::post(presign::handler))
+        .route(
+            "/v1/uploads",
+            routing::post(presign::handler).get(list::handler),
+        )
+        .route("/v1/uploads/{id}", routing::delete(delete::handler))
         .route("/v1/uploads/{id}/confirm", routing::post(confirm::handler))
         .route("/v1/health", routing::get(health::handler))
         .with_state(state)

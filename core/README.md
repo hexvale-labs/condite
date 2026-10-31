@@ -8,7 +8,7 @@ Required environment variables:
 
 | Variable | Purpose |
 | --- | --- |
-| `SQL_CONN_URL` | Database connection URL passed to SeaORM |
+| `SQL_CONN_URL` | Database connection URL passed to Toasty |
 | `S3_ENDPOINT` | S3-compatible service endpoint |
 | `S3_REGION` | S3 signing region |
 | `S3_BUCKET` | Bucket used for uploads |
@@ -33,15 +33,29 @@ Missing environment variables or database connection failures stop startup.
 
 ## Upload API
 
-`POST /v1/uploads/presign` accepts JSON with `size_bytes`, `mime_type`, and
-`filename`. The filename is accepted for compatibility but is not stored yet;
-objects use a generated UUID under `pending/`. Sizes above 100 MiB return HTTP 400.
-The response contains `uri`, `headers`, and `expires_at_utc`; clients must PUT the
-file to the URI with the returned headers within two minutes. Signing failures
-return HTTP 500 without exposing credentials or SDK error details.
+`POST /v1/uploads` accepts JSON with `size_bytes`, `mime_type`, and `filename`.
+Sizes above 100 MiB and empty or overlong metadata return HTTP 400.
+The response contains `request_id`, `uri`, `headers`, and `expires_at_utc`.
+PUT the file to `uri` using the returned headers within two minutes.
 
-The service currently has no authentication or upload metadata persistence.
-`GET /` continues to return `Hello, world!`.
+`POST /v1/uploads/{id}/confirm` checks the uploaded size and MIME type, copies
+it from `pending/` to `uploads/`, and removes the pending object. Repeated
+confirmation is supported. It returns `public_uri` (a signed download URL valid
+for 15 minutes), `expires_at` (URL expiry), and `new_storage_size_bytes` (total
+confirmed bytes). Confirmed files have no automatic expiry.
+
+`GET /v1/uploads?limit=50&after=<uuid>` returns `uploads` metadata in ascending
+UUID order and `next_after` (null on the last page). The default limit is 50,
+with a range of 1–100. Both pending and confirmed records are included.
+Pagination uses `id > after`, ordered by `id`, with no SQL OFFSET. The cursor
+need not refer to a record that still exists. This is a live listing, not a
+snapshot; UUIDv7 ordering does not guarantee insertion order across machines.
+
+`DELETE /v1/uploads/{id}` removes both object keys, then metadata, and returns
+204; unknown IDs return 404. Storage failures retain metadata so deletion can
+be retried. Bucket credentials need Head/Get, Put/Copy, and Delete permissions.
+Browser uploads also require bucket CORS allowing PUT and the signed headers.
+The service currently has no authentication.
 
 Check compilation with `cargo check --locked` from this directory. Live startup
 requires the configured database; actual uploads require the S3 service.
