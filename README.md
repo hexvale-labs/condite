@@ -1,16 +1,7 @@
 # Condite
 
-## Rust developer checks
+Condite is planned as self-hosted file storage with a web panel for managing files and their lifetimes. You bring your own S3-compatible storage credentials; Condite uses your bucket to store and serve files.
 
-The Rust service lives in `core/`. Install the stable Rust toolchain with the
-`rustfmt` and `clippy` components, then run the repository checks from the
-project root:
+The project will also support extensions that connect other apps to your storage. The first planned extension is for Vencord: it will intercept Discord's file upload handler and route uploads to Condite.
 
-```sh
-./scripts/check-rust.sh
-```
-
-The script checks formatting with `cargo fmt --check` and runs Clippy for all
-targets and features, followed by the test suite. Clippy warnings fail the check so new warnings are
-visible in local development and CI. The same script runs in the Rust checks
-GitHub Actions workflow.
+The current codebase is an early Rust service with S3 upload URL generation. See [`core/README.md`](core/README.md) for setup and API details.
