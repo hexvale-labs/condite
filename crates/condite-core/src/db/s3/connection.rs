@@ -14,6 +14,7 @@ pub fn load_credentials(config: &AppRuntimeConfig) -> Result<Credentials> {
     ))
 }
 
+#[tracing::instrument(skip(config), fields(region = %config.s3_region, bucket = %config.s3_bucket), err)]
 pub async fn obtain_s3_conn(config: &AppRuntimeConfig) -> Result<Client> {
     let aws_config = aws_config::defaults(BehaviorVersion::latest())
         .region(Region::new(config.s3_region.to_owned()))
@@ -24,6 +25,7 @@ pub async fn obtain_s3_conn(config: &AppRuntimeConfig) -> Result<Client> {
         .load()
         .await;
 
+    tracing::info!("S3 client configured");
     Ok(Client::from_conf(
         aws_sdk_s3::config::Builder::from(&aws_config)
             .force_path_style(true)

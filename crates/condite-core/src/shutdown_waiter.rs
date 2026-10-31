@@ -6,7 +6,7 @@ pub async fn wait_for_shutdown(ct: CancellationToken) {
         biased;
         _ = ct.cancelled() => {},
         signal = wait_signal() => {
-            tracing::info!("received {:?} signal, exiting", signal);
+            tracing::info!(?signal, "Shutdown triggered by signal waiter");
             ct.cancel();
         }
     }

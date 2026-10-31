@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 pub use condite_shared::ConfirmResponse as Response;
 
+#[tracing::instrument(name = "uploads.confirm", skip_all, fields(upload_id = %id), err(Debug, level = "warn"))]
 pub async fn handler(
     State(mut state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -21,6 +22,7 @@ pub async fn handler(
     let mut upload = match UploadRecord::get_by_id(&mut state.sql, &id).await {
         Ok(upload) => upload,
         Err(e) if e.is_record_not_found() => {
+            tracing::debug!("Upload record not found");
             return Err(not_found(
                 "upload not found",
                 "upload record does not exist",
@@ -31,6 +33,7 @@ pub async fn handler(
     let pending = get_s3_key(&id, &upload.mime_type, &UploadStatus::Pending);
     let confirmed = get_s3_key(&id, &upload.mime_type, &UploadStatus::Confirmed);
     if upload.status == UploadStatus::Pending {
+        tracing::debug!("Checking pending object metadata before confirmation");
         let head = state
             .s3
             .head_object()
@@ -41,6 +44,7 @@ pub async fn handler(
         let head = match head {
             Ok(head) => head,
             Err(e) if e.raw_response().is_some_and(|r| r.status().as_u16() == 404) => {
+                tracing::debug!("Pending upload object not found in storage");
                 return Err(not_found(
                     "upload not found",
                     "upload the file before confirming",
@@ -51,6 +55,7 @@ pub async fn handler(
         if head.content_length() != Some(upload.size_bytes as i64)
             || head.content_type() != Some(upload.mime_type.as_str())
         {
+            tracing::debug!(expected_size_bytes = upload.size_bytes, actual_size_bytes = ?head.content_length(), "Upload confirmation rejected: object metadata does not match");
             return Err(bad_request(
                 "upload metadata mismatch",
                 "uploaded size and MIME type must match the upload request",
@@ -71,6 +76,7 @@ pub async fn handler(
             .exec(&mut state.sql)
             .await?;
     }
+    tracing::debug!("Confirmed object available; removing pending object");
     // Retrying confirmation also retries cleanup after a partial failure.
     state
         .s3
@@ -111,6 +117,7 @@ pub async fn handler(
             break;
         }
     }
+    tracing::info!(storage_size_bytes = total, "Upload confirmation completed");
     Ok(Json(Response {
         public_uri: signed.uri().to_owned(),
         expires_at: expires_at.to_string(),
