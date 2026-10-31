@@ -1,0 +1,12 @@
+{
+  "name": "condite-sdk-node",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "main": "dist/index.cjs",
+  "types": "dist/index.d.cts",
+  "napi": {
+    "binaryName": "condite-sdk",
+    "targets": []
+  }
+}

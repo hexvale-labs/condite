@@ -4,19 +4,9 @@ use axum::{
     extract::{Query, State},
 };
 use axum_anyhow::{ApiResult, bad_request};
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Deserialize)]
-pub struct Parameters {
-    limit: Option<usize>,
-    after: Option<Uuid>,
-}
-#[derive(Serialize)]
-pub struct Response {
-    uploads: Vec<UploadRecord>,
-    next_after: Option<Uuid>,
-}
+pub use condite_shared::{ListUploadsRequest as Parameters, ListUploadsResponse as Response};
 
 pub async fn handler(
     State(mut state): State<AppState>,
@@ -29,9 +19,14 @@ pub async fn handler(
             "limit must be between 1 and 100",
         ));
     }
+    let limit = limit as usize;
     let mut query = UploadRecord::all();
     if let Some(after) = params.after {
-        query = query.filter(UploadRecord::fields().id().gt(after));
+        query = query.filter(
+            UploadRecord::fields().id().gt(after
+                .parse::<Uuid>()
+                .map_err(|_| bad_request("invalid cursor", "after must be a UUID"))?),
+        );
     }
     let mut uploads = query
         .order_by(UploadRecord::fields().id().asc())
@@ -41,12 +36,12 @@ pub async fn handler(
     let has_more = uploads.len() > limit;
     uploads.truncate(limit);
     let next_after = if has_more {
-        uploads.last().map(|u| u.id)
+        uploads.last().map(|u| u.id.to_string())
     } else {
         None
     };
     Ok(Json(Response {
-        uploads,
+        uploads: uploads.into_iter().map(Into::into).collect(),
         next_after,
     }))
 }

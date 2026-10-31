@@ -1,0 +1,13 @@
+[package]
+name = "condite-sdk-consumer"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "MIT"
+
+# Deliberately independent: validates use from outside Condite's workspace.
+[workspace]
+
+[dependencies]
+condite-sdk = { path = "../../crates/condite-sdk" }
+tokio = { version = "1", features = ["rt", "net"] }

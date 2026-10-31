@@ -9,16 +9,10 @@ use axum::{
 };
 use axum_anyhow::{ApiResult, bad_request, not_found};
 use jiff::Timestamp;
-use serde::Serialize;
 use std::time::Duration;
 use uuid::Uuid;
 
-#[derive(Serialize, Debug)]
-pub struct Response {
-    public_uri: String,
-    expires_at: Timestamp,
-    new_storage_size_bytes: u64,
-}
+pub use condite_shared::ConfirmResponse as Response;
 
 pub async fn handler(
     State(mut state): State<AppState>,
@@ -119,7 +113,7 @@ pub async fn handler(
     }
     Ok(Json(Response {
         public_uri: signed.uri().to_owned(),
-        expires_at,
+        expires_at: expires_at.to_string(),
         new_storage_size_bytes: total,
     }))
 }

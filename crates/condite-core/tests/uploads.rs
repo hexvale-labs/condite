@@ -388,3 +388,74 @@ async fn missing_upload_returns_not_found() {
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }
+
+#[tokio::test]
+async fn sdk_uploads_lists_and_deletes_through_the_real_core_router() {
+    use axum::{Router, response::IntoResponse, routing::any};
+    let storage = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let mut config = config();
+    config.s3_endpoint = format!("http://{}", storage.local_addr().unwrap());
+    let storage_task = tokio::spawn(async move {
+        axum::serve(
+            storage,
+            Router::new().fallback(any(|request: Request<Body>| async move {
+                match request.method().as_str() {
+                    "HEAD" => (
+                        [
+                            ("content-length", "10"),
+                            ("content-type", "text/plain"),
+                            ("etag", "\"etag\""),
+                        ],
+                        "",
+                    )
+                        .into_response(),
+                    "PUT" => (
+                        [("content-type", "application/xml")],
+                        "<CopyObjectResult><ETag>etag</ETag></CopyObjectResult>",
+                    )
+                        .into_response(),
+                    _ => StatusCode::NO_CONTENT.into_response(),
+                }
+            })),
+        )
+        .await
+        .unwrap();
+    });
+    let app = app_router(state_with_config(config).await);
+    let api = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let client = condite_sdk::Client::new(format!("http://{}", api.local_addr().unwrap())).unwrap();
+    let api_task = tokio::spawn(async move {
+        axum::serve(api, app).await.unwrap();
+    });
+    assert!(client.health().await.unwrap().healthy);
+    let uploaded = client
+        .upload(
+            &condite_sdk::PresignRequest {
+                filename: "sdk.txt".into(),
+                mime_type: "text/plain".into(),
+                size_bytes: 10,
+            },
+            b"0123456789".to_vec(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(uploaded.confirmation.new_storage_size_bytes, 10);
+    let page = client.list_uploads(&Default::default()).await.unwrap();
+    assert_eq!(page.uploads.len(), 1);
+    assert_eq!(page.uploads[0].id, uploaded.request_id);
+    assert_eq!(
+        page.uploads[0].status,
+        condite_shared::UploadStatus::Confirmed
+    );
+    client.delete(&uploaded.request_id).await.unwrap();
+    assert!(
+        client
+            .list_uploads(&Default::default())
+            .await
+            .unwrap()
+            .uploads
+            .is_empty()
+    );
+    api_task.abort();
+    storage_task.abort();
+}
