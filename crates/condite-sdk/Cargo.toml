@@ -9,11 +9,11 @@ default = ["rustls"]
 rustls = ["reqwest/rustls"]
 
 [dependencies]
-condite-shared = { version = "0.1.0", path = "../condite-shared" }
-reqwest = { version = "0.13", default-features = false, features = ["json", "query"] }
-serde = "1"
-serde_json = "1"
+condite-shared = { workspace = true }
+reqwest = { workspace = true, features = ["json", "query"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
-axum = "0.8"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
+axum = { workspace = true }

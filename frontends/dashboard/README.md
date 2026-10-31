@@ -9,10 +9,9 @@ First build the real SDK packages from the repository root (see
 [SDK prerequisites](../../scripts/sdk/README.md)):
 
 ```sh
-npm ci
-npm run build:sdk
+bun install --frozen-lockfile
+bun run build:sdk
 cd frontends/dashboard
-bun install
 cp .env.example .env
 bun run dev
 ```

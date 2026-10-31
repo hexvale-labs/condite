@@ -3,6 +3,37 @@ members = ["crates/*"]
 default-members = ["crates/condite-core"]
 resolver = "3"
 
+[workspace.dependencies]
+anyhow = { version = "1.0.104" }
+aws-config = { version = "1.13.0" }
+aws-sdk-s3 = { version = "1.156.0" }
+axum = { version = "0.8.9" }
+axum-anyhow = { version = "0.11.14" }
+condite-sdk = { version = "0.1.0", path = "crates/condite-sdk", default-features = false }
+condite-shared = { version = "0.1.0", path = "crates/condite-shared" }
+dotenv = { version = "0.15.0" }
+jiff = { version = "0.2.38" }
+js-sys = { version = "0.3" }
+mime2ext = { version = "0.1.54" }
+napi = { version = "3", default-features = false }
+napi-build = { version = "2" }
+napi-derive = { version = "3" }
+reqwest = { version = "0.13", default-features = false }
+serde = { version = "1.0.229" }
+serde-wasm-bindgen = { version = "0.6" }
+serde_json = { version = "1.0.154" }
+toasty = { version = "0.11.0" }
+toasty-cli = { version = "0.11.0" }
+tokio = { version = "1.54.1" }
+tokio-util = { version = "0.7.20" }
+tower = { version = "0.5" }
+tracing = { version = "0.1.44" }
+tracing-subscriber = { version = "0.3.23" }
+ts-rs = { version = "12" }
+uuid = { version = "1.29.0" }
+wasm-bindgen = { version = "0.2" }
+wasm-bindgen-futures = { version = "0.4" }
+
 # SDK artifacts opt into this profile; core's release settings stay unchanged.
 [profile.sdk]
 inherits = "release"

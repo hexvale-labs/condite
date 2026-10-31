@@ -38,8 +38,8 @@ check-sdk-wasm:
 
 # Build generated bindings before checking their TypeScript declarations.
 check-sdk:
-    npm run build:sdk
-    npm run check:consumer
-    npm run lint:sdk
-    npm run test:sdk
+    bun run build:sdk
+    bun run check:consumer
+    bun run lint:sdk
+    bun run test:sdk
     just check-sdk-wasm
