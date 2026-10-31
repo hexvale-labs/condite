@@ -8,6 +8,8 @@
     "sync": "node tooling.mjs sync",
     "check": "node tooling.mjs check",
     "build": "node tooling.mjs build",
+    "sdk:build": "node tooling.mjs sdk:build",
+    "test": "node --test test/*.test.mjs",
     "build:web": "node tooling.mjs build:web"
   }
 }

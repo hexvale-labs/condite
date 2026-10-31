@@ -1,0 +1,243 @@
+.condite-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: calc(100% - 16px);
+    min-height: 42px;
+    margin: 2px 8px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--channels-default);
+    font: inherit;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+.condite-nav:hover {
+    background: var(--background-modifier-hover);
+    color: var(--interactive-hover);
+}
+.condite-nav[aria-pressed="true"] {
+    background: var(--background-modifier-selected);
+    color: var(--interactive-active);
+}
+.condite-nav:focus-visible,
+.condite-manager :focus-visible,
+.condite-chooser :focus-visible {
+    outline: 2px solid var(--text-link);
+    outline-offset: 2px;
+}
+.condite-pane-host {
+    position: relative !important;
+    isolation: isolate;
+}
+.condite-pane-host > :not(.condite-page) {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+.condite-page {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    background: var(--background-primary);
+}
+.condite-manager {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    color: var(--text-default, var(--text-normal));
+    font-family: var(--font-primary);
+}
+.condite-pane-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 24px;
+    border-bottom: 1px solid
+        var(--border-subtle, var(--background-modifier-accent));
+}
+.condite-manager-body {
+    padding: 24px;
+    overflow: auto;
+    flex: 1;
+    min-height: 0;
+}
+.condite-toolbar,
+.condite-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.condite-toolbar {
+    margin-bottom: 16px;
+}
+.condite-filters {
+    margin-top: 24px;
+}
+.condite-filters > input {
+    flex: 1;
+    min-width: 160px;
+}
+.condite-manager input,
+.condite-manager select,
+.condite-chooser select {
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid var(--border-subtle, var(--background-modifier-accent));
+    border-radius: 8px;
+    background: var(--input-background, var(--background-secondary));
+    color: var(--text-default, var(--text-normal));
+    font: inherit;
+}
+.condite-muted,
+.condite-file-name small {
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.condite-error {
+    color: var(--text-feedback-critical, var(--text-danger));
+    padding: 8px 0;
+    overflow-wrap: anywhere;
+}
+.condite-link {
+    margin: 16px 0;
+    padding: 16px;
+    border: 1px solid var(--text-link);
+    border-radius: 8px;
+    background: var(--background-secondary);
+}
+.condite-link input {
+    width: 100%;
+    margin: 12px 0;
+}
+.condite-manager a {
+    color: var(--text-link);
+}
+.condite-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 16px;
+}
+.condite-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.condite-table th {
+    color: var(--text-muted);
+    font-weight: 500;
+    text-align: left;
+}
+.condite-table th,
+.condite-table td {
+    padding: 12px 10px;
+    vertical-align: middle;
+    border-bottom: 1px solid
+        var(--border-subtle, var(--background-modifier-accent));
+}
+.condite-table tbody tr:hover {
+    background: var(--background-modifier-hover);
+}
+.condite-file-name {
+    min-width: 120px;
+    max-width: 320px;
+    overflow-wrap: anywhere;
+}
+.condite-file-name strong,
+.condite-file-name small {
+    display: block;
+}
+.condite-file-name small {
+    margin-top: 4px;
+}
+.condite-status {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    background: var(--background-modifier-accent);
+    color: var(--text-default, var(--text-normal));
+}
+.condite-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+    list-style: none;
+    padding: 0;
+}
+.condite-grid > li {
+    min-width: 0;
+    padding: 16px;
+    border-radius: 8px;
+    background: var(--background-secondary);
+}
+.condite-grid h3 {
+    margin-top: 12px;
+}
+.condite-grid p {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin: 8px 0 16px;
+    overflow-wrap: anywhere;
+}
+.condite-break {
+    overflow-wrap: anywhere;
+}
+.condite-empty {
+    padding: 56px 16px;
+    text-align: center;
+    color: var(--text-muted);
+}
+.condite-empty p {
+    margin-top: 8px;
+}
+.condite-activity {
+    padding: 12px 16px;
+    margin: 16px 0;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    list-style: none;
+}
+.condite-activity li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 0;
+}
+.condite-activity .condite-error {
+    width: 100%;
+}
+.condite-chooser {
+    padding: 8px 0;
+}
+.condite-choice-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid
+        var(--border-subtle, var(--background-modifier-accent));
+}
+.condite-choice-row label {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.condite-chooser > .condite-actions {
+    margin-top: 24px;
+}
+@media (max-width: 700px) {
+    .condite-manager-body {
+        padding: 16px;
+    }
+    .condite-pane-header {
+        padding: 12px 16px;
+    }
+}

@@ -27,7 +27,7 @@ Run commands from the repository root unless specified:
 | Browser Rust | `just check-sdk-wasm` (requires the WASM target) |
 | SDK bindings or generated types | `just check-sdk` (build, independent consumer, lint/types, runtime tests, WASM Clippy) |
 | Dashboard | In `clients/dashboard`: `bun run check`, `bun run test:unit`, `bun run build`, `bun run test`, `bun run test:dev` |
-| Vencord userplugin | In `clients/vencord-extension`: `pnpm setup`, `pnpm check`, `pnpm build`, `pnpm build:web` |
+| Vencord userplugin | In `clients/vencord-extension`: `pnpm setup`, `pnpm check`, `pnpm build` (includes native SDK), `pnpm test`, `pnpm build:web` (UI compilation only) |
 | Documentation only | Verify relative links and source claims; run `git diff --check` |
 
 See [SDK prerequisites](../scripts/sdk/README.md) before running SDK checks.
