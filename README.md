@@ -12,7 +12,7 @@ The Vencord upload extension is also planned.
 ## Start here
 
 - [Core setup and API](crates/condite-core/README.md): database, bucket and server.
-- [Dashboard setup](frontends/dashboard/README.md): SDK build, development and deployment.
+- [Dashboard setup](clients/dashboard/README.md): SDK build, development and deployment.
 - [Development guide](docs/development.md): repository map, checks and change workflow.
 - [SDK build and tests](scripts/sdk/README.md): native addon and browser WASM prerequisites.
 - SDK usage: [Rust](crates/condite-sdk/README.md),
@@ -40,7 +40,7 @@ SDK copies, and builds both applications. Dashboard installation prepares
 the SDKs first; dashboard builds assume installation is complete.
 `just build sdk` regenerates shared types,
 Node/WASM packages, the Rust example, and the size report. Re-run it after SDK
-changes, then run `bun install --frozen-lockfile` in `frontends/dashboard` to
+changes, then run `bun install --frozen-lockfile` in `clients/dashboard` to
 refresh the dashboard's local package copies.
 
 `just doctor backend`, `just doctor dashboard`, and `just doctor sdk` narrow the
@@ -48,7 +48,7 @@ checks. Doctor is read-only, returns nonzero for missing prerequisites, and does
 not probe the database or S3. SDK browser/Electron test dependencies are documented
 in [SDK development](scripts/sdk/README.md).
 
-Local justfiles in `crates/condite-core`, `frontends/dashboard`, and `scripts/sdk`
+Local justfiles in `crates/condite-core`, `clients/dashboard`, and `scripts/sdk`
 provide `install`, `build`, `doctor`, and `run` (apps). Install commands
 preserve existing `.env` files. Run `just` anywhere for the relevant command list.
 
@@ -71,6 +71,6 @@ storage. See the core README for storage permissions and browser CORS requiremen
 
 Rust packages live under `crates/`; the Cargo workspace defaults to `condite-core`.
 Use `--workspace` to check all packages. The dashboard lives in
-`frontends/dashboard/`; root npm commands build and test the SDKs only.
+`clients/dashboard/`; root npm commands build and test the SDKs only.
 The independent Rust consumer in `examples/sdk-consumer/` has its own workspace
 and lockfile. Core is AGPL-3.0-or-later; shared types and SDK crates are MIT.

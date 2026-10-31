@@ -8,7 +8,7 @@
 | API wire types and TypeScript export | `crates/condite-shared/` | [Shared README](../crates/condite-shared/README.md) |
 | HTTP client and upload orchestration | `crates/condite-sdk/` | [Rust SDK](../crates/condite-sdk/README.md) |
 | Native and browser bindings | `crates/condite-sdk-node/`, `crates/condite-sdk-wasm/` | [SDK tooling](../scripts/sdk/README.md) |
-| SSR, browser UI and API proxy | `frontends/dashboard/` | [Dashboard README](../frontends/dashboard/README.md), [agent guidance](../frontends/dashboard/AGENTS.md) |
+| SSR, browser UI and API proxy | `clients/dashboard/` | [Dashboard README](../clients/dashboard/README.md), [agent guidance](../clients/dashboard/AGENTS.md) |
 
 The Rust workspace shares a root lockfile and `target/`. The SDK build uses
 `target/sdk` and generates ignored platform packages under the binding crates'
@@ -25,7 +25,7 @@ Run commands from the repository root unless specified:
 | Rust service or shared/client code | `just check-rust` (format, Clippy, tests; all targets/features) |
 | Browser Rust | `just check-sdk-wasm` (requires the WASM target) |
 | SDK bindings or generated types | `just check-sdk` (build, independent consumer, lint/types, runtime tests, WASM Clippy) |
-| Dashboard | In `frontends/dashboard`: `bun run check`, `bun run test:unit`, `bun run build`, `bun run test`, `bun run test:dev` |
+| Dashboard | In `clients/dashboard`: `bun run check`, `bun run test:unit`, `bun run build`, `bun run test`, `bun run test:dev` |
 | Documentation only | Verify relative links and source claims; run `git diff --check` |
 
 See [SDK prerequisites](../scripts/sdk/README.md) before running SDK checks.
