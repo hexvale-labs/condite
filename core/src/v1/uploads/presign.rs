@@ -37,7 +37,7 @@ pub async fn handler(
     let presigned = state.s3
         .put_object()
         .bucket(&state.config.s3_bucket)
-        .key(format!("pending/{}", id.to_string()))
+        .key(format!("pending/{}", id))
         .set_content_length(Some(payload.size_bytes as i64))
         .set_content_type(Some(payload.mime_type.clone()))
         .presigned(PresigningConfig::expires_in(Duration::try_from(expires_in)?)?)
@@ -53,7 +53,7 @@ pub async fn handler(
         id: id,
         filename: payload.filename.clone(),
         mime_type: payload.mime_type.clone(),
-        size_bytes: payload.size_bytes.clone()
+        size_bytes: payload.size_bytes
     }).exec(&mut state.sql).await?;
 
     Ok(Json(Response {

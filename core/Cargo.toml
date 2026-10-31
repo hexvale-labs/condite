@@ -14,7 +14,7 @@ dotenv = "0.15.0"
 anyhow = "1.0.104"
 aws-sdk-s3 = "1.156.0"
 aws-config = "1.13.0"
-uuid = {version = "1.29.0", features = ["v7", "fast-rng"]}
+uuid = {version = "1.29.0", features = ["v7", "fast-rng", "serde"]}
 jiff = {version = "0.2.38", features = ["serde"]}
 toasty = { version = "0.11.0", features = ["turso", "postgresql", "mariadb", "jiff", "migration"] }
 tracing = "0.1.44"
@@ -22,3 +22,8 @@ tracing-subscriber = "0.3.23"
 toasty-cli = "0.11.0"
 axum-anyhow = "0.11.14"
 mime2ext = "0.1.54"
+tokio-util = { version = "0.7.20", features = ["rt"] }
+
+[features]
+default = []
+docker = []

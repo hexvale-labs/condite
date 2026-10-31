@@ -1,5 +1,5 @@
 use axum::{Json, extract::{Path, State}};
-use axum_anyhow::{ApiResult, bad_request, internal_error, not_found};
+use axum_anyhow::{ApiResult, internal_error, not_found};
 use jiff::Timestamp;
 use serde::{Serialize};
 use uuid::Uuid;
@@ -28,12 +28,13 @@ pub async fn handler(
     };
 
     if upload.status == UploadStatus::Confirmed {
-        return Err(bad_request("already confirmed", "this upload is already confirmed"));
+        // TODO: Fill
+        return Ok(Json(Response { public_uri: String::new(), expires_at: Timestamp::now(), new_storage_size_bytes: 0 }))
     }
     
     match state.s3
         .copy_object()
-        .copy_source(format!("{}/{}", &state.config.s3_bucket, upload.s3_key()))
+        .copy_source(format!("{}/{}", state.config.s3_bucket, upload.s3_key()))
         .bucket(&state.config.s3_bucket)
         .key(get_s3_key(&id, &upload.mime_type, &UploadStatus::Confirmed))
         .send()

@@ -12,7 +12,7 @@ pub async fn obtain_s3_conn(config: &AppRuntimeConfig) -> Result<Client> {
     let aws_config = aws_config::defaults(BehaviorVersion::latest())
         .region(Region::new(config.s3_region.to_owned()))
         .endpoint_url(&config.s3_endpoint)
-        .credentials_provider(load_credentials(&config).with_context(|| "Failed loading all credentials")?)
+        .credentials_provider(load_credentials(config).with_context(|| "Failed loading all credentials")?)
         .load()
         .await;
 
