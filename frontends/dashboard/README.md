@@ -5,16 +5,17 @@ strict TypeScript. Bun is used for development; production runs on Node.
 
 ## Run
 
-First build the real SDK packages from the repository root (see
-[SDK prerequisites](../../scripts/sdk/README.md)):
+From this directory:
 
 ```sh
-bun install --frozen-lockfile
-bun run build:sdk
-cd frontends/dashboard
-cp .env.example .env
-bun run dev
+just install # Installs SDK tooling, builds generated packages, then installs with Bun
+just doctor
+just run
 ```
+
+Start `just backend` from the repository root in a second terminal after configuring
+`crates/condite-core/.env`. See [local development](../../README.md#local-development)
+and [SDK prerequisites](../../scripts/sdk/README.md).
 
 Use Bun 1.4.4+ and Node 22.23.4+ (a supported Node LTS is recommended).
 `CONDITE_API_URL` is the private core origin, defaulting to `http://127.0.0.1:8080`.
@@ -64,3 +65,21 @@ Do not run the standalone production server with Bun.
   run SSR and hydration checks on upgrades. Do not use the official v1 adapter.
 - Mobile viewport tests cannot prove real-device keyboard, safe-area or touch
   behavior; confirm those on hardware before deployment.
+
+## Source map and transport
+
+- `src/pages/[locale]/`: localized SSR files and service pages.
+- `src/components/Files.tsx`: hydrated file actions and upload flow.
+- `src/lib/server.ts`: server-only native SDK and SSR deadline.
+- `src/lib/client.ts`: lazy browser WASM SDK initialization.
+- `src/pages/api/[...path].ts` and `src/lib/proxy.ts`: same-origin API proxy.
+- `tests/transport.test.ts`: proxy/transport checks; `tests/dashboard.spec.ts`:
+  production/development browser coverage using `tests/fixture.ts`.
+
+SSR talks to core through the native SDK. Hydrated actions use the WASM SDK
+through `/api/`; file bytes go straight to the returned signed storage URL.
+The proxy allows only the implemented health/upload routes, requires same-origin
+`Origin` on writes, limits POST bodies to 16 KiB and times out upstream requests
+after 15 seconds. It forwards raw JSON bytes to preserve integer precision and
+marks responses `no-store`. When adding an API route, update its allowlist and
+transport tests. It does not forward authentication headers or cookies to core.

@@ -1,10 +1,79 @@
-[working-directory: "crates/condite-core"]
-migrate name:
-    cargo run --bin migrate -- migration generate --name "{{name}}"
+# Show available development commands.
+default:
+    @just --list
 
-[working-directory: "crates/condite-core"]
-run:
-    cargo run
+# Install backend dependencies and create its local .env if absent.
+install-backend:
+    just --justfile crates/condite-core/justfile install
+
+# Install SDK tooling, generate packages, and install dashboard dependencies.
+install-dashboard:
+    just --justfile frontends/dashboard/justfile install
+
+# Install dependencies for the shared, Rust, Node, WASM, and consumer SDK crates.
+install-sdk:
+    just --justfile scripts/sdk/justfile install
+
+# Prepare both applications and generated SDKs for local development.
+setup:
+    just install all
+
+# Install dependencies for sdk, dashboard, backend, or all packages.
+install package:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Install: {{package}}"
+    case "{{package}}" in
+        sdk) just --justfile scripts/sdk/justfile install ;;
+        dashboard) just --justfile frontends/dashboard/justfile install ;;
+        backend) just --justfile crates/condite-core/justfile install ;;
+        all)
+            just --justfile crates/condite-core/justfile install
+            just --justfile frontends/dashboard/justfile install
+            ;;
+        *) echo 'Usage: just install <sdk|dashboard|backend|all>' >&2; exit 2 ;;
+    esac
+    echo "==> Install complete: {{package}}"
+
+# Build sdk (including generated files), dashboard, backend, or all packages.
+build package:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Build: {{package}}"
+    case "{{package}}" in
+        sdk) just --justfile scripts/sdk/justfile build ;;
+        dashboard) just --justfile frontends/dashboard/justfile build ;;
+        backend) just --justfile crates/condite-core/justfile build ;;
+        all)
+            just --justfile scripts/sdk/justfile build
+            just --justfile crates/condite-core/justfile build
+            just --justfile frontends/dashboard/justfile build
+            ;;
+        *) echo 'Usage: just build <sdk|dashboard|backend|all>' >&2; exit 2 ;;
+    esac
+    echo "==> Build complete: {{package}}"
+
+# Start the backend on port 8080.
+backend:
+    just --justfile crates/condite-core/justfile run
+
+# Start the dashboard on port 4321; run the backend in another terminal.
+dashboard:
+    just --justfile frontends/dashboard/justfile run
+
+# Generate shared types and build all SDK artifacts.
+build-sdk:
+    just --justfile scripts/sdk/justfile build
+
+# Check all packages, or choose backend, dashboard, or sdk.
+doctor package="all":
+    bash scripts/dev/doctor.sh "{{package}}"
+
+# Backward-compatible backend command.
+run: backend
+
+migrate name:
+    just --justfile crates/condite-core/justfile migrate "{{name}}"
 
 # Run formatting, clippy, and the Rust test suite.
 check-rust:
@@ -38,7 +107,7 @@ check-sdk-wasm:
 
 # Build generated bindings before checking their TypeScript declarations.
 check-sdk:
-    bun run build:sdk
+    just build-sdk
     bun run check:consumer
     bun run lint:sdk
     bun run test:sdk

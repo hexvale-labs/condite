@@ -9,7 +9,7 @@ use crate::{db::sql::UploadRecord, state::app::AppState};
 
 pub use condite_shared::{PresignRequest as Payload, PresignResponse as Response};
 
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(name = "uploads.presign", skip_all, fields(size_bytes = payload.size_bytes, upload_id = tracing::field::Empty), err(Debug, level = "warn"))]
 pub async fn handler(
     State(mut state): State<AppState>,
     Json(payload): Json<Payload>,
@@ -24,6 +24,7 @@ pub async fn handler(
         || payload.mime_type.len() > 255
         || payload.mime_type.bytes().any(|b| b.is_ascii_control())
     {
+        tracing::debug!("Upload request rejected: invalid size, filename, or MIME type");
         return Err(axum_anyhow::bad_request(
             "invalid upload",
             "maximum size is 100 MiB; filename and MIME type must be valid and at most 255 bytes",
@@ -31,6 +32,8 @@ pub async fn handler(
     }
 
     let id = uuid::Uuid::now_v7();
+    tracing::Span::current().record("upload_id", tracing::field::display(id));
+    tracing::debug!("Generating signed upload authorization");
     let presigned = state
         .s3
         .put_object()
@@ -62,6 +65,7 @@ pub async fn handler(
     .exec(&mut state.sql)
     .await?;
 
+    tracing::info!(upload_id = %id, expires_at = %expires_at_utc, "Upload authorization created");
     Ok(Json(Response {
         request_id: id.to_string(),
         uri,

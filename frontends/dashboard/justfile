@@ -1,0 +1,22 @@
+default:
+    @just --list
+
+# Install workspace dependencies and build the SDK packages.
+install:
+    @echo "==> Install: dashboard"
+    just --justfile ../../scripts/sdk/justfile install
+    just --justfile ../../scripts/sdk/justfile build
+    test -e .env || cp .env.example .env
+
+# Build the production dashboard (run install first).
+build:
+    @echo "==> Build: dashboard"
+    bun run build
+
+# Start the dashboard on port 4321 (start the backend in another terminal).
+run:
+    bun run dev
+
+# Check runtime versions, installed packages, and generated SDK artifacts.
+doctor:
+    bash ../../scripts/dev/doctor.sh dashboard

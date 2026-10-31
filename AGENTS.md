@@ -9,3 +9,21 @@
 - Files will support public/private visibility. Public links are intended to point
   directly to S3-compatible storage; no domain is chosen yet. Current signed
   links expire. See `docs/file-visibility-architecture.md` before changing sharing.
+
+## Project context
+
+- Read `docs/development.md` for the repository map and validation commands.
+  Component READMEs describe current behavior; `docs/superpowers/` contains
+  design/implementation records, which may include proposals already superseded
+  by code. Keep implemented behavior distinct from plans.
+- `condite-core` owns HTTP routes, database records and S3 operations;
+  `condite-shared` owns wire types. SDK crates must stay independent of core's
+  AWS/database dependencies. Preserve each crate's license boundary.
+- Root Cargo commands default to core; use `--workspace` for workspace checks.
+  Root npm scripts cover SDK tooling; run dashboard Bun commands in its directory.
+- Change wire contracts in `condite-shared` first and regenerate SDK packages.
+  JavaScript adapters expose u64 as bigint; avoid lossy JSON/Number conversions.
+- Never commit credentials, local databases, generated SDK `dist/` packages or
+  build artifacts. Document environment names using example values only.
+- Run checks appropriate to the changed component (see development guide).
+  For documentation-only changes, check local links and `git diff --check`.

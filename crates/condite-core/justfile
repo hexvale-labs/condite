@@ -1,0 +1,25 @@
+default:
+    @just --list
+
+# Fetch locked Rust dependencies and create local configuration if absent.
+install:
+    @echo "==> Install: backend"
+    cargo fetch --locked
+    test -e .env || cp .env.example .env
+    @echo 'Configure .env with your database and S3 settings, then run just run.'
+
+# Build the backend using locked dependencies.
+build:
+    @echo "==> Build: backend"
+    cargo build --locked --bin condite-core
+
+# Start the API on port 8080 using this directory's .env.
+run:
+    cargo run --locked --bin condite-core
+
+migrate name:
+    cargo run --locked --bin migrate -- migration generate --name "{{name}}"
+
+# Check tools and required configuration without contacting external services.
+doctor:
+    bash ../../scripts/dev/doctor.sh backend
