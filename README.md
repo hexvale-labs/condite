@@ -4,4 +4,22 @@ Condite is planned as self-hosted file storage with a web panel for managing fil
 
 The project will also support extensions that connect other apps to your storage. The first planned extension is for Vencord: it will intercept Discord's file upload handler and route uploads to Condite.
 
-The current codebase is an early Rust service with S3 upload URL generation. See [`core/README.md`](core/README.md) for setup and API details.
+The current codebase is an early Rust service with S3 upload URL generation. See [`crates/condite-core/README.md`](crates/condite-core/README.md) for setup and API details.
+
+## Repository layout
+
+- `Cargo.toml` and `Cargo.lock`: Rust workspace and shared dependency lockfile.
+- `crates/condite-core/`: service library, server and migration binaries, integration
+  tests, and Toasty migrations.
+- `justfile`: development commands; run `just run`, `just migrate <name>`, or
+  `just check-rust` from the repository root.
+
+Rust packages live under `crates/`, following the
+[Cargo workspace convention](https://doc.rust-lang.org/cargo/reference/workspaces.html).
+Each package keeps the standard `src/`, `src/bin/`, and `tests/` layout.
+Add future Rust packages under `crates/`; add the planned web panel and extensions
+when they are implemented.
+
+Run `cargo check --locked --workspace` from the repository root. Build artifacts
+are shared in the root `target/` directory. The run and migration recipes execute
+inside the service directory so its `.env` and `Toasty.toml` remain local to it.

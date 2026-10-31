@@ -1,6 +1,8 @@
+[working-directory: "crates/condite-core"]
 migrate name:
     cargo run --bin migrate -- migration generate --name "{{name}}"
 
+[working-directory: "crates/condite-core"]
 run:
     cargo run
 
@@ -22,10 +24,10 @@ check-rust:
         status=1
     }
 
-    run_check "Rust formatting" cargo fmt --manifest-path Cargo.toml -- --check
+    run_check "Rust formatting" cargo fmt --all -- --check
     run_check "Clippy (all targets and features; warnings are errors)" \
-        cargo clippy --manifest-path Cargo.toml --locked --all-targets --all-features -- -D warnings
+        cargo clippy --workspace --locked --all-targets --all-features -- -D warnings
 
-    run_check "Rust tests" cargo test --manifest-path Cargo.toml --locked --all-targets --all-features
+    run_check "Rust tests" cargo test --workspace --locked --all-targets --all-features
 
     exit "$status"
