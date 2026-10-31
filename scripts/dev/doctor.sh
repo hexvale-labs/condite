@@ -57,12 +57,12 @@ dashboard() {
     printf '\nDashboard\n'
     version node 22.23.4
     version bun 1.4.4
-    file frontends/dashboard/node_modules/.bin/astro 'Run just install-dashboard.'
+    file clients/dashboard/node_modules/.bin/astro 'Run just install-dashboard.'
     file crates/condite-sdk-node/dist/condite-sdk.node 'Run just build-sdk (or just install-dashboard).'
     file crates/condite-sdk-node/dist/package.json 'Run just build-sdk.'
     file crates/condite-sdk-wasm/dist/condite_sdk_bg.wasm 'Run just build-sdk.'
     file crates/condite-sdk-wasm/dist/package.json 'Run just build-sdk.'
-    printf 'Backend defaults to http://127.0.0.1:8080; override CONDITE_API_URL in frontends/dashboard/.env.\n'
+    printf 'Backend defaults to http://127.0.0.1:8080; override CONDITE_API_URL in clients/dashboard/.env.\n'
 }
 case "${1:-all}" in
     backend) backend ;;
