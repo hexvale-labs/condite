@@ -2,7 +2,7 @@
 
 ## Intent and scope
 
-Build a small administration console in `frontends/dashboard`, using Astro SSR,
+Build a small administration console in `clients/dashboard`, using Astro SSR,
 SolidJS **2**, and the generated Condite SDK packages. Bun manages dependencies
 and development; production runs the standalone Astro server on Node.
 
@@ -125,7 +125,7 @@ content or client-only viewport/date formatting. No remote thumbnails for now.
   and document any device-only checks that could not be run on hardware.
 - Concise local README: build SDK first, Bun install/dev/check/build/test, Node
   start, configuration, proxy/bucket CORS and deployment boundary.
-- `frontends/dashboard/AGENTS.md`: bleeding-edge Solid RC/compiler/Astro renderer
+- `clients/dashboard/AGENTS.md`: bleeding-edge Solid RC/compiler/Astro renderer
   risks, exact pins, v2 skill usage, generated SDK contracts, Bun development /
   Node production, and required SSR/hydration regression checks on upgrades.
 

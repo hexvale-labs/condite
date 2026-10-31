@@ -8,7 +8,7 @@ install-backend:
 
 # Install SDK tooling, generate packages, and install dashboard dependencies.
 install-dashboard:
-    just --justfile frontends/dashboard/justfile install
+    just --justfile clients/dashboard/justfile install
 
 # Install dependencies for the shared, Rust, Node, WASM, and consumer SDK crates.
 install-sdk:
@@ -25,11 +25,11 @@ install package:
     echo "==> Install: {{package}}"
     case "{{package}}" in
         sdk) just --justfile scripts/sdk/justfile install ;;
-        dashboard) just --justfile frontends/dashboard/justfile install ;;
+        dashboard) just --justfile clients/dashboard/justfile install ;;
         backend) just --justfile crates/condite-core/justfile install ;;
         all)
             just --justfile crates/condite-core/justfile install
-            just --justfile frontends/dashboard/justfile install
+            just --justfile clients/dashboard/justfile install
             ;;
         *) echo 'Usage: just install <sdk|dashboard|backend|all>' >&2; exit 2 ;;
     esac
@@ -42,12 +42,12 @@ build package:
     echo "==> Build: {{package}}"
     case "{{package}}" in
         sdk) just --justfile scripts/sdk/justfile build ;;
-        dashboard) just --justfile frontends/dashboard/justfile build ;;
+        dashboard) just --justfile clients/dashboard/justfile build ;;
         backend) just --justfile crates/condite-core/justfile build ;;
         all)
             just --justfile scripts/sdk/justfile build
             just --justfile crates/condite-core/justfile build
-            just --justfile frontends/dashboard/justfile build
+            just --justfile clients/dashboard/justfile build
             ;;
         *) echo 'Usage: just build <sdk|dashboard|backend|all>' >&2; exit 2 ;;
     esac
@@ -59,7 +59,7 @@ backend:
 
 # Start the dashboard on port 4321; run the backend in another terminal.
 dashboard:
-    just --justfile frontends/dashboard/justfile run
+    just --justfile clients/dashboard/justfile run
 
 # Generate shared types and build all SDK artifacts.
 build-sdk:

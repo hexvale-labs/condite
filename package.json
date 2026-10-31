@@ -7,9 +7,9 @@
     "lint:sdk": "prettier --check \"scripts/sdk/*.{mjs,cjs,mts,json}\" crates/condite-sdk-node/index.cjs eslint.config.mjs && eslint scripts/sdk crates/condite-sdk-node/index.cjs eslint.config.mjs && tsc -p scripts/sdk/tsconfig.json",
     "check:consumer": "cargo fmt --manifest-path examples/sdk-consumer/Cargo.toml -- --check && cargo clippy --manifest-path examples/sdk-consumer/Cargo.toml --locked -- -D warnings && node scripts/sdk/check-isolation.mjs",
     "build:sdk:release": "node scripts/sdk/build.mjs --release",
-    "dev:dashboard": "bun run --cwd frontends/dashboard dev",
-    "check:dashboard": "bun run --cwd frontends/dashboard check",
-    "build:dashboard": "bun run --cwd frontends/dashboard build",
+    "dev:dashboard": "bun run --cwd clients/dashboard dev",
+    "check:dashboard": "bun run --cwd clients/dashboard check",
+    "build:dashboard": "bun run --cwd clients/dashboard build",
     "build": "bun run build:sdk && bun run build:dashboard"
   },
   "devDependencies": {
@@ -25,7 +25,7 @@
   "packageManager": "bun@1.4.4",
   "workspaces": {
     "packages": [
-      "frontends/*",
+      "clients/*",
       "crates/condite-sdk-node",
       "crates/condite-sdk-wasm"
     ],

@@ -29,7 +29,7 @@ Node production, Playwright integration checks.
 
 ### 1. SSR integration and SDK boundary
 
-Files: `frontends/dashboard/{package.json,astro.config.ts,tsconfig.json}`,
+Files: `clients/dashboard/{package.json,astro.config.ts,tsconfig.json}`,
 `src/lib/{server,client}.ts`, `src/pages/api/[...path].ts`, `tests/`.
 
 - [x] Build the existing generated SDK packages; install exact framework versions.
@@ -50,7 +50,7 @@ Files: `src/{components,layouts,pages,styles,i18n}/`, `tests/dashboard.spec.ts`.
 
 ### 3. Documentation and deployment
 
-Files: `frontends/dashboard/{README.md,AGENTS.md,.env.example,.gitignore}`,
+Files: `clients/dashboard/{README.md,AGENTS.md,.env.example,.gitignore}`,
 `docs/file-visibility-architecture.md`, root `README.md`.
 
 - [x] Record Bun dev / Node production, SDK prerequisites and exact RC risks.
