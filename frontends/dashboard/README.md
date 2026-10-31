@@ -5,17 +5,17 @@ strict TypeScript. Bun is used for development; production runs on Node.
 
 ## Run
 
-First build the real SDK packages from the repository root (see
-[SDK prerequisites](../../scripts/sdk/README.md)):
+From this directory:
 
 ```sh
-npm ci
-npm run build:sdk
-cd frontends/dashboard
-bun install
-cp .env.example .env
-bun run dev
+just install # Installs SDK tooling, builds generated packages, then installs with Bun
+just doctor
+just run
 ```
+
+Start `just backend` from the repository root in a second terminal after configuring
+`crates/condite-core/.env`. See [local development](../../README.md#local-development)
+and [SDK prerequisites](../../scripts/sdk/README.md).
 
 Use Bun 1.4.4+ and Node 22.23.4+ (a supported Node LTS is recommended).
 `CONDITE_API_URL` is the private core origin, defaulting to `http://127.0.0.1:8080`.

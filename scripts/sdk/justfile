@@ -1,0 +1,33 @@
+default:
+    @just --list
+
+# Install JS dependencies, fetch all Rust crates, and prepare WASM tooling.
+[working-directory: "../.."]
+install:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Install: SDK"
+    npm ci
+    cargo fetch --locked
+    cargo fetch --locked --manifest-path examples/sdk-consumer/Cargo.toml
+    rustup target add wasm32-unknown-unknown
+    version=$(awk '/^name = "wasm-bindgen"$/ {found=1; next} found && /^version =/ {gsub(/"/, "", $3); print $3; exit}' Cargo.lock)
+    if ! "${WASM_BINDGEN:-wasm-bindgen}" --version 2>/dev/null | grep -Fxq "wasm-bindgen $version"; then
+        cargo install wasm-bindgen-cli --version "$version" --locked
+    fi
+
+# Regenerate shared types and build Rust, Node, WASM, and size-report artifacts.
+[working-directory: "../.."]
+build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Build: SDK"
+    types=$(mktemp)
+    trap 'rm -f "$types"' EXIT
+    cargo run --quiet --locked -p condite-shared --features typescript --example export-types > "$types"
+    cp "$types" crates/condite-shared/bindings.d.ts
+    npm run build:sdk
+
+# Check build prerequisites; browser/Electron test tools are separate (see README).
+doctor:
+    bash ../dev/doctor.sh sdk
