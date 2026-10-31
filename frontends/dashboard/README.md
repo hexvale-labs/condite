@@ -65,3 +65,21 @@ Do not run the standalone production server with Bun.
   run SSR and hydration checks on upgrades. Do not use the official v1 adapter.
 - Mobile viewport tests cannot prove real-device keyboard, safe-area or touch
   behavior; confirm those on hardware before deployment.
+
+## Source map and transport
+
+- `src/pages/[locale]/`: localized SSR files and service pages.
+- `src/components/Files.tsx`: hydrated file actions and upload flow.
+- `src/lib/server.ts`: server-only native SDK and SSR deadline.
+- `src/lib/client.ts`: lazy browser WASM SDK initialization.
+- `src/pages/api/[...path].ts` and `src/lib/proxy.ts`: same-origin API proxy.
+- `tests/transport.test.ts`: proxy/transport checks; `tests/dashboard.spec.ts`:
+  production/development browser coverage using `tests/fixture.ts`.
+
+SSR talks to core through the native SDK. Hydrated actions use the WASM SDK
+through `/api/`; file bytes go straight to the returned signed storage URL.
+The proxy allows only the implemented health/upload routes, requires same-origin
+`Origin` on writes, limits POST bodies to 16 KiB and times out upstream requests
+after 15 seconds. It forwards raw JSON bytes to preserve integer precision and
+marks responses `no-store`. When adding an API route, update its allowlist and
+transport tests. It does not forward authentication headers or cookies to core.
