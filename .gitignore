@@ -7,3 +7,8 @@
 
 # Rust build artifacts
 **/target/
+
+# SDK tooling and generated platform artifacts
+node_modules/
+crates/condite-sdk-node/dist/
+crates/condite-sdk-wasm/dist/

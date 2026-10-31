@@ -33,3 +33,19 @@ impl UploadRecord {
         get_s3_key(&self.id, &self.mime_type, &self.status)
     }
 }
+
+impl From<UploadRecord> for condite_shared::Upload {
+    fn from(record: UploadRecord) -> Self {
+        Self {
+            id: record.id.to_string(),
+            filename: record.filename,
+            mime_type: record.mime_type,
+            size_bytes: record.size_bytes,
+            status: match record.status {
+                UploadStatus::Pending => condite_shared::UploadStatus::Pending,
+                UploadStatus::Confirmed => condite_shared::UploadStatus::Confirmed,
+            },
+            created_at: record.created_at.to_string(),
+        }
+    }
+}

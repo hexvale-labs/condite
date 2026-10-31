@@ -2,3 +2,11 @@
 members = ["crates/*"]
 default-members = ["crates/condite-core"]
 resolver = "3"
+
+# SDK artifacts opt into this profile; core's release settings stay unchanged.
+[profile.sdk]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = "symbols"

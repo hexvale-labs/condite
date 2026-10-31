@@ -31,3 +31,15 @@ check-rust:
     run_check "Rust tests" cargo test --workspace --locked --all-targets --all-features
 
     exit "$status"
+
+# Lint browser-only Rust code, which native workspace Clippy cannot compile.
+check-sdk-wasm:
+    cargo clippy --locked -p condite-sdk-wasm --target wasm32-unknown-unknown --all-features -- -D warnings
+
+# Build generated bindings before checking their TypeScript declarations.
+check-sdk:
+    npm run build:sdk
+    npm run check:consumer
+    npm run lint:sdk
+    npm run test:sdk
+    just check-sdk-wasm

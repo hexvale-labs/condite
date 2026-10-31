@@ -1,0 +1,19 @@
+[package]
+name = "condite-sdk"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[features]
+default = ["rustls"]
+rustls = ["reqwest/rustls"]
+
+[dependencies]
+condite-shared = { version = "0.1.0", path = "../condite-shared" }
+reqwest = { version = "0.13", default-features = false, features = ["json", "query"] }
+serde = "1"
+serde_json = "1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
+axum = "0.8"

@@ -4,24 +4,10 @@ use aws_sdk_s3::presigning::PresigningConfig;
 use axum::{Json, extract::State};
 use axum_anyhow::ApiResult;
 use jiff::{Span, Timestamp};
-use serde::{Deserialize, Serialize};
 
 use crate::{db::sql::UploadRecord, state::app::AppState};
 
-#[derive(Deserialize, Debug)]
-pub struct Payload {
-    size_bytes: u64,
-    mime_type: String,
-    filename: String,
-}
-
-#[derive(Serialize, Debug)]
-pub struct Response {
-    request_id: String,
-    uri: String,
-    headers: HashMap<String, String>,
-    expires_at_utc: Timestamp,
-}
+pub use condite_shared::{PresignRequest as Payload, PresignResponse as Response};
 
 #[tracing::instrument(skip(state))]
 pub async fn handler(
@@ -80,6 +66,6 @@ pub async fn handler(
         request_id: id.to_string(),
         uri,
         headers,
-        expires_at_utc,
+        expires_at_utc: expires_at_utc.to_string(),
     }))
 }

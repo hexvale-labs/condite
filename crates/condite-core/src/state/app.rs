@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use jiff::{Span, Timestamp};
-use serde::{Deserialize, Serialize};
+use jiff::Timestamp;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 use crate::{
@@ -72,12 +71,7 @@ pub struct AppState {
     pub s3: aws_sdk_s3::Client,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthStatus {
-    healthy: bool,
-    started_at: Timestamp,
-    runtime: Span,
-}
+pub use condite_shared::HealthStatus;
 
 impl AppState {
     pub async fn init() -> Result<Self> {
@@ -110,8 +104,8 @@ impl AppState {
 
         Ok(HealthStatus {
             healthy: true,
-            started_at,
-            runtime: Timestamp::now().since(started_at)?,
+            started_at: started_at.to_string(),
+            runtime: Timestamp::now().since(started_at)?.to_string(),
         })
     }
 }
