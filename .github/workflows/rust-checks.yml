@@ -29,10 +29,12 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      - name: Install Just
+        uses: extractions/setup-just@v4
       - name: Cache Cargo dependencies and build artifacts
         uses: Swatinem/rust-cache@v2.9.3
         with:
           workspaces: core -> target
           cache-on-failure: true
       - name: Run Rust checks
-        run: ./scripts/check-rust.sh
+        run: just --justfile core/justfile check-rust

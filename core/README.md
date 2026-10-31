@@ -45,4 +45,5 @@ The service currently has no authentication or upload metadata persistence.
 
 Check compilation with `cargo check --locked` from this directory. Live startup
 requires the configured database; actual uploads require the S3 service.
-Run `../scripts/check-rust.sh` for formatting, lint, and regression checks.
+Install [Just](https://just.systems), then run `just check-rust` from this directory
+for formatting, lint, and regression checks (also run in CI).
