@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 pub use condite_shared::{ListUploadsRequest as Parameters, ListUploadsResponse as Response};
 
+#[tracing::instrument(name = "uploads.list", skip_all, err(Debug, level = "warn"))]
 pub async fn handler(
     State(mut state): State<AppState>,
     Query(params): Query<Parameters>,
@@ -40,6 +41,7 @@ pub async fn handler(
     } else {
         None
     };
+    tracing::debug!(count = uploads.len(), has_more, limit, "Uploads listed");
     Ok(Json(Response {
         uploads: uploads.into_iter().map(Into::into).collect(),
         next_after,

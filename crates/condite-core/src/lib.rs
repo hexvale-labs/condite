@@ -12,7 +12,7 @@ use crate::v1::{
 };
 
 pub async fn start_app() {
-    tracing::info!("starting up...");
+    tracing::info!("Starting Condite core");
     let state = state::app::AppState::init()
         .await
         .expect("the state to be initialized");
@@ -28,14 +28,15 @@ pub async fn start_app() {
         .spawn(shutdown_waiter::wait_for_shutdown(state.ct.clone()));
 
     if let Err(e) = serve_http(state.clone()).await {
-        tracing::error!("failed running app: {}", e);
+        tracing::error!(error = %e, "HTTP server failed; initiating shutdown");
     }
 
     // Also stop background tasks if binding or serving HTTP failed.
     state.ct.cancel();
     state.tasks.close();
-    tracing::info!("waiting for tasks to finish");
+    tracing::info!("Waiting for background tasks to finish");
     state.tasks.wait().await;
+    tracing::info!("Condite core shutdown completed");
 }
 
 pub fn app_router(state: state::app::AppState) -> Router {
@@ -57,6 +58,7 @@ pub fn app_router(state: state::app::AppState) -> Router {
 async fn serve_http(state: state::app::AppState) -> std::io::Result<()> {
     let app = app_router(state.clone());
     let lis = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
+    tracing::info!(address = %lis.local_addr()?, "HTTP server listening");
     // Axum drains its own connection tasks before this returns.
     axum::serve(lis, app)
         .with_graceful_shutdown(state.ct.cancelled_owned())
