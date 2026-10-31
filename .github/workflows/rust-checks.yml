@@ -2,6 +2,7 @@ name: Rust checks
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -12,7 +13,7 @@ concurrency:
 jobs:
   rust-checks:
     name: Format, lint, and test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -35,5 +36,8 @@ jobs:
         uses: Swatinem/rust-cache@v2.9.3
         with:
           cache-on-failure: true
+          cache-bin: false
+          # The virtual workspace manifest defines profiles but is not a member manifest.
+          key: ${{ hashFiles('Cargo.toml') }}
       - name: Run Rust checks
         run: just check-rust
