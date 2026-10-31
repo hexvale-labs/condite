@@ -23,3 +23,11 @@ when they are implemented.
 Run `cargo check --locked --workspace` from the repository root. Build artifacts
 are shared in the root `target/` directory. The run and migration recipes execute
 inside the service directory so its `.env` and `Toasty.toml` remain local to it.
+
+## Dashboard
+
+The SSR admin console lives in [`frontends/dashboard`](frontends/dashboard/README.md).
+It uses Astro, SolidJS v2 RC, Tailwind and the generated SDKs, with Bun for
+development and Node in production. Public/private file delivery is planned in
+[the visibility proposal](docs/file-visibility-architecture.md); no public domain
+is chosen yet.

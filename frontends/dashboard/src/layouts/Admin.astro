@@ -1,0 +1,60 @@
+---
+import type { HealthStatus } from 'condite-sdk-node';
+import { Font } from 'astro:assets';
+import { messages, type Locale } from '../i18n';
+import '../styles/global.css';
+interface Props { locale: Locale; section: 'files' | 'service'; health?: HealthStatus | null; }
+const { locale, section, health } = Astro.props;
+const t = messages(locale);
+const suffix = section === 'service' ? 'service' : '';
+const languageHref = (lang: Locale) => `/${lang}/${suffix}${Astro.url.search}`;
+---
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f7fb" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{t[section]} · Condite</title>
+    <Font cssVariable="--font-public-sans" preload />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">{t.skip}</a>
+    <div class="min-h-dvh lg:grid lg:grid-cols-[224px_minmax(0,1fr)]">
+      <aside class="border-b border-line bg-slate-100 px-5 py-5 lg:min-h-dvh lg:border-e lg:border-b-0 lg:px-6 lg:py-8">
+        <a href={`/${locale}/`} class="flex w-fit items-center gap-3 font-semibold text-ink">
+          <span class="grid size-9 place-items-center rounded-lg bg-ink text-lg text-white" aria-hidden="true">c</span>
+          <span class="text-xl tracking-tight">Condite</span>
+        </a>
+        <p class="mt-2 text-xs text-muted">{t.console}</p>
+        <nav aria-label={t.console} class="mt-5 flex gap-2 lg:mt-10 lg:flex-col">
+          <a class:list={['nav-item', { 'nav-current': section === 'files' }]} href={`/${locale}/`} aria-current={section === 'files' ? 'page' : undefined}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 5h6l2 3h8v11H4z" /></svg>{t.files}
+          </a>
+          <a class:list={['nav-item', { 'nav-current': section === 'service' }]} href={`/${locale}/service`} aria-current={section === 'service' ? 'page' : undefined}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="4" width="16" height="6" rx="1"/><rect x="4" y="14" width="16" height="6" rx="1"/><path d="M7 7h2m-2 10h2"/></svg>{t.service}
+          </a>
+        </nav>
+      </aside>
+      <div class="min-w-0">
+        <header class="flex min-h-16 items-center justify-between gap-4 border-b border-line bg-white px-5 sm:px-10">
+          <span class:list={['badge', health?.healthy ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-muted']}><span aria-hidden="true">{health?.healthy ? '✓' : '◷'}</span>{health ? (health.healthy ? t.healthy : t.unhealthy) : t.offline}</span>
+          <nav aria-label={t.language} class="flex items-center gap-1 text-sm">
+            <a class="language-link" href={languageHref('en')} lang="en" hreflang="en" aria-current={locale === 'en' ? 'true' : undefined}>English</a>
+            <a class="language-link" href={languageHref('es')} lang="es" hreflang="es" aria-current={locale === 'es' ? 'true' : undefined}>Español</a>
+          </nav>
+        </header>
+        <main id="main" tabindex="-1" class="mx-auto max-w-[1500px] px-5 py-8 sm:px-10 sm:py-10">
+          <div class="mb-8">
+            <h1 class="text-3xl font-semibold tracking-tight sm:text-[2rem]">{t[section]}</h1>
+            <p class="mt-2 max-w-prose text-sm leading-relaxed text-muted">{section === 'files' ? t.filesDescription : t.serviceDescription}</p>
+          </div>
+          <slot />
+          <noscript><p class="mt-4 text-sm text-muted">{t.noJs}</p></noscript>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

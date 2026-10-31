@@ -62,3 +62,11 @@ Check compilation with `cargo check --locked` from this directory. Live startup
 requires the configured database; actual uploads require the S3 service.
 Install [Just](https://just.systems), then run `just check-rust` from the repository root
 for formatting, lint, and regression checks (also run in CI).
+
+## Planned sharing model
+
+Files will be public or private. Public sharing will use stable URLs directly to
+S3-compatible storage; no domain is chosen yet. Current `public_uri` values are
+expiring signed download URLs, not permanent public links. See the
+[architecture proposal](../../docs/file-visibility-architecture.md) before adding
+visibility, authorization or delivery endpoints.

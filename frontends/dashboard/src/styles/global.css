@@ -1,0 +1,115 @@
+@import "tailwindcss";
+@theme inline {
+  --font-sans: var(--font-public-sans);
+  --color-canvas: #f4f7fb;
+  --color-ink: #17283d;
+  --color-muted: #526477;
+  --color-accent: #245dcc;
+  --color-line: #d9e2ec;
+}
+@layer base {
+  html {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    font-family: var(--font-public-sans), sans-serif;
+  }
+  button,
+  a,
+  input,
+  select {
+    touch-action: manipulation;
+  }
+  button,
+  select {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: wait;
+  }
+  button {
+    user-select: none;
+  }
+  input,
+  select {
+    font-size: 1rem;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+  ::selection {
+    background: #dbeafe;
+    color: #17283d;
+  }
+  dialog::backdrop {
+    background: rgb(23 40 61 / 35%);
+  }
+}
+@layer components {
+  .button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm font-medium text-ink disabled:opacity-50;
+  }
+  .button-primary {
+    @apply border-accent bg-accent text-white;
+  }
+  .button-danger {
+    @apply border-red-700 bg-red-700 text-white;
+  }
+  .button-small {
+    @apply min-h-10 px-2.5 text-xs;
+  }
+  .nav-item {
+    @apply flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted;
+  }
+  .nav-current {
+    @apply bg-white text-accent shadow-xs;
+  }
+  .language-link {
+    @apply rounded px-3 py-3 text-muted;
+  }
+  .language-link[aria-current] {
+    @apply font-semibold text-accent;
+  }
+  .skip-link {
+    @apply fixed start-4 top-2 z-50 -translate-y-24 rounded-md bg-ink px-4 py-3 text-white focus:translate-y-0;
+  }
+  .badge {
+    @apply inline-flex min-h-7 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium;
+  }
+  .file-icon {
+    @apply grid size-10 shrink-0 place-items-center rounded-md border border-line bg-canvas text-muted;
+  }
+  .feedback {
+    @apply min-h-14 py-3 text-sm leading-relaxed text-muted;
+  }
+  .field {
+    @apply min-h-11 rounded-md border border-line bg-white px-3 py-2 text-ink;
+  }
+  .data-table th {
+    @apply whitespace-nowrap px-4 py-3 text-start text-xs font-medium text-muted;
+  }
+  .data-table td {
+    @apply border-t border-line px-4 py-4 align-middle text-sm;
+  }
+  .data-table td:first-child {
+    @apply max-w-72 min-w-52;
+  }
+  .data-table th:first-child {
+    @apply w-full;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .button:not(:disabled):hover {
+      filter: brightness(0.96);
+    }
+    .nav-item:hover,
+    .language-link:hover {
+      @apply bg-white text-accent;
+    }
+  }
+  .button:not(:disabled):active {
+    transform: translateY(1px);
+  }
+}
