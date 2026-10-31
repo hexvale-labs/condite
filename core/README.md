@@ -11,14 +11,14 @@ Required environment variables:
 | `SQL_CONN_URL` | Database connection URL passed to SeaORM |
 | `S3_ENDPOINT` | S3-compatible service endpoint |
 | `S3_REGION` | S3 signing region |
-| `S3_BUCKET` | Bucket used for uploads and the startup connection check |
+| `S3_BUCKET` | Bucket used for uploads |
 | `S3_ACCESS_KEY` | S3 access key |
 | `S3_SECRET_KEY` | S3 secret key |
 
 Startup opens the database connection and initializes the S3 client concurrently.
-The S3 check lists at most one object, so credentials need permission to list the
-configured bucket. Missing environment variables or connection failures stop
-startup.
+S3 initialization does not probe the bucket or require list permission. Credentials
+need permission to put objects under `pending/` when clients use upload URLs.
+Missing environment variables or database connection failures stop startup.
 
 ## Source layout
 
@@ -29,9 +29,20 @@ startup.
   re-exports `AppRuntimeConfig` to preserve its existing import path.
 - `state/env.rs`: environment-variable names and required-value lookup.
 - `db/`: database and S3 connection setup.
-- `v1/`: API modules under development. The presign handler is currently not
-  registered with the router; the only registered route is `GET /`, which returns
-  `Hello, world!`.
+- `v1/`: API modules, including upload URL generation.
+
+## Upload API
+
+`POST /v1/uploads/presign` accepts JSON with `size_bytes`, `mime_type`, and
+`filename`. The filename is accepted for compatibility but is not stored yet;
+objects use a generated UUID under `pending/`. Sizes above 100 MiB return HTTP 400.
+The response contains `uri`, `headers`, and `expires_at_utc`; clients must PUT the
+file to the URI with the returned headers within two minutes. Signing failures
+return HTTP 500 without exposing credentials or SDK error details.
+
+The service currently has no authentication or upload metadata persistence.
+`GET /` continues to return `Hello, world!`.
 
 Check compilation with `cargo check --locked` from this directory. Live startup
-also requires the configured database and S3 service to be available.
+requires the configured database; actual uploads require the S3 service.
+Run `../scripts/check-rust.sh` for formatting, lint, and regression checks.

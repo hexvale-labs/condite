@@ -1,2 +1,2 @@
-pub mod uploads;
 pub mod health;
+pub mod uploads;

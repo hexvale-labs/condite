@@ -19,6 +19,8 @@ run_check() {
 
 run_check "Rust formatting" cargo fmt --manifest-path "$manifest_path" -- --check
 run_check "Clippy (all targets and features; warnings are errors)" \
-    cargo clippy --manifest-path "$manifest_path" --all-targets --all-features -- -D warnings
+    cargo clippy --manifest-path "$manifest_path" --locked --all-targets --all-features -- -D warnings
+
+run_check "Rust tests" cargo test --manifest-path "$manifest_path" --locked --all-targets --all-features
 
 exit "$status"

@@ -8,7 +8,7 @@ pub struct AppRuntimeConfig {
     pub s3_region: String,
     pub s3_bucket: String,
     pub s3_access_key: String,
-    pub s3_secret_key: String
+    pub s3_secret_key: String,
 }
 
 impl AppRuntimeConfig {
@@ -20,7 +20,7 @@ impl AppRuntimeConfig {
             s3_region: env_var_required(EnvironmentVariable::S3Region),
             s3_bucket: env_var_required(EnvironmentVariable::S3Bucket),
             s3_access_key: env_var_required(EnvironmentVariable::S3AccessKey),
-            s3_secret_key: env_var_required(EnvironmentVariable::S3SecretKey)
+            s3_secret_key: env_var_required(EnvironmentVariable::S3SecretKey),
         }
     }
 }

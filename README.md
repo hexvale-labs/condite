@@ -11,6 +11,6 @@ project root:
 ```
 
 The script checks formatting with `cargo fmt --check` and runs Clippy for all
-targets and features. Clippy warnings fail the check so new warnings are
+targets and features, followed by the test suite. Clippy warnings fail the check so new warnings are
 visible in local development and CI. The same script runs in the Rust checks
 GitHub Actions workflow.
