@@ -1,0 +1,22 @@
+name: Rust checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  rust-checks:
+    name: Format, lint, and test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_PROFILE_DEV_DEBUG: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Run Rust checks
+        run: ./scripts/check-rust.sh

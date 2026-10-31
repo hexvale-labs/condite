@@ -4,13 +4,22 @@ pub mod db;
 pub mod state;
 pub mod v1;
 
-pub async fn start_app() {
-    let state = state::app::AppState::init().await.expect("the state to be initialized");
+pub async fn start_app() -> anyhow::Result<()> {
+    let state = state::app::AppState::init().await?;
 
-    let app = Router::new()
+    let app = app_router(state);
+
+    let lis = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
+    axum::serve(lis, app).await?;
+    Ok(())
+}
+
+pub fn app_router(state: state::app::AppState) -> Router {
+    Router::new()
         .route("/", routing::get(|| async { "Hello, world!" }))
-        .with_state(state);
-
-    let lis = tokio::net::TcpListener::bind("0.0.0.0:8080").await.expect("the TCP listener to be created");
-    axum::serve(lis, app).await.expect("the app to start");
+        .route(
+            "/v1/uploads/presign",
+            routing::post(v1::uploads::presign::presign),
+        )
+        .with_state(state)
 }

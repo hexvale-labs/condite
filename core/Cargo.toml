@@ -3,6 +3,9 @@ name = "condite-core"
 version = "0.1.0"
 edition = "2024"
 
+[lints.clippy]
+all = "warn"
+
 [dependencies]
 axum = "0.8.9"
 serde = "1.0.229"
@@ -15,3 +18,6 @@ aws-sdk-s3 = "1.156.0"
 aws-config = "1.13.0"
 uuid = {version = "1.29.0", features = ["v7", "fast-rng"]}
 chrono = "0.4.45"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
