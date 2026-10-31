@@ -10,11 +10,11 @@
 | Native and browser bindings | `crates/condite-sdk-node/`, `crates/condite-sdk-wasm/` | [SDK tooling](../scripts/sdk/README.md) |
 | SSR, browser UI and API proxy | `clients/dashboard/` | [Dashboard README](../clients/dashboard/README.md), [agent guidance](../clients/dashboard/AGENTS.md) |
 
-The Rust workspace shares a root lockfile and `target/`. The SDK build uses
-`target/sdk` and generates ignored platform packages under the binding crates'
-`dist/` directories. Build those packages **before** installing the dashboard's
-local file dependencies. Use npm with the root lockfile and Bun with the dashboard
-lockfile; these are separate dependency installations.
+The Rust workspace shares a root lockfile and `target/`, including SDK development
+builds. SDK builds generate ignored packages under the binding crates' `dist/`
+directories. JavaScript packages share the root Bun workspace and `bun.lock`;
+run `bun install --frozen-lockfile` at the root, then build the SDKs before using
+the dashboard. Workspace links expose generated SDK artifacts without reinstalling.
 
 ## Validation
 

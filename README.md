@@ -23,7 +23,7 @@ The Vencord upload extension is also planned.
 ## Local development
 
 Install [Just](https://just.systems), Rust/rustup, Node (dashboard: 22.23.4+),
-npm, Bun 1.4.4+, and a C toolchain. Then, from the repository root:
+Bun 1.4.4+, and a C toolchain. Then, from the repository root:
 
 ```sh
 just setup                # Backend + SDK tooling/build + dashboard dependencies
@@ -35,13 +35,29 @@ just dashboard            # Terminal 2: dashboard on :4321 (open /en/ or /es/)
 
 Use `just install <backend|dashboard|sdk|all>` to install dependencies and
 `just build <backend|dashboard|sdk|all>` to build. `just setup` is a shortcut for
-`just install all`. Building all regenerates SDKs, refreshes the dashboard local
-SDK copies, and builds both applications. Dashboard installation prepares
-the SDKs first; dashboard builds assume installation is complete.
+`just install all`. Building all regenerates SDKs and builds both applications.
+Dashboard installation prepares the SDKs first; dashboard builds assume
+installation is complete.
 `just build sdk` regenerates shared types,
-Node/WASM packages, the Rust example, and the size report. Re-run it after SDK
-changes, then run `bun install --frozen-lockfile` in `clients/dashboard` to
-refresh the dashboard's local package copies.
+Node/WASM packages and the Rust example. Re-run it after SDK
+changes; workspace links expose the regenerated packages to the dashboard.
+
+## Shared dependencies
+
+Run `bun install --frozen-lockfile` at the root to install all JavaScript
+workspaces from one `bun.lock`. Shared tooling versions live in the root catalog;
+Solid integration pins and overrides also stay centralized. SDK workspace links
+resolve before generation: run `bun run build:sdk` before using the dashboard.
+`bun run build` generates the SDKs and builds the dashboard in order.
+Use `bun run dev:dashboard`, `bun run check:dashboard`, and
+`bun run build:dashboard` from the root. Electron's install script is trusted
+explicitly; production SSR still runs on Node.
+
+Rust dependency versions live in `[workspace.dependencies]`; crates opt into
+features locally to keep native and browser dependencies isolated. SDK development
+builds share `target/` with the service. `bun run build:sdk:release` retains the
+size-optimized release build. The external Rust consumer deliberately keeps its
+own workspace and lockfile to test independent use.
 
 `just doctor backend`, `just doctor dashboard`, and `just doctor sdk` narrow the
 checks. Doctor is read-only, returns nonzero for missing prerequisites, and does
@@ -71,6 +87,6 @@ storage. See the core README for storage permissions and browser CORS requiremen
 
 Rust packages live under `crates/`; the Cargo workspace defaults to `condite-core`.
 Use `--workspace` to check all packages. The dashboard lives in
-`clients/dashboard/`; root npm commands build and test the SDKs only.
+`clients/dashboard/`; root Bun commands build the SDKs and dashboard.
 The independent Rust consumer in `examples/sdk-consumer/` has its own workspace
 and lockfile. Core is AGPL-3.0-or-later; shared types and SDK crates are MIT.

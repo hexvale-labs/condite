@@ -5,16 +5,41 @@
     "build:sdk": "node scripts/sdk/build.mjs",
     "test:sdk": "node scripts/sdk/test.mjs",
     "lint:sdk": "prettier --check \"scripts/sdk/*.{mjs,cjs,mts,json}\" crates/condite-sdk-node/index.cjs eslint.config.mjs && eslint scripts/sdk crates/condite-sdk-node/index.cjs eslint.config.mjs && tsc -p scripts/sdk/tsconfig.json",
-    "check:consumer": "cargo fmt --manifest-path examples/sdk-consumer/Cargo.toml -- --check && cargo clippy --manifest-path examples/sdk-consumer/Cargo.toml --locked -- -D warnings && node scripts/sdk/check-isolation.mjs"
+    "check:consumer": "cargo fmt --manifest-path examples/sdk-consumer/Cargo.toml -- --check && cargo clippy --manifest-path examples/sdk-consumer/Cargo.toml --locked -- -D warnings && node scripts/sdk/check-isolation.mjs",
+    "build:sdk:release": "node scripts/sdk/build.mjs --release",
+    "dev:dashboard": "bun run --cwd clients/dashboard dev",
+    "check:dashboard": "bun run --cwd clients/dashboard check",
+    "build:dashboard": "bun run --cwd clients/dashboard build",
+    "build": "bun run build:sdk && bun run build:dashboard"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@napi-rs/cli": "^3.0.0",
-    "@playwright/test": "^1.56.0",
+    "@playwright/test": "catalog:",
     "electron": "^42.0.0",
     "eslint": "^10.14.0",
     "globals": "^17.13.0",
     "prettier": "^3.9.10",
-    "typescript": "^5.9.0"
-  }
+    "typescript": "catalog:"
+  },
+  "packageManager": "bun@1.4.4",
+  "workspaces": {
+    "packages": [
+      "clients/*",
+      "crates/condite-sdk-node",
+      "crates/condite-sdk-wasm"
+    ],
+    "catalog": {
+      "@playwright/test": "1.64.1",
+      "typescript": "5.9.3"
+    }
+  },
+  "overrides": {
+    "@solidjs/vite-plugin": "3.0.0-next.54",
+    "@solidjs/compiler": "2.0.0-rc.20",
+    "@solidjs/babel-plugin": "2.0.0-rc.20"
+  },
+  "trustedDependencies": [
+    "electron"
+  ]
 }

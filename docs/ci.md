@@ -11,7 +11,7 @@ The [audited SDK run](https://github.com/hexvale-labs/condite/actions/runs/41223
 had an exact Rust cache hit but rebuilt the independent consumer's dependencies.
 Its `examples/sdk-consumer/target` directory was outside the cached root target.
 The SDK cache now registers both workspaces, including both lockfiles in its key.
-The build script's `target/sdk` is already covered recursively by `target`.
+SDK builds now share the root `target` directory with other workspace commands.
 
 [Swatinem/rust-cache](https://github.com/Swatinem/rust-cache/tree/v2.9.3)
 caches dependencies and removes workspace artifacts and incremental state.
@@ -36,8 +36,8 @@ binary caching is disabled to avoid duplicating tool installation state.
 Playwright installs only Chromium's headless shell, matching `chromium.launch()`
 in the integration tests. Browser caching is omitted per
 [Playwright's guidance](https://playwright.dev/docs/ci#caching-browsers); Linux
-system dependencies still require installation. npm's download cache remains
-enabled, with `npm ci` retaining lockfile validation.
+system dependencies still require installation. JavaScript tooling uses the shared Bun workspace and `bun install --frozen-lockfile`.
+The SDK job explicitly runs `build:sdk:release` for size measurements.
 
 `setup-node` and `upload-artifact` use current releases. Checkout, rust-cache,
 and setup-just were already current. Dependabot already groups monthly action

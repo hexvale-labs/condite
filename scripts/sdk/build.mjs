@@ -10,10 +10,13 @@ import { gzipSync } from "node:zlib";
 import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
 process.chdir(root);
+const profile = process.argv.includes("--release") ? "sdk" : "dev";
+const profileDir = profile === "dev" ? "debug" : profile;
+const targetDir = resolve(process.env.CARGO_TARGET_DIR || "target");
 const env = {
   ...process.env,
   CARGO_BUILD_JOBS: process.env.CARGO_BUILD_JOBS || "2",
-  CARGO_TARGET_DIR: resolve("target/sdk"),
+  CARGO_TARGET_DIR: targetDir,
 };
 function run(cmd, args) {
   const p = spawnSync(cmd, args, { env, stdio: "inherit" });
@@ -64,7 +67,9 @@ export class Client {
   upload(request: PresignRequest, data: Uint8Array): Promise<UploadResult>;
 }
 `;
-run("npx", [
+run("bun", [
+  "x",
+  "--no-install",
   "napi",
   "build",
   "--manifest-path",
@@ -73,8 +78,7 @@ run("npx", [
   "crates/condite-sdk-node/package.json",
   "--output-dir",
   "crates/condite-sdk-node/dist",
-  "--profile",
-  "sdk",
+  ...(profile === "dev" ? [] : ["--profile", profile]),
   "--dts",
   "native.d.ts",
 ]);
@@ -104,7 +108,7 @@ run("cargo", [
   "--target",
   "wasm32-unknown-unknown",
   "--profile",
-  "sdk",
+  profile,
 ]);
 const wasmDir = "crates/condite-sdk-wasm/dist";
 mkdirSync(wasmDir, { recursive: true });
@@ -116,7 +120,12 @@ run(bindgen, [
   wasmDir,
   "--out-name",
   "condite_sdk",
-  "target/sdk/wasm32-unknown-unknown/sdk/condite_sdk_wasm.wasm",
+  resolve(
+    targetDir,
+    "wasm32-unknown-unknown",
+    profileDir,
+    "condite_sdk_wasm.wasm",
+  ),
 ]);
 // Replace untyped JsValue declarations with the generated public contract.
 writeFileSync(
@@ -143,27 +152,36 @@ writeFileSync(
     2,
   ) + "\n",
 );
-run("cargo", [
-  "build",
-  "--locked",
-  "-p",
-  "condite-sdk",
-  "--example",
-  "health",
-  "--profile",
-  "sdk",
-]);
-const report = {
-  target: process.arch + "-" + process.platform,
-  rustc: spawnSync("rustc", ["--version"], { encoding: "utf8" }).stdout.trim(),
-  profile: "sdk (opt-level=z, LTO, codegen-units=1, symbols stripped)",
-  bytes: {
-    nativeAddon: statSync(`${nodeDir}/condite-sdk.node`).size,
-    wasm: statSync(`${wasmDir}/condite_sdk_bg.wasm`).size,
-    wasmGzip: gzipSync(readFileSync(`${wasmDir}/condite_sdk_bg.wasm`)).length,
-    wasmGlue: statSync(`${wasmDir}/condite_sdk.js`).size,
-    rustExample: statSync("target/sdk/sdk/examples/health").size,
-  },
-};
-writeFileSync("target/sdk-sizes.json", JSON.stringify(report, null, 2) + "\n");
-console.log(report);
+if (profile === "sdk") {
+  run("cargo", [
+    "build",
+    "--locked",
+    "-p",
+    "condite-sdk",
+    "--example",
+    "health",
+    "--profile",
+    profile,
+  ]);
+  const report = {
+    target: process.arch + "-" + process.platform,
+    rustc: spawnSync("rustc", ["--version"], {
+      encoding: "utf8",
+    }).stdout.trim(),
+    profile,
+    bytes: {
+      nativeAddon: statSync(`${nodeDir}/condite-sdk.node`).size,
+      wasm: statSync(`${wasmDir}/condite_sdk_bg.wasm`).size,
+      wasmGzip: gzipSync(readFileSync(`${wasmDir}/condite_sdk_bg.wasm`)).length,
+      wasmGlue: statSync(`${wasmDir}/condite_sdk.js`).size,
+      rustExample: statSync(resolve(targetDir, profileDir, "examples/health"))
+        .size,
+    },
+  };
+  mkdirSync("target", { recursive: true });
+  writeFileSync(
+    "target/sdk-sizes.json",
+    JSON.stringify(report, null, 2) + "\n",
+  );
+  console.log(report);
+}

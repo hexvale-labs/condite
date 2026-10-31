@@ -7,7 +7,7 @@ install:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "==> Install: SDK"
-    npm ci
+    bun install --frozen-lockfile
     cargo fetch --locked
     cargo fetch --locked --manifest-path examples/sdk-consumer/Cargo.toml
     rustup target add wasm32-unknown-unknown
@@ -16,7 +16,7 @@ install:
         cargo install wasm-bindgen-cli --version "$version" --locked
     fi
 
-# Regenerate shared types and build Rust, Node, WASM, and size-report artifacts.
+# Regenerate shared types and build Rust, Node, and WASM artifacts.
 [working-directory: "../.."]
 build:
     #!/usr/bin/env bash
@@ -26,7 +26,7 @@ build:
     trap 'rm -f "$types"' EXIT
     cargo run --quiet --locked -p condite-shared --features typescript --example export-types > "$types"
     cp "$types" crates/condite-shared/bindings.d.ts
-    npm run build:sdk
+    bun run build:sdk
 
 # Check build prerequisites; browser/Electron test tools are separate (see README).
 doctor:

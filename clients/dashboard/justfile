@@ -1,12 +1,11 @@
 default:
     @just --list
 
-# Install/build the local SDK packages before resolving dashboard dependencies.
+# Install workspace dependencies and build the SDK packages.
 install:
     @echo "==> Install: dashboard"
     just --justfile ../../scripts/sdk/justfile install
     just --justfile ../../scripts/sdk/justfile build
-    bun install --frozen-lockfile
     test -e .env || cp .env.example .env
 
 # Build the production dashboard (run install first).

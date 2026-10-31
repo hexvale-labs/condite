@@ -41,7 +41,7 @@ sdk() {
     tool rustc 'Install Rust using rustup.'
     tool rustup 'Install Rust using rustup.'
     version node 22.0.0
-    tool npm 'Install npm with Node.'
+    version bun 1.4.4
     tool cc 'Install a C compiler/toolchain.'
     file node_modules/.bin/napi 'Run just install-sdk.'
     if command -v rustup >/dev/null 2>&1 && rustup target list --installed | grep -Fxq wasm32-unknown-unknown; then

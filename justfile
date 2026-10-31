@@ -47,8 +47,6 @@ build package:
         all)
             just --justfile scripts/sdk/justfile build
             just --justfile crates/condite-core/justfile build
-            echo '==> Refreshing dashboard SDK dependencies'
-            bun --cwd clients/dashboard install --frozen-lockfile
             just --justfile clients/dashboard/justfile build
             ;;
         *) echo 'Usage: just build <sdk|dashboard|backend|all>' >&2; exit 2 ;;
@@ -110,7 +108,7 @@ check-sdk-wasm:
 # Build generated bindings before checking their TypeScript declarations.
 check-sdk:
     just build-sdk
-    npm run check:consumer
-    npm run lint:sdk
-    npm run test:sdk
+    bun run check:consumer
+    bun run lint:sdk
+    bun run test:sdk
     just check-sdk-wasm

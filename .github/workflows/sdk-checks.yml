@@ -30,17 +30,19 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
-          cache: npm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
       - uses: Swatinem/rust-cache@v2.9.3
         with:
           cache-bin: false
           key: ${{ hashFiles('Cargo.toml') }}
-          # target/sdk is nested under target; the consumer is a separate workspace.
+          # The consumer keeps its independent lockfile and build directory.
           workspaces: |
             . -> target
             examples/sdk-consumer -> target
-      - run: npm ci --no-audit --no-fund
-      - run: npx playwright install --with-deps --only-shell chromium
+      - run: bun install --frozen-lockfile
+      - run: bun x --no-install playwright install --with-deps --only-shell chromium
       - run: sudo apt-get install -y libgtk-3-0t64 xvfb
       - name: Read locked wasm-bindgen version
         id: wasm-bindgen
@@ -62,10 +64,10 @@ jobs:
         with:
           tool: wasm-bindgen@${{ steps.wasm-bindgen.outputs.version }}
           fallback: none
-      - run: npm run build:sdk
-      - run: npm run check:consumer
-      - run: npm run lint:sdk
-      - run: npm run test:sdk
+      - run: bun run build:sdk:release
+      - run: bun run check:consumer
+      - run: bun run lint:sdk
+      - run: bun run test:sdk
       - run: cargo clippy --locked -p condite-sdk-wasm --target wasm32-unknown-unknown --all-features -- -D warnings
       - name: Upload measured sizes
         uses: actions/upload-artifact@v7.0.2
