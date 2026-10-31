@@ -3,3 +3,29 @@ migrate name:
 
 run:
     cargo run
+
+# Run formatting, clippy, and the Rust test suite.
+check-rust:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    status=0
+
+    run_check() {
+        local description="$1"
+        shift
+
+        printf '\n==> %s\n' "$description"
+        if "$@"; then
+            return 0
+        fi
+
+        status=1
+    }
+
+    run_check "Rust formatting" cargo fmt --manifest-path Cargo.toml -- --check
+    run_check "Clippy (all targets and features; warnings are errors)" \
+        cargo clippy --manifest-path Cargo.toml --locked --all-targets --all-features -- -D warnings
+
+    run_check "Rust tests" cargo test --manifest-path Cargo.toml --locked --all-targets --all-features
+
+    exit "$status"
