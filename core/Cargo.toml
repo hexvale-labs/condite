@@ -27,3 +27,6 @@ tokio-util = { version = "0.7.20", features = ["rt"] }
 [features]
 default = []
 docker = []
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

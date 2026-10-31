@@ -12,7 +12,7 @@ use crate::{db::sql::UploadRecord, state::app::AppState};
 pub struct Payload {
     size_bytes: u64,
     mime_type: String,
-    filename: String
+    filename: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -20,13 +20,13 @@ pub struct Response {
     request_id: String,
     uri: String,
     headers: HashMap<String, String>,
-    expires_at_utc: Timestamp
+    expires_at_utc: Timestamp,
 }
 
 #[tracing::instrument(skip(state))]
 pub async fn handler(
     State(mut state): State<AppState>,
-    Json(payload): Json<Payload>
+    Json(payload): Json<Payload>,
 ) -> ApiResult<Json<Response>> {
     let expires_in = Span::new().minutes(2);
     let expires_at_utc = Timestamp::now() + expires_in;
@@ -34,13 +34,16 @@ pub async fn handler(
     // TODO: Limit file size, filename length
 
     let id = uuid::Uuid::now_v7();
-    let presigned = state.s3
+    let presigned = state
+        .s3
         .put_object()
         .bucket(&state.config.s3_bucket)
         .key(format!("pending/{}", id))
         .set_content_length(Some(payload.size_bytes as i64))
         .set_content_type(Some(payload.mime_type.clone()))
-        .presigned(PresigningConfig::expires_in(Duration::try_from(expires_in)?)?)
+        .presigned(PresigningConfig::expires_in(Duration::try_from(
+            expires_in,
+        )?)?)
         .await?;
 
     let uri = presigned.uri().to_owned();
@@ -54,12 +57,14 @@ pub async fn handler(
         filename: payload.filename.clone(),
         mime_type: payload.mime_type.clone(),
         size_bytes: payload.size_bytes
-    }).exec(&mut state.sql).await?;
+    })
+    .exec(&mut state.sql)
+    .await?;
 
     Ok(Json(Response {
         request_id: id.to_string(),
         uri,
         headers,
-        expires_at_utc
+        expires_at_utc,
     }))
 }

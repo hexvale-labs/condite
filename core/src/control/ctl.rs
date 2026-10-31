@@ -11,15 +11,15 @@ pub enum ControlCommand {
     Reload,
     Shutdown,
     SetLogLevel {
-        level: String
+        level: String,
     },
     DeleteUpload {
-        id: uuid::Uuid
+        id: uuid::Uuid,
     },
     GenerateApiKey {
         per_upload_quota: u64,
-        storage_quota: u64
-    }
+        storage_quota: u64,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,13 +27,11 @@ pub enum ControlCommand {
 pub enum ControlResponse {
     Success,
     Status(HealthStatus),
-    ApiKey {
-        api_key: String
-    },
-    CommandNotImplemented
+    ApiKey { api_key: String },
+    CommandNotImplemented,
 }
 
 pub struct CommandRequest {
     pub command: ControlCommand,
-    pub reply: oneshot::Sender<Result<ControlResponse>>
+    pub reply: oneshot::Sender<Result<ControlResponse>>,
 }

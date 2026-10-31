@@ -1,5 +1,5 @@
-mod ctl;
 mod bus;
+mod ctl;
 mod processor;
 
 pub use bus::CommandBus;

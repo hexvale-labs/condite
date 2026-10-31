@@ -1159,6 +1159,7 @@ dependencies = [
  "toasty-cli",
  "tokio",
  "tokio-util",
+ "tower",
  "tracing",
  "tracing-subscriber",
  "uuid",

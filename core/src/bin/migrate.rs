@@ -7,9 +7,7 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::load()?;
     let db = obtain_sql_conn(&runtime_config).await?;
 
-    ToastyCli::with_config(db, config)
-        .parse_and_run()
-        .await?;
+    ToastyCli::with_config(db, config).parse_and_run().await?;
 
     Ok(())
 }

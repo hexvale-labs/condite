@@ -12,7 +12,7 @@ pub struct UploadRecord {
     pub filename: String,
     pub mime_type: String,
     pub size_bytes: u64,
-    
+
     #[default(UploadStatus::Pending)]
     pub status: UploadStatus,
 
@@ -24,7 +24,7 @@ pub fn get_s3_key(id: &uuid::Uuid, mime_type: &str, status: &UploadStatus) -> St
     let ext = mime2ext::mime2ext(mime_type).unwrap_or("bin");
     match status {
         UploadStatus::Pending => format!("pending/{}.{}", id, ext),
-        UploadStatus::Confirmed => format!("uploads/{}.{}", id, ext)
+        UploadStatus::Confirmed => format!("uploads/{}.{}", id, ext),
     }
 }
 
