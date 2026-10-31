@@ -1,6 +1,7 @@
 # condite core
 
-The Rust service starts with `cargo run` from this directory. The binary loads
+The Rust service starts with `just run` from the repository root or `cargo run`
+from this directory. The binary loads
 `.env` when present, then initializes application state before binding to
 `0.0.0.0:8080`.
 
@@ -59,5 +60,5 @@ The service currently has no authentication.
 
 Check compilation with `cargo check --locked` from this directory. Live startup
 requires the configured database; actual uploads require the S3 service.
-Install [Just](https://just.systems), then run `just check-rust` from this directory
+Install [Just](https://just.systems), then run `just check-rust` from the repository root
 for formatting, lint, and regression checks (also run in CI).
