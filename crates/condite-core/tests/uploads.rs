@@ -1132,3 +1132,95 @@ async fn concurrent_policy_change_and_reservation_use_current_database_limits() 
         StatusCode::PAYLOAD_TOO_LARGE
     );
 }
+
+#[tokio::test]
+async fn reload_reports_restart_required_variables_without_values() {
+    use condite_core::control::ControlCommand;
+    const VARIABLES: [(&str, &str); 6] = [
+        ("SQL_CONN_URL", "turso::memory:"),
+        ("S3_ENDPOINT", "http://127.0.0.1:1"),
+        ("S3_REGION", "us-east-1"),
+        ("S3_BUCKET", "uploads"),
+        ("S3_ACCESS_KEY", "test-key"),
+        ("S3_SECRET_KEY", "test-secret"),
+    ];
+    let Ok(expected) = std::env::var("CONDITE_RELOAD_TEST_CHANGED") else {
+        for changed in [
+            "",
+            "SQL_CONN_URL",
+            "S3_ENDPOINT",
+            "S3_REGION",
+            "S3_BUCKET",
+            "S3_ACCESS_KEY",
+            "S3_SECRET_KEY",
+        ] {
+            for missing in [false, true] {
+                let mut child = std::process::Command::new(std::env::current_exe().unwrap());
+                child
+                    .args([
+                        "--exact",
+                        "reload_reports_restart_required_variables_without_values",
+                        "--nocapture",
+                    ])
+                    .envs(VARIABLES)
+                    .env("RUST_LOG", "warn")
+                    .env("CONDITE_RELOAD_TEST_CHANGED", changed);
+                if !changed.is_empty() {
+                    if missing {
+                        child.env_remove(changed);
+                    } else {
+                        child.env(changed, "new-private-value");
+                    }
+                }
+                let output = child.output().unwrap();
+                assert!(
+                    output.status.success(),
+                    "{}\n{}",
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
+        }
+        return;
+    };
+    condite_core::logging::init().unwrap();
+    let state = state().await;
+    let (bus, receiver) = CommandBus::new();
+    CommandBus::start(receiver, state.clone());
+    let response = bus
+        .execute(ControlCommand::SetLogLevel {
+            level: "debug".into(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(serde_json::to_value(response).unwrap()["type"], "success");
+    assert!(tracing::enabled!(tracing::Level::DEBUG));
+    let response = bus
+        .execute(ControlCommand::SetLogLevel {
+            level: "invalid[".into(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(serde_json::to_value(response).unwrap()["type"], "error");
+    assert!(tracing::enabled!(tracing::Level::DEBUG));
+    let response = bus.execute(ControlCommand::Reload).await.unwrap();
+    let response = serde_json::to_value(response).unwrap();
+    if expected.is_empty() {
+        assert_eq!(response["type"], "success");
+    } else {
+        assert_eq!(response["type"], "error");
+        assert_eq!(response["code"], "restart_required");
+        let message = response["message"].as_str().unwrap();
+        for (name, _) in VARIABLES {
+            assert_eq!(message.contains(name), name == expected, "{message}");
+        }
+    }
+    assert!(!response.to_string().contains("test-secret"));
+    assert!(!response.to_string().contains("new-private-value"));
+    assert!(!tracing::enabled!(tracing::Level::DEBUG));
+    assert!(tracing::enabled!(tracing::Level::WARN));
+    assert_eq!(state.config.s3_secret_key, "test-secret");
+    state.ct.cancel();
+    state.tasks.close();
+    state.tasks.wait().await;
+}
