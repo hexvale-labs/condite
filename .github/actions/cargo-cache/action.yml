@@ -1,0 +1,60 @@
+name: Cargo cache
+description: Cache complete successful builds with compatible dependency fallback
+inputs:
+  kind:
+    description: Separate build coverage (rust or sdk)
+    required: true
+  targets:
+    description: Target directories to cache
+    required: false
+    default: target
+runs:
+  using: composite
+  steps:
+    - name: Fingerprint Rust and native build environment
+      id: environment
+      shell: bash
+      run: |
+        fingerprint=$(
+          {
+            rustc -vV || exit 1
+            cargo -V || exit 1
+            cc --version || exit 1
+            ld --version || exit 1
+            if command -v pkg-config >/dev/null; then
+              pkg-config --modversion openssl || echo openssl-unavailable
+            else
+              echo pkg-config-unavailable
+            fi
+            env | LC_ALL=C sort | sed -n -E '/^(CARGO_|RUST|CC=|CXX=|CFLAGS=|CXXFLAGS=|LDFLAGS=|PKG_CONFIG|OPENSSL_)/p'
+          } | sha256sum | cut -d ' ' -f 1
+        )
+        echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+    - name: Restore Cargo artifacts and save only after job success
+      id: cache
+      uses: actions/cache@v6.1.0
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/registry/src
+          ~/.cargo/git/db
+          ~/.cargo/git/checkouts
+          ${{ inputs.targets }}
+        # Build inputs belong in the exact key, outside the fallback prefix.
+        key: cargo-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.kind }}-${{ steps.environment.outputs.fingerprint }}-${{ hashFiles('Cargo.toml', '**/Cargo.lock', 'crates/**/Cargo.toml', 'examples/**/Cargo.toml', '**/.cargo/config*', '**/rust-toolchain*', '.github/actions/cargo-cache/**', '.github/workflows/**', 'justfile', 'scripts/sdk/**') }}
+        restore-keys: cargo-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.kind }}-${{ steps.environment.outputs.fingerprint }}-
+    - name: Report cache result
+      shell: bash
+      env:
+        EXACT_HIT: ${{ steps.cache.outputs.cache-hit }}
+        CACHE_KIND: ${{ inputs.kind }}
+      run: |
+        echo "### Cargo cache ($CACHE_KIND)" >> "$GITHUB_STEP_SUMMARY"
+        if [[ "$EXACT_HIT" == true ]]; then
+          echo 'Exact hit: build inputs match.' >> "$GITHUB_STEP_SUMMARY"
+        elif [[ "$EXACT_HIT" == false ]]; then
+          echo 'Compatible fallback restored; Cargo rebuilds changed inputs.' >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo 'Cold cache: no compatible entry available.' >> "$GITHUB_STEP_SUMMARY"
+        fi

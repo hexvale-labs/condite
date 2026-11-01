@@ -18,6 +18,7 @@ jobs:
     permissions:
       contents: read
     env:
+      CARGO_INCREMENTAL: 0
       CARGO_BUILD_JOBS: 2
       CARGO_PROFILE_DEV_DEBUG: 0
       CARGO_TERM_COLOR: always
@@ -33,11 +34,8 @@ jobs:
       - name: Install Just
         uses: extractions/setup-just@v4
       - name: Cache Cargo dependencies and build artifacts
-        uses: Swatinem/rust-cache@v2.9.3
+        uses: ./.github/actions/cargo-cache
         with:
-          cache-on-failure: true
-          cache-bin: false
-          # The virtual workspace manifest defines profiles but is not a member manifest.
-          key: ${{ hashFiles('Cargo.toml') }}
+          kind: rust
       - name: Run Rust checks
         run: just check-rust

@@ -5,24 +5,33 @@ Feature branches without a PR can use manual dispatch. This avoids running the
 same checks for both a feature push and its PR. Check names and coverage stay the
 same. Ubuntu is pinned to 24.04 to keep native build dependencies consistent.
 
-## Cache findings
+## Cargo caches
 
-The [audited SDK run](https://github.com/hexvale-labs/condite/actions/runs/41223368715)
-had an exact Rust cache hit but rebuilt the independent consumer's dependencies.
-Its `examples/sdk-consumer/target` directory was outside the cached root target.
-The SDK cache now registers both workspaces, including both lockfiles in its key.
-SDK builds now share the root `target` directory with other workspace commands.
+Both jobs use the [local Cargo cache action](../.github/actions/cargo-cache/action.yml).
+Its fallback prefix includes the job kind, OS/architecture, Rust compiler and Cargo,
+native compiler/linker, OpenSSL version, and Rust/Cargo build environment. The exact
+key additionally hashes manifests (including the virtual root), lockfiles, Cargo
+configuration, toolchain files, SDK scripts, and workflow/cache definitions.
+Dependency changes can therefore restore compatible artifacts; Cargo validates
+fingerprints and rebuilds changed inputs. Rust and SDK entries remain separate.
 
-[Swatinem/rust-cache](https://github.com/Swatinem/rust-cache/tree/v2.9.3)
-caches dependencies and removes workspace artifacts and incremental state.
-Seeing Condite crates compile after a hit is expected. Rust and SDK jobs keep
-separate caches because their profiles, targets, and features differ. The root
-`Cargo.toml` is explicitly keyed because this virtual workspace defines the SDK
-profile outside the member manifests hashed by the action.
+The cache contains Cargo registry/git data and complete target directories,
+including `examples/sdk-consumer/target`. Incremental compilation is disabled.
+Workspace artifacts are retained; Cargo may still rebuild them after checkout
+because source timestamps change. Entries save only after the entire job succeeds.
+Failed/cancelled jobs cannot seed immutable partial entries. Coverage changes in
+workflows or build scripts create a new exact key. Bump `cargo-v1` in the local
+action to retire an incomplete or incompatible cache generation.
 
-Compiler or build-environment changes invalidate the cache. Floating stable Rust
-still intentionally follows stable releases. Cache entries are immutable: an
-exact hit is restored, not rewritten. New paths or keys need an initial warm-up.
+The previous root-manifest hash was in the fallback prefix, causing complete
+misses whenever `Cargo.toml` changed. A cancelled Rust run also saved partial test
+dependencies, which subsequent exact hits could not update. The new generation
+starts cold once and avoids both failure modes.
+
+GitHub scopes PR caches to the PR merge ref: `main` cannot reuse them and must warm
+its own entry after merge. Full artifacts use more space than dependency-only
+caches; GitHub can evict older entries under repository limits. The job summary
+distinguishes exact hits, compatible fallback restores, and cold starts.
 
 ## Tool setup
 
@@ -30,8 +39,7 @@ A [cold SDK run](https://github.com/hexvale-labs/condite/actions/runs/4121833860
 spent 1m43s compiling wasm-bindgen-cli. Warm runs already reused that binary.
 CI now downloads a checksum-verified prebuilt CLI using
 [install-action](https://github.com/taiki-e/install-action/tree/v2.88.1), with its
-version read from `Cargo.lock` and source compilation fallback disabled. Cargo
-binary caching is disabled to avoid duplicating tool installation state.
+version read from `Cargo.lock` and source compilation fallback disabled. The Cargo cache excludes installed CLI binaries.
 
 Playwright installs only Chromium's headless shell, matching `chromium.launch()`
 in the integration tests. Browser caching is omitted per
