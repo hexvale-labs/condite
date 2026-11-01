@@ -32,6 +32,7 @@ impl Default for AppRuntimeDetails {
 #[derive(Debug)]
 pub struct AppRuntimeConfig {
     pub sql_conn_uri: String,
+    pub cors_origins: Option<String>,
     pub s3_endpoint: String,
     pub s3_region: String,
     pub s3_bucket: String,
@@ -57,6 +58,7 @@ impl AppRuntimeConfig {
         .chain(
             [
                 ("S3_PUBLIC_BUCKET", &self.s3_public_bucket),
+                ("CORS_ALLOWED_ORIGINS", &self.cors_origins),
                 ("PUBLIC_OBJECT_BASE_URL", &self.public_object_base_url),
             ]
             .into_iter()
@@ -73,6 +75,7 @@ impl AppRuntimeConfig {
         }
 
         Self {
+            cors_origins: std::env::var("CORS_ALLOWED_ORIGINS").ok(),
             sql_conn_uri: env_var_required(EnvironmentVariable::SqlConnUrl),
             s3_endpoint: env_var_required(EnvironmentVariable::S3Endpoint),
             s3_region: env_var_required(EnvironmentVariable::S3Region),

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export RUST_TEST_THREADS="${RUST_TEST_THREADS:-4}"
 status=0
 
 run_check() {

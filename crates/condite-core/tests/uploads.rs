@@ -15,6 +15,7 @@ use tower::ServiceExt;
 fn config() -> AppRuntimeConfig {
     AppRuntimeConfig {
         sql_conn_uri: "turso::memory:".into(),
+        cors_origins: None,
         s3_endpoint: "http://127.0.0.1:1".into(),
         s3_region: "us-east-1".into(),
         s3_bucket: "uploads".into(),
@@ -1991,5 +1992,90 @@ async fn deleted_upload_keeps_cleanup_state_for_a_late_private_write() {
         job.cleanup_at > jiff::Timestamp::now(),
         "future late completions retain a low-frequency cleanup job"
     );
+    server.abort();
+}
+
+#[tokio::test]
+async fn cors_allows_configured_origins_and_authenticated_preflights_only() {
+    let mut config = config();
+    config.cors_origins = Some(" https://one.example, https://two.example ".into());
+    let app = app_router(state_with_config(config).await);
+    for origin in [
+        "https://one.example",
+        "https://two.example",
+        "https://other.example",
+    ] {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("OPTIONS")
+                    .uri("/v1/uploads")
+                    .header("origin", origin)
+                    .header("access-control-request-method", "POST")
+                    .header(
+                        "access-control-request-headers",
+                        "authorization,content-type",
+                    )
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            response
+                .headers()
+                .get("access-control-allow-origin")
+                .map(|v| v.to_str().unwrap()),
+            (origin != "https://other.example").then_some(origin)
+        );
+    }
+    let response = app
+        .oneshot(
+            Request::post("/v1/uploads")
+                .header("origin", "https://one.example")
+                .header("content-type", "application/json")
+                .body(Body::from("{}"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(
+        response.headers()["access-control-allow-origin"],
+        "https://one.example"
+    );
+    let response = app_router(state().await)
+        .oneshot(
+            Request::get("/v1/health")
+                .header("origin", "https://one.example")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(
+        !response
+            .headers()
+            .contains_key("access-control-allow-origin")
+    );
+}
+
+#[tokio::test]
+async fn sharing_without_public_storage_explains_required_configuration() {
+    let (mut state, _, server) = sharing_fixture().await;
+    Arc::get_mut(&mut state.config).unwrap().s3_public_bucket = None;
+    let app = authenticated_router(state);
+    let id = confirmed_for_sharing(&app).await;
+    let (status, body) = json_body(
+        &app,
+        "POST",
+        &format!("/v1/uploads/{id}/shares"),
+        serde_json::json!({"expires_at":null,"follows_upload":true}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body.to_string().contains("S3_PUBLIC_BUCKET"));
+    assert!(body.to_string().contains("PUBLIC_OBJECT_BASE_URL"));
     server.abort();
 }

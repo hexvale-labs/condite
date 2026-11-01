@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createMemo, createSignal, untrack, For, Show } from "solid-js";
 import type { Share, Upload } from "condite-sdk-wasm";
 import { browserClient } from "../lib/client";
 import { formatDate, safeDownloadUrl } from "../lib/format";
@@ -18,7 +18,7 @@ type Props = {
 };
 
 export default function FileAccess(props: Props) {
-  const t = messages(props.locale);
+  const t = createMemo(() => messages(props.locale));
   const [row, setRow] = createSignal<Upload | null>(null);
   const [mode, setMode] = createSignal<AccessMode>("share");
   const [choice, setChoice] = createSignal<ExpiryChoice>(defaultExpiry());
@@ -47,14 +47,14 @@ export default function FileAccess(props: Props) {
     deadline() !== "invalid" &&
     Date.parse(deadline()!) <= Date.now();
   const displayDate = (value: string | null) =>
-    value ? `${formatDate(value, props.locale)} UTC` : t.never;
+    value ? `${formatDate(value, props.locale)} UTC` : t().never;
   const shareStatus = (share: Share) =>
     ({
-      Creating: t.creating,
-      Active: t.active,
-      Revoking: t.revoking,
-      Revoked: t.revoked,
-      Expired: t.expired,
+      Creating: t().creating,
+      Active: t().active,
+      Revoking: t().revoking,
+      Revoked: t().revoked,
+      Expired: t().expired,
     })[share.status];
 
   async function loadShares(cursor?: string) {
@@ -73,44 +73,46 @@ export default function FileAccess(props: Props) {
       setAfter(cursor);
       return page;
     } catch {
-      if (current === session) setError(t.error);
+      if (current === session) setError(t().error);
     } finally {
       if (current === session) setBusy(false);
     }
   }
-  props.onReady({
-    open(selected, selectedMode) {
-      session++;
-      setRow(selected);
-      setMode(selectedMode);
-      setError("");
-      setNotice("");
-      setCreated(null);
-      setShares([]);
-      setNext(null);
-      setAfter(undefined);
-      setBusy(false);
-      setConfirmDeletion(false);
-      setChoice({
-        ...defaultExpiry(),
-        mode:
-          selectedMode === "share"
-            ? "upload"
-            : selected.expires_at
-              ? "date"
-              : "never",
-        date: selected.expires_at?.slice(0, 16) ?? "",
-      });
-      dialog.showModal();
-      if (selectedMode === "links") queueMicrotask(() => void loadShares());
-    },
-  });
+  untrack(() =>
+    props.onReady({
+      open(selected, selectedMode) {
+        session++;
+        setRow(selected);
+        setMode(selectedMode);
+        setError("");
+        setNotice("");
+        setCreated(null);
+        setShares([]);
+        setNext(null);
+        setAfter(undefined);
+        setBusy(false);
+        setConfirmDeletion(false);
+        setChoice({
+          ...defaultExpiry(),
+          mode:
+            selectedMode === "share"
+              ? "upload"
+              : selected.expires_at
+                ? "date"
+                : "never",
+          date: selected.expires_at?.slice(0, 16) ?? "",
+        });
+        dialog.showModal();
+        if (selectedMode === "links") queueMicrotask(() => void loadShares());
+      },
+    }),
+  );
   async function copy(url: string) {
     try {
       await navigator.clipboard.writeText(url);
-      setNotice(t.copied);
+      setNotice(t().copied);
     } catch {
-      setNotice(t.copyFailed);
+      setNotice(t().copyFailed);
     }
   }
   async function save() {
@@ -118,11 +120,11 @@ export default function FileAccess(props: Props) {
     if (!selected || busy()) return;
     const expires = deadline();
     if (expires === "invalid" || (deleting() && mode() === "share")) {
-      setError(t.invalidExpiry);
+      setError(t().invalidExpiry);
       return;
     }
     if (deleting() && !confirmDeletion()) {
-      setError(t.deletionWarning);
+      setError(t().deletionWarning);
       return;
     }
     const current = session;
@@ -140,7 +142,7 @@ export default function FileAccess(props: Props) {
         if (!safeDownloadUrl(share.url)) throw new Error("Invalid share URL");
         if (current === session) {
           setCreated(share);
-          setNotice(t.shareCreated);
+          setNotice(t().shareCreated);
         }
       } else if (deleting()) {
         await sdk.delete(selected.id);
@@ -151,13 +153,19 @@ export default function FileAccess(props: Props) {
         });
         if (current === session) {
           setRow(updated);
-          setNotice(t.expirySaved);
+          setNotice(t().expirySaved);
         }
       }
       await props.onChanged();
       if (removesFile) props.onDeleted();
-    } catch {
-      if (current === session) setError(t.error);
+    } catch (cause) {
+      if (current === session) {
+        const detail =
+          cause instanceof Error && "status" in cause && cause.status === 400
+            ? cause.message
+            : "";
+        setError(detail ? `${t().error} ${detail}` : t().error);
+      }
     } finally {
       if (current === session) setBusy(false);
     }
@@ -179,11 +187,11 @@ export default function FileAccess(props: Props) {
         updated &&
           (updated.status === "Revoked" || updated.status === "Expired")
           ? shareStatus(updated)
-          : t.cleanupPending,
+          : t().cleanupPending,
       );
       await props.onChanged();
     } catch {
-      if (current === session) setError(t.error);
+      if (current === session) setError(t().error);
     } finally {
       if (current === session) setBusy(false);
     }
@@ -204,10 +212,10 @@ export default function FileAccess(props: Props) {
         <div>
           <h2 id="access-title" class="text-xl font-semibold tracking-tight">
             {mode() === "share"
-              ? t.share
+              ? t().share
               : mode() === "links"
-                ? t.manageLinks
-                : t.retention}
+                ? t().manageLinks
+                : t().retention}
           </h2>
           <p class="mt-1 break-all text-sm text-muted">{row()?.filename}</p>
         </div>
@@ -216,12 +224,12 @@ export default function FileAccess(props: Props) {
           autofocus
           onClick={() => dialog.close()}
         >
-          {t.close}
+          {t().close}
         </button>
       </header>
       <Show when={mode() !== "links"}>
         <p class="mt-5 text-sm leading-relaxed text-muted">
-          {mode() === "share" ? t.shareHint : t.retentionHint}
+          {mode() === "share" ? t().shareHint : t().retentionHint}
         </p>
         <div class="mt-5">
           <ExpiryPicker
@@ -236,7 +244,7 @@ export default function FileAccess(props: Props) {
           />
         </div>
         <p class="mt-3 text-xs leading-relaxed text-muted">
-          {t.fileExpires}: {displayDate(row()?.expires_at ?? null)}
+          {t().fileExpires}: {displayDate(row()?.expires_at ?? null)}
         </p>
         <Show when={deleting() && mode() === "expiry"}>
           <label class="mt-4 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
@@ -246,14 +254,14 @@ export default function FileAccess(props: Props) {
               checked={confirmDeletion()}
               onChange={(e) => setConfirmDeletion(e.currentTarget.checked)}
             />
-            {t.deletionWarning}
+            {t().deletionWarning}
           </label>
         </Show>
         <Show when={created()}>
           {(value) => (
             <div class="share-result mt-5">
               <label class="control-label">
-                {t.shareCreated}
+                {t().shareCreated}
                 <input
                   class="field w-full"
                   readonly
@@ -262,13 +270,13 @@ export default function FileAccess(props: Props) {
                 />
               </label>
               <p class="mt-2 text-xs text-muted">
-                {t.expires}: {displayDate(value().expires_at)}
+                {t().expires}: {displayDate(value().expires_at)}
               </p>
               <button
                 class="button mt-3"
                 onClick={() => void copy(value().url)}
               >
-                {t.copy}
+                {t().copy}
               </button>
             </div>
           )}
@@ -280,22 +288,22 @@ export default function FileAccess(props: Props) {
             onClick={() => void save()}
           >
             {busy()
-              ? t.working
+              ? t().working
               : mode() === "share"
-                ? t.createShare
+                ? t().createShare
                 : deleting()
-                  ? t.remove
-                  : t.saveExpiry}
+                  ? t().remove
+                  : t().saveExpiry}
           </button>
         </div>
       </Show>
       <Show when={mode() === "links"}>
-        <p class="mt-5 text-sm leading-relaxed text-muted">{t.cleanupHint}</p>
+        <p class="mt-5 text-sm leading-relaxed text-muted">{t().cleanupHint}</p>
         <Show
           when={shares().length > 0}
           fallback={
             <p class="py-8 text-sm text-muted">
-              {busy() ? t.working : error() ? "" : t.noShares}
+              {busy() ? t().working : error() ? "" : t().noShares}
             </p>
           }
         >
@@ -308,11 +316,12 @@ export default function FileAccess(props: Props) {
                       {shareStatus(share)}
                     </span>
                     <span class="text-xs text-muted">
-                      {t.created}: {formatDate(share.created_at, props.locale)}
+                      {t().created}:{" "}
+                      {formatDate(share.created_at, props.locale)}
                     </span>
                   </div>
                   <label class="control-label mt-3">
-                    {t.share}
+                    {t().share}
                     <input
                       class="field w-full text-sm"
                       readonly
@@ -321,8 +330,8 @@ export default function FileAccess(props: Props) {
                     />
                   </label>
                   <p class="mt-2 text-xs text-muted">
-                    {t.expires}: {displayDate(share.expires_at)}
-                    {share.follows_upload ? ` · ${t.untilUploadExpires}` : ""}
+                    {t().expires}: {displayDate(share.expires_at)}
+                    {share.follows_upload ? ` · ${t().untilUploadExpires}` : ""}
                   </p>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <button
@@ -330,7 +339,7 @@ export default function FileAccess(props: Props) {
                       disabled={!safeDownloadUrl(share.url)}
                       onClick={() => void copy(share.url)}
                     >
-                      {t.copy}
+                      {t().copy}
                     </button>
                     <button
                       class="button button-small text-red-800"
@@ -341,7 +350,7 @@ export default function FileAccess(props: Props) {
                       }
                       onClick={() => void revoke(share)}
                     >
-                      {t.revoke}
+                      {t().revoke}
                     </button>
                   </div>
                 </li>
@@ -355,7 +364,7 @@ export default function FileAccess(props: Props) {
             disabled={busy()}
             onClick={() => void loadShares(after())}
           >
-            {t.refresh}
+            {t().refresh}
           </button>
           <div class="flex gap-2">
             <Show when={after()}>
@@ -364,7 +373,7 @@ export default function FileAccess(props: Props) {
                 disabled={busy()}
                 onClick={() => void loadShares()}
               >
-                {t.first}
+                {t().first}
               </button>
             </Show>
             <Show when={next()}>
@@ -374,7 +383,7 @@ export default function FileAccess(props: Props) {
                   disabled={busy()}
                   onClick={() => void loadShares(cursor())}
                 >
-                  {t.next}
+                  {t().next}
                 </button>
               )}
             </Show>

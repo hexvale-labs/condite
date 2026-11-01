@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { createMemo, Show } from "solid-js";
 import { messages, type Locale } from "../i18n";
 import type { ExpiryChoice } from "../lib/expiry";
 
@@ -11,13 +11,13 @@ type Props = {
   disabled?: boolean;
 };
 export default function ExpiryPicker(props: Props) {
-  const t = messages(props.locale);
+  const t = createMemo(() => messages(props.locale));
   const update = (part: Partial<ExpiryChoice>) =>
     props.onChange({ ...props.value, ...part });
   return (
     <div class="expiry-picker">
       <label class="control-label">
-        {t.expires}
+        {t().expires}
         <select
           class="field w-full"
           value={props.value.mode}
@@ -27,19 +27,19 @@ export default function ExpiryPicker(props: Props) {
           }
         >
           <Show when={props.allowDefault}>
-            <option value="default">{t.defaultRetention}</option>
+            <option value="default">{t().defaultRetention}</option>
           </Show>
           <Show when={props.allowFollow}>
-            <option value="upload">{t.untilUploadExpires}</option>
+            <option value="upload">{t().untilUploadExpires}</option>
           </Show>
-          <option value="interval">{t.interval}</option>
-          <option value="date">{t.customDate}</option>
-          <option value="never">{t.never}</option>
+          <option value="interval">{t().interval}</option>
+          <option value="date">{t().customDate}</option>
+          <option value="never">{t().never}</option>
         </select>
       </label>
       <Show when={props.value.mode === "date"}>
         <label class="control-label">
-          {t.customDate} (UTC)
+          {t().customDate} (UTC)
           <input
             class="field w-full"
             type="datetime-local"
@@ -52,7 +52,7 @@ export default function ExpiryPicker(props: Props) {
       <Show when={props.value.mode === "interval"}>
         <div class="flex flex-wrap items-end gap-3">
           <label class="control-label flex-1">
-            {t.interval}
+            {t().interval}
             <select
               class="field w-full"
               value={props.value.subtract ? "subtract" : "add"}
@@ -61,12 +61,12 @@ export default function ExpiryPicker(props: Props) {
                 update({ subtract: e.currentTarget.value === "subtract" })
               }
             >
-              <option value="add">{t.addInterval}</option>
-              <option value="subtract">{t.subtractInterval}</option>
+              <option value="add">{t().addInterval}</option>
+              <option value="subtract">{t().subtractInterval}</option>
             </select>
           </label>
           <label class="control-label flex-1">
-            {t.days}
+            {t().days}
             <input
               class="field w-full"
               type="number"
@@ -79,7 +79,7 @@ export default function ExpiryPicker(props: Props) {
             />
           </label>
         </div>
-        <div class="flex flex-wrap gap-2" role="group" aria-label={t.days}>
+        <div class="flex flex-wrap gap-2" role="group" aria-label={t().days}>
           {[1, 7, 14, 30].map((days) => (
             <button
               type="button"
@@ -90,7 +90,7 @@ export default function ExpiryPicker(props: Props) {
               }
               onClick={() => update({ days: String(days) })}
             >
-              {days} {t.days}
+              {days} {t().days}
             </button>
           ))}
         </div>

@@ -13,7 +13,7 @@ From this directory:
 pnpm setup      # Shallow-fetch pinned Vencord, install dependencies, copy source
 pnpm build      # Build Vencord AND the native SDK for this machine
 pnpm check      # Vencord TypeScript and plugin lint checks
-pnpm test       # Routing/patch fixtures and real native SDK against local HTTP
+pnpm test       # Rebuild native SDK, then run fixtures with four Node workers
 pnpm --dir .vencord inject
 ```
 

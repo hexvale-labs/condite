@@ -42,6 +42,7 @@ pub async fn start_app() {
 }
 
 pub fn app_router(state: state::app::AppState) -> Router {
+    let cors = cors_layer(state.config.cors_origins.as_deref());
     Router::new()
         .route(
             "/",
@@ -71,6 +72,7 @@ pub fn app_router(state: state::app::AppState) -> Router {
         )
         .route("/v1/health", routing::get(health::handler))
         .with_state(state)
+        .layer(cors)
 }
 
 async fn serve_http(state: state::app::AppState) -> std::io::Result<()> {
@@ -81,4 +83,30 @@ async fn serve_http(state: state::app::AppState) -> std::io::Result<()> {
     axum::serve(lis, app)
         .with_graceful_shutdown(state.ct.cancelled_owned())
         .await
+}
+
+fn cors_layer(origins: Option<&str>) -> tower_http::cors::CorsLayer {
+    use axum::http::{HeaderValue, Method, header};
+    let origins: Vec<HeaderValue> = origins
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|origin| {
+            let uri: axum::http::Uri = origin.parse().expect("invalid CORS_ALLOWED_ORIGINS origin");
+            assert!(
+                matches!(uri.scheme_str(), Some("http" | "https"))
+                    && uri.authority().is_some_and(|a| !a.as_str().contains('@'))
+                    && uri.path() == "/"
+                    && uri.query().is_none()
+                    && !origin.contains('#'),
+                "CORS_ALLOWED_ORIGINS must contain HTTP(S) origins without paths or credentials"
+            );
+            origin.parse().expect("invalid CORS_ALLOWED_ORIGINS header")
+        })
+        .collect();
+    tower_http::cors::CorsLayer::new()
+        .allow_origin(origins)
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
 }

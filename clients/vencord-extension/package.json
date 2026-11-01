@@ -9,7 +9,7 @@
     "check": "node tooling.mjs check",
     "build": "node tooling.mjs build",
     "sdk:build": "node tooling.mjs sdk:build",
-    "test": "node --test test/*.test.mjs",
+    "test": "node tooling.mjs sdk:build && node --test --test-concurrency=4 test/*.test.mjs",
     "build:web": "node tooling.mjs build:web"
   }
 }
