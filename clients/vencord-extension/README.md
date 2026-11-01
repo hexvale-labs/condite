@@ -86,3 +86,12 @@ See [implementation notes](../../docs/superpowers/specs/2026-10-31-vencord-integ
 for research and remaining checks. Source is copied into a pinned ignored checkout
 because Vencord scans `src/userplugins` without an external-directory option;
 this avoids symlink resolution/permissions and fork/submodule maintenance.
+
+## Language
+
+Condite follows Discord's selected language, including changes while its pane is
+open. Its UI shares the dashboard's [translation catalog](../i18n/README.md).
+Unsupported languages fall back to English. This localizes Condite, not Vesktop's
+own settings. The [official installation guide](https://docs.vencord.dev/installing/)
+documents selecting a custom Vencord `dist` directory in Vesktop's developer
+settings. Live Vesktop behavior still needs verification.

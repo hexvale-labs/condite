@@ -12,7 +12,7 @@
     color: var(--channels-default);
     font: inherit;
     font-weight: 500;
-    text-align: left;
+    text-align: start;
     cursor: pointer;
 }
 .condite-nav:hover {
@@ -130,7 +130,7 @@
 .condite-table th {
     color: var(--text-muted);
     font-weight: 500;
-    text-align: left;
+    text-align: start;
 }
 .condite-table th,
 .condite-table td {
@@ -240,4 +240,12 @@
     .condite-pane-header {
         padding: 12px 16px;
     }
+}
+
+.condite-file-name,
+.condite-break {
+    unicode-bidi: plaintext;
+}
+.condite-link input {
+    direction: ltr;
 }

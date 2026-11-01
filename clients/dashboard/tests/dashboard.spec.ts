@@ -64,6 +64,7 @@ test("hydrates without replacing file DOM and preserves grid through reload and 
   await expect(
     page.getByRole("list", { name: "Files", exact: true }),
   ).toBeVisible();
+  await page.locator("summary").click();
   await page.getByRole("link", { name: "Español" }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "es");
   await expect(

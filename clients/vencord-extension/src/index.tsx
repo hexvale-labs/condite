@@ -15,6 +15,7 @@ import {
     UserStore
 } from "@webpack/common";
 
+import { t, useTranslation } from "./i18n";
 import { chooseProviders, closeChoosers } from "./chooser";
 import { errorText } from "./fileManager";
 import { fallbackLimit, MiB } from "./limits";
@@ -66,16 +67,20 @@ export default definePlugin({
     settings,
     patches: [uploadPatch, navigationPatch],
     renderUploadsNavigation,
-    settingsAboutComponent: () => (
-        <div className="condite-actions">
-            <Button onClick={() => setPaneOpen(true)}>Open Uploads</Button>
-            <p>
-                Close settings to view the pane. API key support is reserved for
-                a future SDK release. Current download links expire.
-            </p>
-        </div>
-    ),
-    toolboxActions: { "Open Uploads": () => setPaneOpen(true) },
+    settingsAboutComponent: () => {
+        const { t: text } = useTranslation();
+        return (
+            <div className="condite-actions">
+                <Button onClick={() => setPaneOpen(true)}>
+                    {text.openUploads}
+                </Button>
+                <p>{text.temporary}</p>
+            </div>
+        );
+    },
+    get toolboxActions() {
+        return { [t("openUploads")]: () => setPaneOpen(true) };
+    },
 
     start() {
         router = new UploadRouter({
@@ -84,7 +89,7 @@ export default definePlugin({
             choose: chooseProviders,
             upload: async upload => {
                 showToast({
-                    text: `Uploading ${upload.filename} to Condite…`,
+                    text: `${t("uploading")}: ${upload.filename}`,
                     variant: "default"
                 });
                 return (await uploadFile(upload.item.file, upload.filename))
@@ -100,7 +105,7 @@ export default definePlugin({
                     DraftType.ChannelMessage
                 );
                 showToast({
-                    text: "Condite links added to the original channel draft",
+                    text: t("draftAdded"),
                     variant: "success"
                 });
             },
@@ -115,7 +120,7 @@ export default definePlugin({
             startNavigation();
         } catch (error) {
             showToast({
-                text: `Could not mount Uploads: ${errorText(error)}`,
+                text: `${t("failedLoad")}: ${errorText(error)}`,
                 variant: "critical"
             });
         }
@@ -137,7 +142,7 @@ export default definePlugin({
             await router.route(uploads, native);
         } catch (error) {
             showToast({
-                text: `Attachments kept: ${errorText(error)}`,
+                text: `${t("keepAttachments")}: ${errorText(error)}`,
                 variant: "critical"
             });
         }

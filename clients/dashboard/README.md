@@ -61,8 +61,8 @@ Do not run the standalone production server with Bun.
   SSR and the proxy use this key; it is never sent to browser bundles. Keep the
   dashboard behind trusted access: its proxy uses that key for every visitor,
   and origin checks do not provide user authentication.
-- To add a locale, extend `src/i18n/index.ts` with a complete typed catalog and
-  update Astro's `i18n.locales`. Labels, errors and formatting share that locale.
+- To add a locale, extend the [shared catalog](../i18n/README.md).
+  Astro routing and both clients use its locale registry.
 - The renderer/compiler stack is experimental. Keep exact pins and the Bun lock;
   run SSR and hydration checks on upgrades. Do not use the official v1 adapter.
 - Mobile viewport tests cannot prove real-device keyboard, safe-area or touch
@@ -85,3 +85,9 @@ The proxy allows only the implemented health/upload routes, requires same-origin
 after 15 seconds. It forwards raw JSON bytes to preserve integer precision and
 marks responses `no-store`. When adding an API route, update its allowlist and
 transport tests. It uses the configured server-side key and ignores browser credentials and cookies.
+
+## Translations
+
+All supported locales and messages live in the shared [client catalog](../i18n/README.md).
+The language menu preserves the current page and query string and works without JavaScript.
+Arabic pages use right-to-left direction.
