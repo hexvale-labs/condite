@@ -40,6 +40,21 @@ pub struct AppRuntimeConfig {
 }
 
 impl AppRuntimeConfig {
+    /// Compare restart-only settings without exposing their values.
+    pub fn restart_required(&self) -> Vec<&'static str> {
+        [
+            ("SQL_CONN_URL", &self.sql_conn_uri),
+            ("S3_ENDPOINT", &self.s3_endpoint),
+            ("S3_REGION", &self.s3_region),
+            ("S3_BUCKET", &self.s3_bucket),
+            ("S3_ACCESS_KEY", &self.s3_access_key),
+            ("S3_SECRET_KEY", &self.s3_secret_key),
+        ]
+        .into_iter()
+        .filter_map(|(name, current)| (std::env::var(name).as_ref() != Ok(current)).then_some(name))
+        .collect()
+    }
+
     pub fn load_sync() -> Self {
         if dotenv::dotenv().is_ok() {
             tracing::info!("loaded .env file")

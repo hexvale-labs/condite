@@ -61,8 +61,24 @@ state, not a live database or bucket readiness probe. HTTP binds to
 The local control socket is `$XDG_RUNTIME_DIR/condite/condite.sock`, falling back
 to `/run/condite/condite.sock`. Use a writable, private runtime directory. It
 accepts one newline-delimited JSON command per connection: `{"command":"status"}`
-or `{"command":"shutdown"}`. Other declared commands, including API-key
-generation, currently return `command_not_implemented`.
+or `{"command":"shutdown"}`. Logging commands are:
+
+- `{"command":"set_log_level","level":"debug"}` changes the live tracing filter.
+  Target filters such as `info,condite_core=debug` are also accepted.
+- `{"command":"reload"}` restores `RUST_LOG` from the process environment
+  (default `info` when absent). Invalid filters leave the active filter unchanged.
+  It also compares all six storage variables above with the startup snapshot.
+  Changed, missing or non-Unicode values require restart; the response names the
+  variables without revealing values. Logging is still reloaded, but the response
+  is `{"type":"error","code":"restart_required","message":"..."}` so callers
+  can report the partial reload and exit nonzero.
+
+Reload does not reread `.env`, replace storage clients, or change the socket path.
+Exports in another shell do not modify the running process's environment.
+`set_log_level` is temporary: the next successful reload replaces its filter.
+Library embedders must call `condite_core::logging::init()` to enable log control.
+Other declared commands, including API-key generation, currently return
+`command_not_implemented`.
 
 Shutdown cancels background work, drains tracked tasks and HTTP connections, and
 removes the socket. The pending cleaner runs immediately and then every five

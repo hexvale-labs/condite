@@ -1,5 +1,6 @@
 pub mod control;
 pub mod db;
+pub mod logging;
 mod shutdown_waiter;
 pub mod state;
 pub mod v1;
