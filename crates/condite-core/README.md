@@ -77,8 +77,9 @@ Reload does not reread `.env`, replace storage clients, or change the socket pat
 Exports in another shell do not modify the running process's environment.
 `set_log_level` is temporary: the next successful reload replaces its filter.
 Library embedders must call `condite_core::logging::init()` to enable log control.
-Other declared commands, including API-key generation, currently return
-`command_not_implemented`.
+Use [condite-ctl](../condite-ctl/README.md) for these commands, API-key generation,
+limit updates, revocation and administrative upload deletion. The bounded socket
+protocol restricts the directory and socket to the service user (0700/0600).
 
 Shutdown cancels background work, drains tracked tasks and HTTP connections, and
 removes the socket. The pending cleaner runs immediately and then every five

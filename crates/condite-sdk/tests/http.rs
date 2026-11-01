@@ -199,3 +199,44 @@ async fn rejects_malformed_signed_uploads_before_network() {
     assert!(state.calls.lock().unwrap().is_empty());
     server.abort();
 }
+
+#[tokio::test]
+async fn api_key_constructor_sends_sensitive_header_only_to_api() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let app = Router::new().fallback(any(|req: Request| async move {
+        assert_eq!(req.headers()["authorization"], "Bearer test-secret");
+        (
+            [("content-type", "application/json")],
+            r#"{"healthy":true,"started_at":"now","runtime":"PT1S"}"#,
+        )
+    }));
+    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let client = Client::with_api_key(&base, "test-secret").unwrap();
+    assert!(client.health().await.unwrap().healthy);
+    assert!(!format!("{client:?}").contains("test-secret"));
+    assert!(Client::with_api_key(&base, "bad\nheader").is_err());
+    server.abort();
+}
+
+#[tokio::test]
+async fn presign_defers_upload_limits_to_the_api_key_policy() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let app = Router::new().fallback(any(|req: Request| async move {
+        let payload: serde_json::Value = serde_json::from_slice(&to_bytes(req.into_body(), 1024).await.unwrap()).unwrap();
+        assert_eq!(payload["size_bytes"], 104_857_601);
+        axum::Json(serde_json::json!({"request_id":"id","uri":"http://example.test/storage","headers":{},"expires_at_utc":"later"}))
+    }));
+    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let result = Client::new(base)
+        .unwrap()
+        .presign(&PresignRequest {
+            size_bytes: 104_857_601,
+            filename: "large.txt".into(),
+            mime_type: "text/plain".into(),
+        })
+        .await;
+    assert!(result.is_ok(), "{result:?}");
+    server.abort();
+}

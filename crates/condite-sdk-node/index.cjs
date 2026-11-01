@@ -15,9 +15,9 @@ function normalize(error) {
 }
 class Client {
   #native;
-  constructor(baseUrl) {
+  constructor(baseUrl, apiKey) {
     try {
-      this.#native = new NativeClient(baseUrl);
+      this.#native = new NativeClient(baseUrl, apiKey);
     } catch (error) {
       throw normalize(error);
     }

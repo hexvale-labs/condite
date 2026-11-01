@@ -62,7 +62,7 @@ test("formats the complete u64 range and refuses unsafe download links", () => {
   );
 });
 
-test('proxy stops reading an oversized streaming request', async () => {
+test("proxy stops reading an oversized streaming request", async () => {
   let cancelled = false;
   let chunks = 0;
   const body = new ReadableStream<Uint8Array>({
@@ -70,14 +70,42 @@ test('proxy stops reading an oversized streaming request', async () => {
       if (chunks++ < 3) controller.enqueue(new Uint8Array(20_000));
       else controller.close();
     },
-    cancel() { cancelled = true; },
+    cancel() {
+      cancelled = true;
+    },
   });
-  const request = new Request('http://dashboard/api/v1/uploads', {
-    method: 'POST', headers: { origin: 'http://dashboard', 'content-type': 'application/json' },
+  const request = new Request("http://dashboard/api/v1/uploads", {
+    method: "POST",
+    headers: { origin: "http://dashboard", "content-type": "application/json" },
     body,
-    ...{ duplex: 'half' },
+    ...{ duplex: "half" },
   });
-  const response = await proxyRequest(request, 'http://127.0.0.1:1');
+  const response = await proxyRequest(request, "http://127.0.0.1:1");
   assert.equal(response.status, 413);
   assert.equal(cancelled, true);
+});
+
+test("proxy uses only the configured server-side API key", async () => {
+  let authorization: string | undefined;
+  const server = createServer((req, res) => {
+    authorization = req.headers.authorization;
+    res.end("{}");
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address() as { port: number };
+    const response = await proxyRequest(
+      new Request("http://dashboard/api/v1/uploads", {
+        headers: { authorization: "Bearer attacker" },
+      }),
+      `http://127.0.0.1:${address.port}`,
+      "server-secret",
+    );
+    assert.equal(response.status, 200);
+    assert.equal(authorization, "Bearer server-secret");
+    assert.equal((await response.text()).includes("server-secret"), false);
+  } finally {
+    server.closeAllConnections();
+    server.close();
+  }
 });

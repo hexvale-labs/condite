@@ -7,6 +7,7 @@ const allowed = (path: string, method: string) =>
 export async function proxyRequest(
   request: Request,
   base: string,
+  apiKey?: string,
 ): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/api\//, "");
@@ -63,7 +64,10 @@ export async function proxyRequest(
     const response = await fetch(upstream, {
       method: request.method,
       body: body || undefined,
-      headers: body ? { "Content-Type": "application/json" } : {},
+      headers: {
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      },
       redirect: "error",
       signal: AbortSignal.timeout(15_000),
     });

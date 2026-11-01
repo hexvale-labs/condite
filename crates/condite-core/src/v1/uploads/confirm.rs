@@ -14,12 +14,27 @@ use uuid::Uuid;
 
 pub use condite_shared::ConfirmResponse as Response;
 
-#[tracing::instrument(name = "uploads.confirm", skip_all, fields(upload_id = %id), err(Debug, level = "warn"))]
 pub async fn handler(
-    State(mut state): State<AppState>,
+    State(state): State<AppState>,
+    auth: crate::auth::AuthenticatedKey,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<Response>> {
-    let mut upload = match UploadRecord::get_by_id(&mut state.sql, &id).await {
+    crate::db::sql::retry::api(|| attempt(State(state.clone()), auth, Path(id))).await
+}
+
+#[tracing::instrument(name = "uploads.confirm", skip_all, fields(upload_id = %id), err(Debug, level = "warn"))]
+async fn attempt(
+    State(mut state): State<AppState>,
+    auth: crate::auth::AuthenticatedKey,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<Response>> {
+    let mut tx = state.sql.transaction().await?;
+    let key = auth.lock(&mut tx).await?;
+    let mut upload = match UploadRecord::filter_by_id(id)
+        .filter(UploadRecord::fields().owner_id().eq(key.id))
+        .get(&mut tx)
+        .await
+    {
         Ok(upload) => upload,
         Err(e) if e.is_record_not_found() => {
             tracing::debug!("Upload record not found");
@@ -33,6 +48,10 @@ pub async fn handler(
     let pending = get_s3_key(&id, &upload.mime_type, &UploadStatus::Pending);
     let confirmed = get_s3_key(&id, &upload.mime_type, &UploadStatus::Confirmed);
     if upload.status == UploadStatus::Pending {
+        let reserved = crate::db::sql::api_key::storage_size(&mut tx, key.id, false).await?;
+        if upload.size_bytes > key.per_upload_quota || reserved > key.storage_quota {
+            return Err(crate::auth::quota_error());
+        }
         tracing::debug!("Checking pending object metadata before confirmation");
         let head = state
             .s3
@@ -73,9 +92,11 @@ pub async fn handler(
         upload
             .update()
             .status(UploadStatus::Confirmed)
-            .exec(&mut state.sql)
+            .exec(&mut tx)
             .await?;
     }
+    let total = crate::db::sql::api_key::storage_size(&mut tx, key.id, true).await?;
+    tx.commit().await?;
     tracing::debug!("Confirmed object available; removing pending object");
     // Retrying confirmation also retries cleanup after a partial failure.
     state
@@ -93,30 +114,7 @@ pub async fn handler(
         .key(&confirmed)
         .presigned(PresigningConfig::expires_in(Duration::from_secs(900))?)
         .await?;
-    let mut total = 0u64;
-    let mut after = Uuid::nil();
-    loop {
-        let batch =
-            UploadRecord::filter(UploadRecord::fields().status().eq(UploadStatus::Confirmed))
-                .filter(UploadRecord::fields().id().gt(after))
-                .order_by(UploadRecord::fields().id().asc())
-                .limit(500)
-                .select((
-                    UploadRecord::fields().id(),
-                    UploadRecord::fields().size_bytes(),
-                ))
-                .exec(&mut state.sql)
-                .await?;
-        for (id, size) in &batch {
-            after = *id;
-            total = total
-                .checked_add(*size)
-                .ok_or_else(|| anyhow::anyhow!("storage size overflow"))?;
-        }
-        if batch.len() < 500 {
-            break;
-        }
-    }
+
     tracing::info!(storage_size_bytes = total, "Upload confirmation completed");
     Ok(Json(Response {
         public_uri: signed.uri().to_owned(),

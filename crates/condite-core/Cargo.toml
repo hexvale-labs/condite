@@ -6,6 +6,8 @@ default-run = "condite-core"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
+getrandom = { workspace = true }
+sha2 = { workspace = true }
 condite-shared = { workspace = true }
 axum = { workspace = true }
 serde = { workspace = true }
@@ -30,5 +32,6 @@ default = []
 docker = []
 
 [dev-dependencies]
+tempfile = "3"
 condite-sdk = { workspace = true, features = ["rustls"] }
 tower = { workspace = true, features = ["util"] }
