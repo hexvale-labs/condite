@@ -42,13 +42,14 @@ runs:
           ~/.cargo/git/checkouts
           ${{ inputs.targets }}
         # Build inputs belong in the exact key, outside the fallback prefix.
-        key: cargo-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.kind }}-${{ steps.environment.outputs.fingerprint }}-${{ hashFiles('Cargo.toml', '**/Cargo.lock', 'crates/**/Cargo.toml', 'examples/**/Cargo.toml', '**/.cargo/config*', '**/rust-toolchain*', '.github/actions/cargo-cache/**', '.github/workflows/**', 'justfile', 'scripts/sdk/**') }}
+        key: cargo-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.kind }}-${{ steps.environment.outputs.fingerprint }}-${{ hashFiles('Cargo.toml', '**/Cargo.lock', 'crates/**/Cargo.toml', 'examples/**/Cargo.toml', '**/.cargo/config*', '**/rust-toolchain*', '.github/actions/cargo-cache/**', '.github/workflows/**', 'justfile', 'package.json', 'scripts/sdk/**') }}
         restore-keys: cargo-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.kind }}-${{ steps.environment.outputs.fingerprint }}-
     - name: Report cache result
       shell: bash
       env:
         EXACT_HIT: ${{ steps.cache.outputs.cache-hit }}
         CACHE_KIND: ${{ inputs.kind }}
+        CACHE_TARGETS: ${{ inputs.targets }}
       run: |
         echo "### Cargo cache ($CACHE_KIND)" >> "$GITHUB_STEP_SUMMARY"
         if [[ "$EXACT_HIT" == true ]]; then
@@ -58,3 +59,13 @@ runs:
         else
           echo 'Cold cache: no compatible entry available.' >> "$GITHUB_STEP_SUMMARY"
         fi
+        echo 'Restored target directories:' >> "$GITHUB_STEP_SUMMARY"
+        echo '```text' >> "$GITHUB_STEP_SUMMARY"
+        while IFS= read -r target; do
+          if [[ -d "$target" ]]; then
+            du -sh -- "$target" >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf '%s: no restored artifacts\n' "$target" >> "$GITHUB_STEP_SUMMARY"
+          fi
+        done <<< "$CACHE_TARGETS"
+        echo '```' >> "$GITHUB_STEP_SUMMARY"

@@ -11,7 +11,8 @@ Both jobs use the [local Cargo cache action](../.github/actions/cargo-cache/acti
 Its fallback prefix includes the job kind, OS/architecture, Rust compiler and Cargo,
 native compiler/linker, OpenSSL version, and Rust/Cargo build environment. The exact
 key additionally hashes manifests (including the virtual root), lockfiles, Cargo
-configuration, toolchain files, SDK scripts, and workflow/cache definitions.
+configuration, toolchain files, SDK scripts/package commands, and workflow/cache
+definitions.
 Dependency changes can therefore restore compatible artifacts; Cargo validates
 fingerprints and rebuilds changed inputs. Rust and SDK entries remain separate.
 
@@ -31,7 +32,15 @@ starts cold once and avoids both failure modes.
 GitHub scopes PR caches to the PR merge ref: `main` cannot reuse them and must warm
 its own entry after merge. Full artifacts use more space than dependency-only
 caches; GitHub can evict older entries under repository limits. The job summary
-distinguishes exact hits, compatible fallback restores, and cold starts.
+distinguishes exact hits, compatible fallback restores, and cold starts, and lists
+the restored target directory sizes.
+
+Cold runs saved complete [Rust](https://github.com/hexvale-labs/condite/actions/runs/41287586208/attempts/1)
+and [SDK](https://github.com/hexvale-labs/condite/actions/runs/41287585871/attempts/1)
+entries. The [SDK warm rerun](https://github.com/hexvale-labs/condite/actions/runs/41287585871/attempts/2)
+and [Rust warm rerun](https://github.com/hexvale-labs/condite/actions/runs/41287586208/attempts/2)
+restored exact hits and rebuilt only workspace crates, with no registry
+dependency compilation.
 
 ## Tool setup
 
