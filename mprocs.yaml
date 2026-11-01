@@ -2,8 +2,8 @@ procs:
   backend:
     cmd: [just, run, backend]
     cwd: <CONFIG_DIR>
-    stop: SIGINT
+    stop: {send-keys: ["<C-c>"]}
   dashboard:
     cmd: [just, run, dashboard]
     cwd: <CONFIG_DIR>
-    stop: SIGINT
+    stop: {send-keys: ["<C-c>"]}

@@ -24,7 +24,7 @@ Examples:
   just check tools backend Check backend tools and required environment keys
   just install runner      Install mprocs independently
 
-mprocs: select a process with arrows; r restarts it; q quits all processes.
+mprocs: select a process with arrows; r restarts it; Ctrl-a focuses the process list; q quits all processes (confirm if prompted).
 The backend still needs a reachable database and S3 bucket; neither is started here.
 SDKs are libraries. Vencord runs inside Discord: build it, inject it, and restart
 Discord following clients/vencord-extension/README.md. Neither has a dev server.

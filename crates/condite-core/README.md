@@ -150,3 +150,7 @@ same-origin proxy or provision an explicit deployment policy.
 Run `just check rust` at the repository root for format, lint and workspace tests.
 Fake-S3 tests verify application behavior, not a provider's real bucket policies
 or consistency guarantees. Verify those before deployment.
+
+Set `CORS_ALLOWED_ORIGINS=http://localhost:4321,https://dashboard.example` to
+allow browser API access from multiple exact origins. Unset means no cross-origin
+access. Restart after changes. This does not configure S3 bucket CORS.

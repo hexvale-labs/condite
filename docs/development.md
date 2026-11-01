@@ -66,3 +66,9 @@ Record limitations explicitly rather than describing planned features as shipped
 Local administration is provided by [condite-ctl](../crates/condite-ctl/README.md).
 Its control DTOs live in `condite-shared::control`; the executable does not depend
 on core, AWS or database crates.
+
+Rust tests default to four threads (override `RUST_TEST_THREADS`); Vencord Node
+tests use four workers and rebuild the packaged SDK first. Dashboard browser tests
+remain serial because they reset a shared fixture. Existing backend `.env` files
+need `S3_PUBLIC_BUCKET` and `PUBLIC_OBJECT_BASE_URL` for direct sharing; installation
+preserves existing configuration files.

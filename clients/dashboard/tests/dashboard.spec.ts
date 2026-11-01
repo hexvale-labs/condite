@@ -334,6 +334,11 @@ test("shares stay independent, revocation can retry, and retention supports Neve
   page,
   request,
 }) => {
+  const warnings: string[] = [];
+  page.on("console", (message) => {
+    if (message.text().includes("STRICT_READ_UNTRACKED"))
+      warnings.push(message.text());
+  });
   await page.goto("/en/");
   const row = page.getByRole("row").filter({ hasText: "notes.txt" });
   for (let i = 0; i < 3; i++) {
@@ -381,6 +386,7 @@ test("shares stay independent, revocation can retry, and retention supports Neve
   expect(calls.some((call) => call.startsWith("PATCH /v1/uploads/"))).toBe(
     true,
   );
+  expect(warnings).toEqual([]);
 });
 
 test("private upload can choose Never before PUT without publishing", async ({

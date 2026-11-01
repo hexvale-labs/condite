@@ -6,6 +6,7 @@ default-run = "condite-core"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
+tower-http = { version = "0.6.11", features = ["cors"] }
 getrandom = { workspace = true }
 sha2 = { workspace = true }
 condite-shared = { workspace = true }
