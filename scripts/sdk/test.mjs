@@ -18,7 +18,7 @@ const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Headers", "content-type");
   res.setHeader(
     "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   );
   if (req.method === "OPTIONS") {
     res.writeHead(204).end();
@@ -78,7 +78,7 @@ const server = http.createServer(async (req, res) => {
       assert.equal(url.searchParams.get("limit"), "2");
       assert.equal(url.searchParams.get("after"), "cursor&value");
       return json(
-        '{"uploads":[{"id":"id","filename":"a.txt","mime_type":"text/plain","size_bytes":18446744073709551615,"status":"Confirmed","created_at":"2026-10-31T00:00:00Z"}],"next_after":null}',
+        '{"uploads":[{"id":"id","filename":"a.txt","mime_type":"text/plain","size_bytes":18446744073709551615,"status":"Confirmed","created_at":"2026-10-31T00:00:00Z","expires_at":null,"visibility":"Private","deletion_pending":false}],"next_after":null}',
       );
     }
     if (req.method === "POST" && url.pathname === "/prefix/v1/uploads") {
@@ -116,8 +116,53 @@ const server = http.createServer(async (req, res) => {
       url.pathname === "/prefix/v1/uploads/id/confirm"
     )
       return json(
-        '{"public_uri":"https://example.com/file","expires_at":"later","new_storage_size_bytes":18446744073709551615}',
+        '{"upload":{"id":"id","filename":"a.txt","mime_type":"text/plain","size_bytes":18446744073709551615,"status":"Confirmed","created_at":"2026-10-31T00:00:00Z","expires_at":null,"visibility":"Private","deletion_pending":false},"new_storage_size_bytes":18446744073709551615}',
       );
+    const share = {
+      id: "share",
+      upload_id: "id",
+      url: "https://storage.example/public",
+      created_at: "now",
+      expires_at: null,
+      follows_upload: true,
+      status: "Active",
+    };
+    if (url.pathname === "/prefix/v1/uploads/id/shares") {
+      if (req.method === "POST") {
+        assert.deepEqual(JSON.parse(bytes), {
+          expires_at: null,
+          follows_upload: true,
+        });
+        return json(share);
+      }
+      assert.equal(url.searchParams.get("limit"), "2");
+      assert.equal(url.searchParams.get("after"), "share&cursor");
+      return json({ shares: [share], next_after: null });
+    }
+    if (
+      req.method === "PATCH" &&
+      url.pathname === "/prefix/v1/uploads/id/retention"
+    ) {
+      assert.deepEqual(JSON.parse(bytes), { expires_at: null });
+      return json(
+        '{"id":"id","filename":"a.txt","mime_type":"text/plain","size_bytes":18446744073709551615,"status":"Confirmed","created_at":"2026-10-31T00:00:00Z","expires_at":null,"visibility":"Private","deletion_pending":false}',
+      );
+    }
+    if (
+      req.method === "POST" &&
+      url.pathname === "/prefix/v1/uploads/id/download"
+    )
+      return json({
+        uri: "https://storage.example/private",
+        expires_at: "later",
+      });
+    if (
+      req.method === "DELETE" &&
+      url.pathname === "/prefix/v1/uploads/id/shares/share"
+    ) {
+      res.writeHead(204).end();
+      return;
+    }
     if (req.method === "DELETE" && url.pathname === "/prefix/v1/uploads/id") {
       res.writeHead(204).end();
       return;

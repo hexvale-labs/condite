@@ -1,4 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Condite contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { Button } from "@components/Button";
 import { Heading } from "@components/Heading";
 import {
@@ -14,6 +19,7 @@ import { t as translate, useTranslation } from "./i18n";
 import { safeUrl } from "./routing";
 import { createClient, uploadFile } from "./sdk";
 import { settings } from "./settings";
+import { type Expiry, expiryDate, ExpiryPicker, openSharing } from "./sharing";
 import type { ListUploadsResponse, Upload } from "./wire";
 
 export function bytes(value: bigint, locale = "en") {
@@ -42,7 +48,7 @@ interface Activity {
 
 export function FileManager({ onClose }: { onClose(): void }) {
     const { t, locale, dir } = useTranslation();
-    const { apiBase } = settings.use(["apiBase"]);
+    const { apiBase, apiKey } = settings.use(["apiBase", "apiKey"]);
     const [page, setPage] = useState<ListUploadsResponse>({
         uploads: [],
         next_after: null
@@ -56,7 +62,9 @@ export function FileManager({ onClose }: { onClose(): void }) {
     const [filter, setFilter] = useState("all");
     const [query, setQuery] = useState("");
     const [view, setView] = useState<"list" | "grid">("list");
-    const [link, setLink] = useState<{ url: string; expires: string }>();
+    const [link, setLink] = useState<{ url: string; expires: string | null }>();
+    const [retention, setRetention] = useState<Expiry>(() => settings.store.retentionDays === 0 ? "never" : String(settings.store.retentionDays ?? 14) as Expiry);
+    const [retentionDate, setRetentionDate] = useState("");
     const [activity, setActivity] = useState<Activity[]>([]);
     const picker = useRef<HTMLInputElement>(null);
     const live = useRef(true);
@@ -130,7 +138,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
         return () => {
             cancelled = true;
         };
-    }, [apiBase]);
+    }, [apiBase, apiKey]);
 
     async function navigate(cursor: string | null, back = false) {
         await run(async (sdk, current) => {
@@ -147,12 +155,12 @@ export function FileManager({ onClose }: { onClose(): void }) {
 
     function operate(row: Upload, kind: "confirm" | "link") {
         void run(async (sdk, current) => {
-            const value = await sdk.confirm(row.id);
+            const value = kind === "link" ? await sdk.download(row.id) : await sdk.confirm(row.id);
             if (!current()) return;
             if (kind === "link")
                 setLink({
-                    url: safeUrl(value.public_uri),
-                    expires: value.expires_at
+                    url: safeUrl((value as { uri: string }).uri),
+                    expires: (value as { expires_at: string }).expires_at
                 });
             else setNotice(t.confirmedMessage);
             const result = await sdk.listUploads({ limit: 50, after });
@@ -162,6 +170,8 @@ export function FileManager({ onClose }: { onClose(): void }) {
 
     function askDelete(row: Upload) {
         const endpoint = apiBase;
+        const key = apiKey;
+        const sdk = createClient();
         openModal(props => (
             <ConfirmModal
                 {...props}
@@ -170,9 +180,9 @@ export function FileManager({ onClose }: { onClose(): void }) {
                 cancelText={t.cancel}
                 onConfirm={async setModalError => {
                     try {
-                        if (settings.store.apiBase !== endpoint)
+                        if (settings.store.apiBase !== endpoint || settings.store.apiKey !== key)
                             throw new Error(t.error);
-                        await createClient().delete(row.id);
+                        await sdk.delete(row.id);
                         if (
                             live.current &&
                             settings.store.apiBase === endpoint
@@ -216,7 +226,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                 if (!current()) break;
                 try {
                     await uploadFile(file, file.name, stage =>
-                        update(index, { stage })
+                        update(index, { stage }), { expires_at: expiryDate(retention, retentionDate) }
                     );
                 } catch (cause) {
                     update(index, { stage: "failed", error: errorText(cause) });
@@ -247,8 +257,13 @@ export function FileManager({ onClose }: { onClose(): void }) {
                     operate(row, row.status === "Pending" ? "confirm" : "link")
                 }
             >
-                {row.status === "Pending" ? t.confirm : t.link}
+                {row.status === "Pending" ? t.confirm : t.download}
             </Button>
+            {row.status === "Confirmed" && <>
+                <Button size="small" variant="secondary" disabled={busy || row.deletion_pending} onClick={() => openSharing(row, "share", refresh)}>{t.share}</Button>
+                <Button size="small" variant="secondary" disabled={busy} onClick={() => openSharing(row, "manage", refresh)}>{t.manageLinks}</Button>
+            </>}
+            <Button size="small" variant="secondary" disabled={busy || row.deletion_pending} onClick={() => openSharing(row, "expiry", refresh)}>{t.retention}</Button>
             <Button
                 size="small"
                 variant="dangerSecondary"
@@ -316,6 +331,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                     </Button>
                     <span className="condite-muted">{t.fileLimit}</span>
                 </div>
+                <ExpiryPicker value={retention} onChange={setRetention} date={retentionDate} onDate={setRetentionDate} />
                 <div role="status" aria-live="polite">
                     {busy ? t.working : notice}
                 </div>
@@ -337,9 +353,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                         <strong>{t.linkReady}</strong>
                         <p>
                             {t.expires}:{" "}
-                            {new Date(link.expires).toLocaleString(locale, {
-                                timeZone: "UTC"
-                            })}
+                            {link.expires ? new Date(link.expires).toLocaleString(locale, { timeZone: "UTC" }) + " UTC" : t.never}
                         </p>
                         <input
                             aria-label={t.link}
@@ -419,7 +433,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                         <option value="Pending">{t.pending}</option>
                         <option value="Confirmed">{t.confirmed}</option>
                     </select>
-                    <div role="group" aria-label={t.view}>
+                    <div className="condite-view-toggle" role="group" aria-label={t.view}>
                         <Button
                             size="small"
                             variant="secondary"
@@ -438,7 +452,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                         </Button>
                     </div>
                 </div>
-                {!rows.length && !busy && (
+                {!rows.length && !busy && !error && (
                     <div className="condite-empty">
                         <Heading tag="h2">
                             {!loaded
@@ -468,7 +482,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                                         <tr key={row.id}>
                                             <td className="condite-file-name">
                                                 <strong>{row.filename}</strong>
-                                                <small>{row.mime_type}</small>
+                                                <small>{row.mime_type} · {row.visibility === "Shared" ? t.shared : t.private} · {row.deletion_pending ? t.cleanupPending : row.expires_at ? new Date(row.expires_at).toLocaleString(locale, { timeZone: "UTC" }) + " UTC" : t.never}</small>
                                             </td>
                                             <td
                                                 title={`${row.size_bytes} ${t.bytes}`}
@@ -509,7 +523,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                                     </Heading>
                                     <p>
                                         {bytes(row.size_bytes, locale)} ·{" "}
-                                        {row.mime_type}
+                                        {row.mime_type} · {row.visibility === "Shared" ? t.shared : t.private} · {row.deletion_pending ? t.cleanupPending : row.expires_at ? new Date(row.expires_at).toLocaleString(locale, { timeZone: "UTC" }) + " UTC" : t.never}
                                     </p>
                                     <p>
                                         {new Date(
@@ -549,7 +563,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                     </Button>
                 </footer>
                 <p className="condite-muted">
-                    {t.temporary} {t.uploadAgain}
+                    {t.cleanupHint} {t.uploadAgain}
                 </p>
             </div>
         </section>

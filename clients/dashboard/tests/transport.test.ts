@@ -109,3 +109,97 @@ test("proxy uses only the configured server-side API key", async () => {
     server.close();
   }
 });
+
+test("sharing, owner downloads and PATCH retention preserve raw bodies and reject foreign origins", async () => {
+  const calls: string[] = [];
+  const raw = '{"expires_at":null,"size_bytes":18446744073709551615}';
+  const server = createServer(async (req, res) => {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    calls.push(`${req.method} ${req.url} ${body}`);
+    res.end("{}");
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  try {
+    for (const [method, path] of [
+      ["GET", "id/shares"],
+      ["POST", "id/shares"],
+      ["DELETE", "id/shares/share-id"],
+      ["PATCH", "id/retention"],
+      ["POST", "id/download"],
+    ]) {
+      const body = method === "PATCH" || method === "POST" ? raw : undefined;
+      const response = await proxyRequest(
+        new Request(`http://dashboard/api/v1/uploads/${path}`, {
+          method,
+          body,
+          headers: {
+            origin: "http://dashboard",
+            "content-type": "application/json",
+          },
+        }),
+        base,
+      );
+      assert.equal(response.status, 200, `${method} ${path}`);
+      if (body) assert.ok(calls.at(-1)?.endsWith(raw));
+      if (method !== "GET") {
+        assert.equal(
+          (
+            await proxyRequest(
+              new Request(`http://dashboard/api/v1/uploads/${path}`, {
+                method,
+                body,
+                headers: {
+                  origin: "https://foreign.example",
+                  "content-type": "application/json",
+                },
+              }),
+              base,
+            )
+          ).status,
+          403,
+        );
+      }
+    }
+  } finally {
+    server.closeAllConnections();
+    server.close();
+  }
+});
+
+test("bodyless SDK mutations accept an empty request stream without Content-Type", async () => {
+  const server = createServer(async (req, res) => {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    assert.equal(body, "");
+    res.end("{}");
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  try {
+    for (const action of ["confirm", "download"]) {
+      const response = await proxyRequest(
+        new Request(`http://dashboard/api/v1/uploads/id/${action}`, {
+          method: "POST",
+          headers: { origin: "http://dashboard" },
+          body: new Uint8Array(0),
+        }),
+        base,
+      );
+      assert.equal(response.status, 200);
+    }
+    const rejected = await proxyRequest(
+      new Request("http://dashboard/api/v1/uploads/id/retention", {
+        method: "PATCH",
+        headers: { origin: "http://dashboard" },
+        body: new Uint8Array([1]),
+      }),
+      base,
+    );
+    assert.equal(rejected.status, 415);
+  } finally {
+    server.closeAllConnections();
+    server.close();
+  }
+});

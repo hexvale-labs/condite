@@ -1,4 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Condite contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { join } from "node:path";
 
 import type { IpcMainInvokeEvent } from "electron";
@@ -6,15 +11,20 @@ import type { IpcMainInvokeEvent } from "electron";
 import { conditeMaxBytes } from "./limits";
 import type {
     ConfirmResponse,
+CreateShareRequest, DownloadResponse,
     HealthStatus,
-    ListUploadsRequest,
+ListSharesResponse, ListUploadsRequest,
     ListUploadsResponse,
     PresignRequest,
     PresignResponse,
-    UploadResult
-} from "./wire";
+Retention, Share, Upload, UploadResult } from "./wire";
 
 interface SdkClient {
+    createShare(id: string, request: CreateShareRequest): Promise<Share>;
+    listShares(id: string, request: ListUploadsRequest): Promise<ListSharesResponse>;
+    revokeShare(id: string, share: string): Promise<void>;
+    updateRetention(id: string, request: Retention): Promise<Upload>;
+    download(id: string): Promise<DownloadResponse>;
     health(): Promise<HealthStatus>;
     listUploads(request: ListUploadsRequest): Promise<ListUploadsResponse>;
     presign(request: PresignRequest): Promise<PresignResponse>;
@@ -36,11 +46,12 @@ export type NativeResult<T> =
               stage?: string;
           };
       };
-type WireConfirm = Omit<ConfirmResponse, "new_storage_size_bytes"> & {
+type WireConfirm = Omit<ConfirmResponse, "new_storage_size_bytes" | "upload"> & {
     new_storage_size_bytes: string;
+    upload: Omit<Upload, "size_bytes"> & { size_bytes: string };
 };
 
-function client(base: string): SdkClient {
+function client(base: string, apiKey?: string): SdkClient {
     const url = new URL(base);
     if (
         !["http:", "https:"].includes(url.protocol) ||
@@ -51,9 +62,9 @@ function client(base: string): SdkClient {
     // Variable require keeps the native addon out of esbuild. This folder travels with Vencord's dist.
     const sdkPath = join(__dirname, "condite-sdk", "index.cjs");
     const { Client } = require(sdkPath) as {
-        Client: new (base: string) => SdkClient;
+        Client: new (base: string, apiKey?: string) => SdkClient;
     };
-    return new Client(url.href);
+    return new Client(url.href, apiKey || undefined);
 }
 
 async function result<T>(
@@ -83,19 +94,21 @@ async function result<T>(
 
 const confirmation = (value: ConfirmResponse): WireConfirm => ({
     ...value,
+    upload: { ...value.upload, size_bytes: value.upload.size_bytes.toString() },
     new_storage_size_bytes: value.new_storage_size_bytes.toString()
 });
 
-export function health(_event: IpcMainInvokeEvent, base: string) {
-    return result(() => client(base).health());
+export function health(_event: IpcMainInvokeEvent, base: string, apiKey?: string) {
+    return result(() => client(base, apiKey).health());
 }
 export function listUploads(
     _event: IpcMainInvokeEvent,
     base: string,
-    request: ListUploadsRequest
+    request: ListUploadsRequest,
+    apiKey?: string
 ) {
     return result(async () => {
-        const page = await client(base).listUploads(request);
+        const page = await client(base, apiKey).listUploads(request);
         return {
             ...page,
             uploads: page.uploads.map(row => ({
@@ -110,13 +123,16 @@ export function presign(
     base: string,
     filename: string,
     mimeType: string,
-    size: string
+    size: string,
+    apiKey?: string,
+    retention?: Retention
 ) {
     return result(() =>
-        client(base).presign({
+        client(base, apiKey).presign({
             filename,
             mime_type: mimeType,
-            size_bytes: BigInt(size)
+            size_bytes: BigInt(size),
+            retention
         })
     );
 }
@@ -124,7 +140,8 @@ export function putUpload(
     _event: IpcMainInvokeEvent,
     base: string,
     signed: PresignResponse,
-    bytes: Uint8Array
+    bytes: Uint8Array,
+    apiKey?: string
 ) {
     return result(() => {
         if (
@@ -132,25 +149,28 @@ export function putUpload(
             bytes.byteLength > conditeMaxBytes
         )
             throw new Error("Condite's current maximum is 100 MiB per file");
-        return client(base).putUpload(signed, bytes);
+        return client(base, apiKey).putUpload(signed, bytes);
     });
 }
-export function confirm(_event: IpcMainInvokeEvent, base: string, id: string) {
-    return result(async () => confirmation(await client(base).confirm(id)));
+export function confirm(_event: IpcMainInvokeEvent, base: string, id: string, apiKey?: string) {
+    return result(async () => confirmation(await client(base, apiKey).confirm(id)));
 }
 export function deleteUpload(
     _event: IpcMainInvokeEvent,
     base: string,
-    id: string
+    id: string,
+    apiKey?: string
 ) {
-    return result(() => client(base).delete(id));
+    return result(() => client(base, apiKey).delete(id));
 }
 export function upload(
     _event: IpcMainInvokeEvent,
     base: string,
     filename: string,
     mimeType: string,
-    bytes: Uint8Array
+    bytes: Uint8Array,
+    apiKey?: string,
+    retention?: Retention
 ) {
     return result(async () => {
         if (
@@ -158,14 +178,31 @@ export function upload(
             bytes.byteLength > conditeMaxBytes
         )
             throw new Error("Condite's current maximum is 100 MiB per file");
-        const value = await client(base).upload(
+        const value = await client(base, apiKey).upload(
             {
                 filename,
                 mime_type: mimeType,
-                size_bytes: BigInt(bytes.byteLength)
+                size_bytes: BigInt(bytes.byteLength),
+                retention
             },
             bytes
         );
         return { ...value, confirmation: confirmation(value.confirmation) };
     });
+}
+
+export function createShare(_event: IpcMainInvokeEvent, base: string, id: string, request: CreateShareRequest, apiKey?: string) {
+    return result(() => client(base, apiKey).createShare(id, request));
+}
+export function listShares(_event: IpcMainInvokeEvent, base: string, id: string, request: ListUploadsRequest, apiKey?: string) {
+    return result(() => client(base, apiKey).listShares(id, request));
+}
+export function revokeShare(_event: IpcMainInvokeEvent, base: string, id: string, share: string, apiKey?: string) {
+    return result(() => client(base, apiKey).revokeShare(id, share));
+}
+export function updateRetention(_event: IpcMainInvokeEvent, base: string, id: string, request: Retention, apiKey?: string) {
+    return result(async () => { const row = await client(base, apiKey).updateRetention(id, request); return { ...row, size_bytes: row.size_bytes.toString() }; });
+}
+export function download(_event: IpcMainInvokeEvent, base: string, id: string, apiKey?: string) {
+    return result(() => client(base, apiKey).download(id));
 }

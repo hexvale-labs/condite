@@ -21,7 +21,7 @@ source-built Vencord; it is not enabled automatically.
 - SDK usage: [Rust](crates/condite-sdk/README.md),
   [Node/Electron](crates/condite-sdk-node/README.md),
   [browser](crates/condite-sdk-wasm/README.md).
-- [CI details](docs/ci.md) and [sharing proposal](docs/file-visibility-architecture.md).
+- [CI details](docs/ci.md) and [sharing architecture](docs/file-visibility-architecture.md).
 
 ## Local development
 
@@ -95,3 +95,9 @@ Use `--workspace` to check all packages. The dashboard lives in
 `clients/dashboard/`; root Bun commands build the SDKs and dashboard.
 The independent Rust consumer in `examples/sdk-consumer/` has its own workspace
 and lockfile. Core is AGPL-3.0-or-later; shared types and SDK crates are MIT.
+
+## Contributing and transparency
+
+See [contributing](CONTRIBUTING.md), [conduct](CODE_OF_CONDUCT.md),
+[security reporting](SECURITY.md), and the [license overview](LICENSE).
+This project was [written with AI assistance](AI-NOTICE.md).

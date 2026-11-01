@@ -107,6 +107,54 @@ impl Client {
     pub async fn confirm(&self, id: &str) -> Result<ConfirmResponse, Error> {
         Self::json(self.api.post(self.url(&["v1", "uploads", id, "confirm"])?)).await
     }
+    pub async fn download(&self, id: &str) -> Result<DownloadResponse, Error> {
+        Self::json(self.api.post(self.url(&["v1", "uploads", id, "download"])?)).await
+    }
+    pub async fn update_retention(&self, id: &str, retention: &Retention) -> Result<Upload, Error> {
+        Self::json(
+            self.api
+                .patch(self.url(&["v1", "uploads", id, "retention"])?)
+                .json(retention),
+        )
+        .await
+    }
+    pub async fn create_share(
+        &self,
+        id: &str,
+        request: &CreateShareRequest,
+    ) -> Result<Share, Error> {
+        Self::json(
+            self.api
+                .post(self.url(&["v1", "uploads", id, "shares"])?)
+                .json(request),
+        )
+        .await
+    }
+    pub async fn list_shares(
+        &self,
+        id: &str,
+        query: &ListUploadsRequest,
+    ) -> Result<ListSharesResponse, Error> {
+        if query.limit.is_some_and(|n| !(1..=100).contains(&n)) {
+            return Err(Error::Input("limit must be between 1 and 100".into()));
+        }
+        Self::json(
+            self.api
+                .get(self.url(&["v1", "uploads", id, "shares"])?)
+                .query(query),
+        )
+        .await
+    }
+    pub async fn revoke_share(&self, id: &str, share_id: &str) -> Result<(), Error> {
+        Self::checked(
+            self.api
+                .delete(self.url(&["v1", "uploads", id, "shares", share_id])?)
+                .send()
+                .await?,
+        )
+        .await?;
+        Ok(())
+    }
     pub async fn delete(&self, id: &str) -> Result<(), Error> {
         Self::checked(
             self.api
@@ -172,6 +220,7 @@ impl Client {
             filename: prepared.filename,
             mime_type: prepared.mime_type,
             size_bytes: prepared.data.len() as u64,
+            retention: payload.retention.clone(),
         };
         let uploaded = self.upload(&request, prepared.data).await?;
         Ok((uploaded, prepared.report))

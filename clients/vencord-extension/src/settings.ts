@@ -1,4 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Condite contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { definePluginSettings } from "@api/Settings";
 import { OptionType } from "@utils/types";
 
@@ -16,15 +21,21 @@ export const settings = definePluginSettings(
             },
             default: "http://localhost:8080"
         },
-        apiKeyPlaceholder: {
+        apiKey: {
             type: OptionType.STRING,
             get displayName() {
                 return t("apiKey");
             },
             get description() {
-                return t("apiKey");
+                return t("apiKeyDescription");
             },
             default: ""
+        },
+        retentionDays: {
+            type: OptionType.NUMBER,
+            get displayName() { return t("uploadRetention"); },
+            get description() { return `${t("days")} (0 = ${t("never")})`; },
+            default: 14
         },
         uploadBehavior: {
             type: OptionType.SELECT,
@@ -64,8 +75,5 @@ export const settings = definePluginSettings(
             },
             default: 0
         }
-    },
-    {
-        apiKeyPlaceholder: { disabled: () => true }
     }
 );

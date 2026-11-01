@@ -1,4 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Condite contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import "./styles.css";
 
 import { Button } from "@components/Button";
@@ -15,9 +20,9 @@ import {
     UserStore
 } from "@webpack/common";
 
-import { t, useTranslation } from "./i18n";
 import { chooseProviders, closeChoosers } from "./chooser";
 import { errorText } from "./fileManager";
+import { t, useTranslation } from "./i18n";
 import { fallbackLimit, MiB } from "./limits";
 import {
     renderUploadsNavigation,
@@ -63,7 +68,7 @@ export default definePlugin({
     name: "Condite",
     description:
         "Upload to Condite, add download links to channel drafts, and manage files inside Discord. Desktop Electron SDK required.",
-    authors: [],
+    authors: [{ name: "Condite contributors", id: 955090007335530506n }],
     settings,
     patches: [uploadPatch, navigationPatch],
     renderUploadsNavigation,
@@ -74,7 +79,7 @@ export default definePlugin({
                 <Button onClick={() => setPaneOpen(true)}>
                     {text.openUploads}
                 </Button>
-                <p>{text.temporary}</p>
+                <p>{text.cleanupHint}</p><a href="https://github.com/hexvale-labs/condite/blob/main/AI-NOTICE.md" target="_blank" rel="noreferrer">{text.aiNotice}</a>
             </div>
         );
     },

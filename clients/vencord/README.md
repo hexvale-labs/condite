@@ -7,19 +7,33 @@ off for every operation. The SDK cleans, renames, then encrypts locally before
 upload. A preparation failure aborts the upload. Ordinary Discord attachments
 are unchanged, and this plugin never sends a message.
 
-Completed uploads show **Copy temporary link**, expiry and the cleaning report.
+Completed uploads show **Copy share link**, expiry and the cleaning report.
 The selectable link remains available if clipboard access fails. The most recent
-result stays in memory under **Last temporary link** until the plugin stops.
-Links are signed, expiring bearer links, not permanent public URLs. An encrypted
+result stays in memory under **Last share link** until the plugin stops.
+Links are unsigned direct S3 bearer URLs; anyone holding one can download it. An encrypted
 file still needs its passphrase after downloading; share that separately.
 **Decrypt local file** opens a local file picker, requests the passphrase and
 saves a decrypted copy to a location you choose. It makes no network request.
 The encrypted original remains intact; the decrypted filename defaults to
 `decrypted-file` because the encrypted payload does not carry its original name.
 
-Uploads require `CONDITE_API_KEY` and `CONDITE_API_URL` in the desktop launch
-environment. The URL must match the plugin setting; the key stays in the native
-process and is sent only to that API.
+Set the API key in Condite settings; Vencord stores it locally. Alternatively,
+provide `CONDITE_API_KEY` and `CONDITE_API_URL` in the desktop launch environment.
+The environment URL must match the plugin setting before its key is used. Keys
+are sent only to the configured API, never to signed storage uploads.
+
+Retention defaults to 14 days. The privacy-options menu supports day intervals,
+a UTC date or Never alongside encryption and metadata cleaning. Change the
+persistent default in plugin settings. **Manage uploads and shared links** offers
+listing, health checks, pending confirmation, owner downloads, deletion, independent
+share creation/listing/revocation and retention changes, including adding/removing
+intervals. Retention changes to a past date require deletion confirmation.
+
+Each completed upload creates a direct share following its retention; failures
+retain the confirmed private upload ID for recovery. Condite removes expired
+uploads and share copies about every minute while online. Downtime or storage
+failures can delay removal; downloaded or cached copies cannot be recalled.
+Both integrations link the [AI notice](../../AI-NOTICE.md) in settings/about.
 
 ## Install
 
@@ -32,7 +46,7 @@ Discord CSP qualification.
 1. Follow [Vencord’s source/custom-plugin instructions](https://docs.vencord.dev/installing/custom-plugins/).
 2. From the Condite repository, build the SDK with `bun run build:sdk`.
 3. Copy this directory’s `condite.desktop` folder into your Vencord checkout’s
-   `src/userplugins/`. Keep its `native.ts`, `workflow.ts` and stylesheet together.
+   `src/userplugins/`. Keep all source files, generated `wire.d.ts` and stylesheet together.
 4. In the Vencord checkout run `pnpm install --frozen-lockfile`, `pnpm build`, then
    `pnpm inject`. Fully quit and restart Discord after native code changes.
 5. Launch Discord with `CONDITE_SDK_NODE_PATH` set to the absolute path of your

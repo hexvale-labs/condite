@@ -9,6 +9,7 @@ async fn unsupported_required_cleaning_fails_before_network() {
         filename: "identity.txt".into(),
         mime_type: "text/plain".into(),
         size_bytes: 3,
+        retention: None,
     };
     let error = client
         .upload_sanitized(

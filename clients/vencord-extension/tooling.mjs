@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -38,6 +39,24 @@ function sync() {
   writeFileSync(marker, "Managed by clients/vencord-extension/tooling.mjs\n");
 }
 
+function checkTypes() {
+  // Pin Electron imports to Vencord's own declarations instead of a parent
+  // workspace's Electron package, without skipping declaration checks.
+  const require = createRequire(join(checkout, "package.json"));
+  const ts = require("typescript");
+  const source = ts.readConfigFile(join(checkout, "tsconfig.json"), ts.sys.readFile);
+  if (source.error) throw new Error(ts.flattenDiagnosticMessageText(source.error.messageText, "\n"));
+  const config = join(checkout, "tsconfig.condite.json");
+  writeFileSync(config, JSON.stringify({
+    extends: "./tsconfig.json",
+    compilerOptions: { paths: { ...source.config.compilerOptions.paths,
+      electron: ["./node_modules/standalone-electron-types"] } }
+  }, null, 2) + "\n");
+  run(pnpm, ["exec", "tsc", "--noEmit", "--project", config]);
+  // Generated wire types and MIT translations retain their own upstream notices.
+  run(pnpm, ["exec", "eslint", target, "--ignore-pattern", "**/translations/**", "--ignore-pattern", "**/wire.d.ts"]);
+}
+
 function buildSdk() {
   run("cargo", ["build", "--locked", "-p", "condite-sdk-node", "--profile", "sdk", "--target-dir", join(repository, "target")], repository);
   const library = process.platform === "win32" ? "condite_sdk_node.dll"
@@ -68,7 +87,7 @@ try {
     buildSdk();
   } else if (["sync", "check", "build", "build:web"].includes(action)) {
     sync();
-    if (action === "check") run(pnpm, ["test:ts"]);
+    if (action === "check") checkTypes();
     if (action === "build") { run(pnpm, ["build"]); buildSdk(); }
     if (action === "build:web") run(pnpm, ["buildWeb"]);
   } else {

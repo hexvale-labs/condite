@@ -46,6 +46,21 @@ class Client {
   confirm(id) {
     return this.#call("confirm", id);
   }
+  download(id) {
+    return this.#call("download", id);
+  }
+  updateRetention(id, retention) {
+    return this.#call("updateRetention", id, retention);
+  }
+  createShare(id, request) {
+    return this.#call("createShare", id, request);
+  }
+  listShares(id, query = {}) {
+    return this.#call("listShares", id, query);
+  }
+  revokeShare(id, shareId) {
+    return this.#call("revokeShare", id, shareId);
+  }
   delete(id) {
     return this.#call("delete", id);
   }
@@ -80,6 +95,7 @@ class Client {
           filename: file.filename,
           mime_type: file.mimeType,
           size_bytes: file.sizeBytes,
+          retention: request.retention,
         },
         file.data,
       ),

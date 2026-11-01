@@ -18,6 +18,9 @@ pub struct PresignRequest {
     pub size_bytes: u64,
     pub mime_type: String,
     pub filename: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "typescript", ts(optional = nullable))]
+    pub retention: Option<Retention>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,6 +41,9 @@ pub struct Upload {
     pub size_bytes: u64,
     pub status: UploadStatus,
     pub created_at: String,
+    pub expires_at: Option<String>,
+    pub visibility: Visibility,
+    pub deletion_pending: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -61,8 +67,7 @@ pub struct ListUploadsResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 pub struct ConfirmResponse {
-    pub public_uri: String,
-    pub expires_at: String,
+    pub upload: Upload,
     pub new_storage_size_bytes: u64,
 }
 
@@ -78,4 +83,61 @@ pub struct UploadResult {
 pub enum UploadStatus {
     Pending,
     Confirmed,
+}
+
+/// Omit retention on creation to use the default; a null deadline means Never.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+pub struct Retention {
+    pub expires_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+pub enum Visibility {
+    Private,
+    Shared,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+pub struct DownloadResponse {
+    pub uri: String,
+    pub expires_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+pub struct CreateShareRequest {
+    pub expires_at: Option<String>,
+    pub follows_upload: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+pub enum ShareStatus {
+    Creating,
+    Active,
+    Revoking,
+    Revoked,
+    Expired,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+pub struct Share {
+    pub id: String,
+    pub upload_id: String,
+    pub url: String,
+    pub created_at: String,
+    pub expires_at: Option<String>,
+    pub follows_upload: bool,
+    pub status: ShareStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+pub struct ListSharesResponse {
+    pub shares: Vec<Share>,
+    pub next_after: Option<String>,
 }

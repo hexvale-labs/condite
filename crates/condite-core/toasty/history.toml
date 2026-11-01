@@ -24,3 +24,18 @@ snapshot_name = "0003_snapshot.toml"
 id = 4667777756903411205
 name = "0004_reset_database_require_upload_owner.sql"
 snapshot_name = "0004_snapshot.toml"
+
+[[migrations]]
+id = 5152913931334605314
+name = "0005_sharing_retention.sql"
+snapshot_name = "0005_snapshot.toml"
+
+[[migrations]]
+id = 6588332514617405168
+name = "0006_pending_object_cleanup.sql"
+snapshot_name = "0006_snapshot.toml"
+
+[[migrations]]
+id = 258467307049724229
+name = "0007_private_cleanup_tombstones.sql"
+snapshot_name = "0007_snapshot.toml"

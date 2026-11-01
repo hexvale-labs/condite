@@ -16,10 +16,13 @@ import definePlugin, { type IconComponent, OptionType, type PluginNative } from 
 import type { RenderModalProps } from "@vencord/discord-types";
 import { ContextMenuApi, Menu, Modal, openModal, React, useState } from "@webpack/common";
 
+import { UploadManager } from "./manager";
 import { type PrivacyReport, retainedLabels } from "./workflow";
 
 const Native = VencordNative.pluginHelpers.Condite as PluginNative<typeof import("./native")>;
 const settings = definePluginSettings({
+    apiKey: { type: OptionType.STRING, description: "Condite API key (saved locally in Vencord settings)", default: "" },
+    retentionDays: { type: OptionType.NUMBER, description: "Default upload retention in days; 0 keeps files indefinitely", default: 14 },
     apiUrl: {
         type: OptionType.STRING,
         description: "Condite API base URL (HTTPS, or HTTP on localhost)",
@@ -34,7 +37,7 @@ const ConditeIcon: IconComponent = ({ width = 24, height = 24, className }) => (
     </svg>
 );
 
-type Uploaded = { filename: string; uri: string; expiresAt: string; report: PrivacyReport; };
+type Uploaded = { filename: string; uri: string; expiresAt: string | null; report: PrivacyReport; };
 let lastUpload: Uploaded | undefined;
 
 function UploadResult({ props, file }: { props: RenderModalProps; file: Uploaded; }) {
@@ -44,14 +47,14 @@ function UploadResult({ props, file }: { props: RenderModalProps; file: Uploaded
         <Modal {...props} title="Condite upload ready" actions={[{ text: "Done", variant: "secondary", onClick: props.onClose }]}>
             <div className="vc-condite-form">
                 <Paragraph className="vc-condite-filename">{file.filename}</Paragraph>
-                <Paragraph>This link expires {file.expiresAt}. Anyone with it can download the file until then.</Paragraph>
-                <label className="vc-condite-field">Temporary link
+                <Paragraph>This link expires {file.expiresAt ?? "Never"}. Anyone with it can download the file until then.</Paragraph>
+                <label className="vc-condite-field">Direct share link
                     <textarea readOnly value={file.uri} rows={3} onFocus={event => event.currentTarget.select()} />
                 </label>
                 <Button onClick={async () => {
-                    try { await copyToClipboard(file.uri); setMessage("Temporary link copied."); }
+                    try { await copyToClipboard(file.uri); setMessage("Direct share link copied."); }
                     catch { setMessage("Select the link above and copy it manually."); }
-                }}>Copy temporary link</Button>
+                }}>Copy share link</Button>
                 <Paragraph role="status">{message}</Paragraph>
                 <Paragraph>
                     Metadata cleaning: {report.metadataStripped ? "applied" : "off"}. Filename anonymization: {report.filenameAnonymized ? "applied" : "off"}. Encryption: {report.encrypted ? "applied" : "off"}.
@@ -64,6 +67,9 @@ function UploadResult({ props, file }: { props: RenderModalProps; file: Uploaded
 }
 
 function OperationModal({ props, mode }: { props: RenderModalProps; mode: "upload" | "decrypt"; }) {
+    const [retentionDays, setRetentionDays] = useState(settings.store.retentionDays);
+    const [retentionDate, setRetentionDate] = useState("");
+    const [useDate, setUseDate] = useState(false);
     const [stripMetadata, setStripMetadata] = useState(false);
     const [anonymizeFilename, setAnonymizeFilename] = useState(false);
     const [encrypt, setEncrypt] = useState(false);
@@ -88,8 +94,11 @@ function OperationModal({ props, mode }: { props: RenderModalProps; mode: "uploa
         clear();
         try {
             if (mode === "upload") {
-                const reply = await Native.chooseAndUpload(settings.store.apiUrl, { stripMetadata, anonymizeFilename, passphrase: secret });
-                if (reply.status === "error") setError(reply.message);
+                if (!useDate && (!Number.isInteger(retentionDays) || retentionDays < 0 || retentionDays > 36500)) throw new Error("Choose a valid retention interval or Never.");
+                const deadline = useDate ? new Date(retentionDate + "Z").getTime() : retentionDays === 0 ? null : Date.now() + retentionDays * 86400000;
+                if (deadline !== null && (!Number.isFinite(deadline) || deadline <= Date.now())) throw new Error("Choose a future expiry date or Never.");
+                const reply = await Native.chooseAndUpload(settings.store.apiUrl, { stripMetadata, anonymizeFilename, passphrase: secret }, settings.store.apiKey, { expires_at: deadline === null ? null : new Date(deadline).toISOString() });
+                if (reply.status === "error") setError(reply.request_id ? `${reply.message} Upload ID: ${reply.request_id}${reply.stage ? ` (${reply.stage})` : ""}` : reply.message);
                 if (reply.status === "ok") {
                     lastUpload = reply;
                     props.onClose();
@@ -97,11 +106,11 @@ function OperationModal({ props, mode }: { props: RenderModalProps; mode: "uploa
                 }
             } else {
                 const reply = await Native.chooseDecryptAndSave(secret!);
-                if (reply.status === "error") setError(reply.message);
+                if (reply.status === "error") setError(reply.request_id ? `${reply.message} Upload ID: ${reply.request_id}${reply.stage ? ` (${reply.stage})` : ""}` : reply.message);
                 if (reply.status === "ok") setSaved(true);
             }
-        } catch {
-            setError("The desktop bridge is unavailable. Rebuild Vencord with this plugin and restart Discord.");
+        } catch (cause) {
+            setError((cause as Error).message || "The desktop bridge is unavailable. Rebuild Vencord with this plugin and restart Discord.");
         } finally { clear(); setBusy(false); }
     };
     return (
@@ -114,6 +123,15 @@ function OperationModal({ props, mode }: { props: RenderModalProps; mode: "uploa
         >
             <div className="vc-condite-form">
                 {mode === "upload" ? <>
+                    <label className="vc-condite-field">Upload retention
+                        <select disabled={busy} value={useDate ? "date" : String(retentionDays)} onChange={event => { const { value } = event.target; setUseDate(value === "date"); if (value !== "date") setRetentionDays(Number(value)); }}>
+                            {[1, 7, 14, 30].map(days => <option key={days} value={days}>{days} days</option>)}
+                            <option value="0">Never</option><option value="date">Choose date (UTC)</option>
+                        </select>
+                    </label>
+                    {!useDate && retentionDays !== 0 && <label className="vc-condite-field">Custom interval (days)<input type="number" min="1" max="36500" disabled={busy} value={retentionDays} onChange={event => setRetentionDays(Number(event.target.value))} /></label>}
+                    {useDate && <label className="vc-condite-field">Expiry date (UTC)<input type="datetime-local" disabled={busy} value={retentionDate} onChange={event => setRetentionDate(event.target.value)} /></label>}
+
                     <Paragraph className="vc-condite-endpoint">Upload destination: {settings.store.apiUrl}</Paragraph>
                     <FormSwitch title="Remove file metadata" value={stripMetadata} onChange={setStripMetadata} disabled={busy}
                         description="Clean supported metadata locally. If cleaning fails, the file is not uploaded. Identifying content may remain." />
@@ -132,7 +150,7 @@ function OperationModal({ props, mode }: { props: RenderModalProps; mode: "uploa
                     </label>}
                     <Paragraph>The passphrase is used for this operation only. It is not saved in plugin settings.</Paragraph>
                 </>}
-                {mode === "upload" && <Paragraph>One file at a time, up to 300 MiB before processing and 100 MiB after processing. The temporary link is offered for copying; no Discord message is sent.</Paragraph>}
+                {mode === "upload" && <Paragraph>One file at a time, up to 300 MiB before processing and 100 MiB after processing. The share link is offered for copying; no Discord message is sent.</Paragraph>}
                 {busy && <Paragraph role="status">Choose the file in the desktop dialog, then wait for processing to finish.</Paragraph>}
                 {saved && <Paragraph role="status">Decrypted file saved.</Paragraph>}
                 {error && <Paragraph role="alert">{error}</Paragraph>}
@@ -148,8 +166,9 @@ function ConditeMenu() {
         <Menu.Menu navId="vc-condite-menu" onClose={ContextMenuApi.closeContextMenu}>
             <Menu.MenuItem id="vc-condite" label="Condite">
                 <Menu.MenuItem id="vc-condite-upload" label="Upload file with privacy options…" action={() => openOperation("upload")} />
+                <Menu.MenuItem id="vc-condite-manager" label="Manage uploads and shared links…" action={() => openModal(props => <UploadManager props={props} apiUrl={settings.store.apiUrl} apiKey={settings.store.apiKey} />)} />
                 <Menu.MenuItem id="vc-condite-decrypt" label="Decrypt local file…" action={() => openOperation("decrypt")} />
-                <Menu.MenuItem id="vc-condite-result" label="Last temporary link…" disabled={!lastUpload} action={() => {
+                <Menu.MenuItem id="vc-condite-result" label="Last share link…" disabled={!lastUpload} action={() => {
                     if (lastUpload) {
                         const file = lastUpload;
                         openModal(props => <UploadResult props={props} file={file} />);
@@ -170,8 +189,9 @@ const ComposerButton: ChatBarButtonFactory = ({ isAnyChat }) => isAnyChat ? (
 export default definePlugin({
     name: "Condite",
     description: "Upload files to Condite with local privacy options, or decrypt a downloaded file. Desktop only.",
-    authors: [{ name: "Condite contributors", id: 0n }],
+    authors: [{ name: "Condite contributors", id: 955090007335530506n }],
     settings,
+    settingsAboutComponent: () => <div className="vc-condite-form"><Button onClick={() => openModal(props => <UploadManager props={props} apiUrl={settings.store.apiUrl} apiKey={settings.store.apiKey} />)}>Manage uploads</Button><a href="https://github.com/hexvale-labs/condite/blob/main/AI-NOTICE.md" target="_blank" rel="noreferrer">Written with AI assistance</a><Paragraph>API keys are saved locally in Vencord settings.</Paragraph></div>,
     chatBarButton: { icon: ConditeIcon, render: ComposerButton },
     stop() { lastUpload = undefined; }
 });

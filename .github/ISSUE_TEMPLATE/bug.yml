@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a reproducible problem; report vulnerabilities privately.
+body:
+  - type: markdown
+    attributes:
+      value: "For security concerns, use https://github.com/hexvale-labs/condite/security/advisories/new. Remove credentials and private links."
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include expected behavior and affected component/version.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and relevant logs
+      description: OS, client, S3-compatible provider and sanitized logs.

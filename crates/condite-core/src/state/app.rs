@@ -37,6 +37,8 @@ pub struct AppRuntimeConfig {
     pub s3_bucket: String,
     pub s3_access_key: String,
     pub s3_secret_key: String,
+    pub s3_public_bucket: Option<String>,
+    pub public_object_base_url: Option<String>,
 }
 
 impl AppRuntimeConfig {
@@ -52,6 +54,16 @@ impl AppRuntimeConfig {
         ]
         .into_iter()
         .filter_map(|(name, current)| (std::env::var(name).as_ref() != Ok(current)).then_some(name))
+        .chain(
+            [
+                ("S3_PUBLIC_BUCKET", &self.s3_public_bucket),
+                ("PUBLIC_OBJECT_BASE_URL", &self.public_object_base_url),
+            ]
+            .into_iter()
+            .filter_map(|(name, value)| {
+                (std::env::var(name).ok().as_ref() != value.as_ref()).then_some(name)
+            }),
+        )
         .collect()
     }
 
@@ -67,6 +79,8 @@ impl AppRuntimeConfig {
             s3_bucket: env_var_required(EnvironmentVariable::S3Bucket),
             s3_access_key: env_var_required(EnvironmentVariable::S3AccessKey),
             s3_secret_key: env_var_required(EnvironmentVariable::S3SecretKey),
+            s3_public_bucket: std::env::var("S3_PUBLIC_BUCKET").ok(),
+            public_object_base_url: std::env::var("PUBLIC_OBJECT_BASE_URL").ok(),
         }
     }
 }

@@ -109,12 +109,108 @@
       @apply bg-white text-accent;
     }
   }
-  .button:not(:disabled):active {
-    transform: translateY(1px);
-  }
 }
 
 [dir="rtl"] input[readonly],
 [dir="rtl"] .break-all {
   unicode-bidi: plaintext;
+}
+
+/* Motion signals state changes without delaying file actions. */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+@layer components {
+  .control-label {
+    @apply flex min-w-0 flex-col gap-2 text-sm font-medium text-ink;
+  }
+  .expiry-picker {
+    @apply flex flex-col gap-4;
+  }
+  .file-actions {
+    @apply flex min-w-48 flex-wrap gap-2;
+  }
+  .file-dialog {
+    @apply m-auto max-h-[90dvh] w-[min(94vw,38rem)] overflow-y-auto rounded-2xl border border-line bg-white p-6 text-ink shadow-xl sm:p-7;
+  }
+  .share-result {
+    @apply rounded-lg border border-blue-200 bg-blue-50 p-4;
+  }
+  .file-card {
+    box-shadow: 0 1px 2px rgb(23 40 61 / 3%);
+  }
+  .button {
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      transform 120ms var(--ease-out);
+  }
+  .button[aria-pressed="true"] {
+    @apply bg-slate-100 text-accent;
+  }
+  .button:not(:disabled):active {
+    transform: scale(0.98);
+  }
+  .feedback {
+    min-height: 2.75rem;
+  }
+  .data-table td {
+    @apply py-5;
+  }
+  .file-row {
+    transition: background-color 150ms ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .file-row:hover {
+      background-color: #fafcff;
+    }
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .file-card,
+  .file-row {
+    animation: file-arrive 180ms var(--ease-out) both;
+  }
+  .file-card:nth-child(2) {
+    animation-delay: 30ms;
+  }
+  .file-card:nth-child(3) {
+    animation-delay: 60ms;
+  }
+  .file-card:nth-child(n + 4) {
+    animation-delay: 90ms;
+  }
+  .file-dialog {
+    opacity: 1;
+    transform: scale(1);
+    transition:
+      opacity 200ms var(--ease-out),
+      transform 200ms var(--ease-out);
+  }
+  @starting-style {
+    .file-dialog[open] {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
+}
+@keyframes file-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition:
+      background-color 100ms ease,
+      border-color 100ms ease;
+  }
+  .button:not(:disabled):active {
+    transform: none;
+  }
 }

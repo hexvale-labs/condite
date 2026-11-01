@@ -12,6 +12,7 @@ let result = client.upload(&PresignRequest {
     filename: "hello.txt".into(),
     mime_type: "text/plain".into(),
     size_bytes: 5,
+    retention: None,
 }, b"hello".to_vec()).await?;
 # Ok(())
 # }
@@ -19,7 +20,7 @@ let result = client.upload(&PresignRequest {
 
 Native hosts supply a Tokio runtime. Default `rustls` enables HTTPS; disable default features for HTTP-only hosts or browser WASM. `Client::with_client` accepts a configured reqwest API client. Signed storage requests use a separate client without its default headers.
 
-Methods: `health`, `presign`, `list_uploads`, `put_upload`, `confirm`, `delete`, and `upload`. Base URLs may include a deployment prefix. Pagination returns `next_after` for the next request's `after`. No automatic write retries; `Error::Upload` retains the request ID and failed stage for recovery. Upload buffers must match the declared size (the API enforces per-key limits).
+Methods: `health`, `presign`, `list_uploads`, `put_upload`, `confirm`, `download`, `update_retention`, `create_share`, `list_shares`, `revoke_share`, `delete`, and `upload`. Base URLs may include a deployment prefix. Pagination returns `next_after` for the next request's `after`. No automatic write retries; `Error::Upload` retains the request ID and failed stage for recovery. Upload buffers must match the declared size (the API enforces per-key limits).
 
 ## JavaScript and build checks
 
@@ -45,3 +46,17 @@ server's API-key upload and storage quotas, including encryption overhead. See
 `Client::with_api_key` marks the Bearer header sensitive and disables API redirects
 on native hosts. Credentials are sent only to the API client, never to signed
 storage requests. JS constructors accept an optional second `apiKey` argument.
+
+## Sharing and retention
+
+Uploads default to private with 14-day retention. Omit `retention` to use that
+policy; `Some(Retention { expires_at: None })` keeps a file indefinitely, and a
+UTC timestamp selects a deadline. `update_retention` changes an existing file.
+Confirmation returns `upload` and accounting without publishing a link.
+
+`download(id)` issues a short-lived owner download. `create_share(id, request)`
+publishes an independent unsigned direct S3 URL. Set `follows_upload: true` to
+follow file retention; otherwise `expires_at` chooses a deadline or Never.
+A share never outlives its underlying file. `list_shares` accepts cursor pagination;
+`revoke_share` removes only that share's public copy. Cleanup is asynchronous;
+see [delivery guarantees](../../docs/file-visibility-architecture.md).

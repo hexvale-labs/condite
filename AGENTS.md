@@ -6,9 +6,9 @@
 - Keep tests focused; prefer integration tests over unit tests when practical.
 - When working extensively with a library or tool, consult its latest documentation.
 
-- Files will support public/private visibility. Public links are intended to point
-  directly to S3-compatible storage; no domain is chosen yet. Current signed
-  links expire. See `docs/file-visibility-architecture.md` before changing sharing.
+- Originals stay private; independent public share links point directly to
+  S3-compatible storage. Condite manages expiry cleanup every minute. Owner-only
+  signed download links expire. See `docs/file-visibility-architecture.md` before changing sharing.
 
 ## Project context
 
@@ -23,6 +23,9 @@
   Root npm scripts cover SDK tooling; run dashboard Bun commands in its directory.
 - Change wire contracts in `condite-shared` first and regenerate SDK packages.
   JavaScript adapters expose u64 as bigint; avoid lossy JSON/Number conversions.
+- Keep every client and SDK aligned with the full applicable API surface,
+  including sharing and upload retention. Omit capabilities only when a human
+  explicitly requests it or implementation is impossible; document any exception.
 - Never commit credentials, local databases, generated SDK `dist/` packages or
   build artifacts. Document environment names using example values only.
 - Run checks appropriate to the changed component (see development guide).

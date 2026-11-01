@@ -49,6 +49,35 @@ export async function contract(Client, base) {
       "sanitized upload required cleaning",
     );
   }
+  const share = await client.createShare("id", {
+    expires_at: null,
+    follows_upload: true,
+  });
+  assert(
+    share.status === "Active" &&
+      share.expires_at === null &&
+      share.follows_upload,
+    "share preserves nullable expiry and status",
+  );
+  const shares = await client.listShares("id", {
+    limit: 2,
+    after: "share&cursor",
+  });
+  assert(
+    shares.shares[0].id === share.id && shares.next_after === null,
+    "share list",
+  );
+  const retained = await client.updateRetention("id", { expires_at: null });
+  assert(
+    retained.expires_at === null &&
+      retained.size_bytes === 18446744073709551615n,
+    "retention and precision",
+  );
+  assert(
+    (await client.download("id")).uri === "https://storage.example/private",
+    "owner download",
+  );
+  await client.revokeShare("id", share.id);
   await client.delete("id");
   try {
     await client.confirm("missing");

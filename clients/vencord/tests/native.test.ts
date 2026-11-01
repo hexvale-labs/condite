@@ -39,9 +39,21 @@ await writeFile(sdkPath, `module.exports = {
     }
   },
   Client: class {
+    constructor(base,key) { globalThis.__conditeNativeTest.client = {base,key}; }
+    async health() { return {healthy:true}; }
+    async listUploads() { return {uploads:[{id:'id',size_bytes:18446744073709551615n}],next_after:null}; }
+    async confirm() { return {upload:{id:'id',size_bytes:18446744073709551615n},new_storage_size_bytes:18446744073709551615n}; }
+    async updateRetention(id,request) { return {id,size_bytes:18446744073709551615n,expires_at:request.expires_at}; }
+    async listShares() { return {shares:[],next_after:null}; }
+    async download() { return {uri:'https://storage.example/private',expires_at:'later'}; }
+    async revokeShare(id,share) { globalThis.__conditeNativeTest.trace.push('revoke:'+share); }
+    async delete(id) { globalThis.__conditeNativeTest.trace.push('delete:'+id); }
     async upload(request,data) {
       globalThis.__conditeNativeTest.trace.push('upload');
-      return {confirmation:{public_uri:'https://storage.example/temporary',expires_at:'later'}};
+      if (globalThis.__conditeNativeTest.uploadError) throw globalThis.__conditeNativeTest.uploadError;
+      return {request_id:'id',confirmation:{upload:{id:'id'}}};
+    }
+    async createShare() { globalThis.__conditeNativeTest.trace.push('share'); return {url:'https://storage.example/share',expires_at:'later'};
     }
   }
 };`);
@@ -74,7 +86,7 @@ test("native picker uploads prepared file and clears transient passphrase refere
     const options = { stripMetadata: false, anonymizeFilename: true, passphrase: "transient canary" };
     const reply = await native.chooseAndUpload(event, "https://condite.example", options);
     expect(reply.status).toBe("ok");
-    expect(trace).toEqual(["prepare", "upload"]);
+    expect(trace).toEqual(["prepare", "upload", "share"]);
     expect(options.passphrase).toBeUndefined();
     expect(JSON.stringify(reply)).not.toContain("transient canary");
     expect(JSON.stringify(reply)).not.toContain("secret-name");
@@ -125,4 +137,38 @@ test("credentials cannot be sent to a different composer destination", async () 
     expect(pickerCalls).toBe(0);
     expect(trace).toEqual([]);
     expect(JSON.stringify(reply)).not.toContain("test-key");
+});
+
+
+test("settings key authenticates every management operation with lossless IPC sizes", async () => {
+    const url = "https://settings.example";
+    const key = "settings-key";
+    const call = (operation: Parameters<typeof native.manage>[3], id = "id", request: unknown = {}) => native.manage(event, url, key, operation, id, request);
+    expect((await call("health")).status).toBe("ok");
+    expect((globalThis as any).__conditeNativeTest.client).toEqual({base:"https://settings.example",key});
+    const page = await call("listUploads");
+    expect(page.status === "ok" && page.value.uploads[0].size_bytes).toBe("18446744073709551615");
+    const confirmed = await call("confirm");
+    expect(confirmed.status === "ok" && confirmed.value.new_storage_size_bytes).toBe("18446744073709551615");
+    const retained = await call("updateRetention", "id", {expires_at:null});
+    expect(retained.status === "ok" && retained.value.expires_at).toBeNull();
+    expect((await call("createShare", "id", {expires_at:null,follows_upload:true})).status).toBe("ok");
+    expect((await call("listShares")).status).toBe("ok");
+    expect((await call("download")).status).toBe("ok");
+    expect((await call("revokeShare", "id", "link")).status).toBe("ok");
+    expect((await call("delete")).status).toBe("ok");
+    expect(trace).toEqual(["share", "revoke:link", "delete:id"]);
+    const invalid = await native.manage(event,url,key,"constructor" as any);
+    expect(invalid.status).toBe("error");
+});
+
+test("upload recovery identifiers cross IPC without leaking the underlying exception", async () => {
+    (globalThis as any).__conditeNativeTest.uploadError = Object.assign(new Error("PRIVATE_CANARY"), {request_id:"pending-id",stage:"put"});
+    const reply = await native.chooseAndUpload(event, "https://condite.example", {stripMetadata:false,anonymizeFilename:false});
+    expect(reply.status).toBe("error");
+    if (reply.status === "error") {
+        expect(reply.request_id).toBe("pending-id");
+        expect(reply.stage).toBe("put");
+        expect(reply.message).not.toContain("PRIVATE_CANARY");
+    }
 });

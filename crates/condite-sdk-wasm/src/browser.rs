@@ -77,6 +77,44 @@ impl Client {
     pub async fn confirm(&self, id: String) -> Result<JsValue, JsValue> {
         output(self.inner.confirm(&id).await.map_err(error)?)
     }
+    pub async fn download(&self, id: String) -> Result<JsValue, JsValue> {
+        output(self.inner.download(&id).await.map_err(error)?)
+    }
+    #[wasm_bindgen(js_name = updateRetention)]
+    pub async fn update_retention(
+        &self,
+        id: String,
+        retention: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        output(
+            self.inner
+                .update_retention(&id, &input(retention)?)
+                .await
+                .map_err(error)?,
+        )
+    }
+    #[wasm_bindgen(js_name = createShare)]
+    pub async fn create_share(&self, id: String, request: JsValue) -> Result<JsValue, JsValue> {
+        output(
+            self.inner
+                .create_share(&id, &input(request)?)
+                .await
+                .map_err(error)?,
+        )
+    }
+    #[wasm_bindgen(js_name = listShares)]
+    pub async fn list_shares(&self, id: String, request: JsValue) -> Result<JsValue, JsValue> {
+        let request = if request.is_undefined() {
+            sdk::ListUploadsRequest::default()
+        } else {
+            input(request)?
+        };
+        output(self.inner.list_shares(&id, &request).await.map_err(error)?)
+    }
+    #[wasm_bindgen(js_name = revokeShare)]
+    pub async fn revoke_share(&self, id: String, share_id: String) -> Result<(), JsValue> {
+        self.inner.revoke_share(&id, &share_id).await.map_err(error)
+    }
     pub async fn delete(&self, id: String) -> Result<(), JsValue> {
         self.inner.delete(&id).await.map_err(error)
     }
