@@ -6,6 +6,10 @@ import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import { chromium } from "@playwright/test";
 import { contract } from "./contract.mjs";
+import { privacyContract } from "./privacy-contract.mjs";
+const privacyFixtures = JSON.parse(
+  await readFile(new URL("./fixtures/privacy.json", import.meta.url), "utf8"),
+);
 const require = createRequire(import.meta.url);
 const root = resolve(import.meta.dirname, "../..");
 const calls = [];
@@ -26,15 +30,24 @@ const server = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const bytes = Buffer.concat(chunks);
-    if (url.pathname === "/contract.mjs" || url.pathname.startsWith("/wasm/")) {
+    if (
+      url.pathname === "/contract.mjs" ||
+      url.pathname === "/privacy-contract.mjs" ||
+      url.pathname === "/privacy-fixtures.json" ||
+      url.pathname.startsWith("/wasm/")
+    ) {
       const path =
-        url.pathname === "/contract.mjs"
-          ? resolve(root, "scripts/sdk/contract.mjs")
-          : resolve(
-              root,
-              "crates/condite-sdk-wasm/dist",
-              url.pathname.slice(6),
-            );
+        url.pathname === "/privacy-fixtures.json"
+          ? resolve(root, "scripts/sdk/fixtures/privacy.json")
+          : url.pathname === "/privacy-contract.mjs"
+            ? resolve(root, "scripts/sdk/privacy-contract.mjs")
+            : url.pathname === "/contract.mjs"
+              ? resolve(root, "scripts/sdk/contract.mjs")
+              : resolve(
+                  root,
+                  "crates/condite-sdk-wasm/dist",
+                  url.pathname.slice(6),
+                );
       assert(path.startsWith(root));
       res.setHeader(
         "content-type",
@@ -123,11 +136,16 @@ await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${server.address().port}`;
 try {
   if (process.env.SDK_TEST_TARGET !== "browser") {
-    const { Client } = require(
+    const { Client, MetadataSanitizer } = require(
       resolve(root, "crates/condite-sdk-node/dist/index.cjs"),
     );
     assert.equal(await contract(Client, base), "passed");
     console.log("Node contract passed");
+    assert.equal(
+      await privacyContract(MetadataSanitizer, privacyFixtures),
+      "passed",
+    );
+    console.log("Node privacy contract passed");
     const electron = require("electron");
     const command =
       process.platform === "linux" && !process.env.DISPLAY
@@ -156,10 +174,17 @@ try {
     await page.goto(base);
     assert.equal(
       await page.evaluate(async (base) => {
-        const { default: init, Client } = await import("/wasm/index.js");
+        const {
+          default: init,
+          Client,
+          MetadataSanitizer,
+        } = await import("/wasm/index.js");
         await init();
         const { contract } = await import("/contract.mjs");
-        return contract(Client, base);
+        await contract(Client, base);
+        const { privacyContract } = await import("/privacy-contract.mjs");
+        const fixtures = await (await fetch("/privacy-fixtures.json")).json();
+        return privacyContract(MetadataSanitizer, fixtures);
       }, base),
       "passed",
     );

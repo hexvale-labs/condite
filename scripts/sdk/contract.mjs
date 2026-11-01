@@ -29,6 +29,26 @@ export async function contract(Client, base) {
   );
   const uploaded = await client.upload(payload, new Uint8Array([97, 98, 99]));
   assert(uploaded.request_id === "id", "upload helper");
+  try {
+    await client.uploadSanitized(
+      { ...payload, size_bytes: 4n },
+      new Uint8Array([97, 98, 99]),
+    );
+    throw new Error("expected mismatch rejection");
+  } catch (error) {
+    assert(error.code === "input", "sanitized upload size mismatch");
+  }
+  try {
+    await client.uploadSanitized(payload, new Uint8Array([97, 98, 99]), {
+      stripMetadata: true,
+    });
+    throw new Error("expected required cleaning rejection");
+  } catch (error) {
+    assert(
+      error.message.includes("unsupported-format"),
+      "sanitized upload required cleaning",
+    );
+  }
   await client.delete("id");
   try {
     await client.confirm("missing");

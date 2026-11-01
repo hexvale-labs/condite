@@ -25,6 +25,23 @@ Methods: `health`, `presign`, `list_uploads`, `put_upload`, `confirm`, `delete`,
 
 See [SDK tooling](../../scripts/sdk/README.md) for Electron/browser builds, linting, tests, and size measurements. Rust integers remain `u64`; both JS adapters expose them as `bigint`. UUIDs, timestamps, and runtime spans are strings matching the server's wire representation.
 
+## Local file privacy
+
+`privacy` reexports the independent MIT `condite-metadata` API. Use
+`privacy::assess(size, header, &config)` before buffering, then `privacy::prepare`
+for metadata cleaning, random filenames and optional standard age encryption.
+`upload_sanitized(request, bytes, options, config)` performs that pipeline before
+presigning and returns `(UploadResult, Report)`. Failed cleaning makes no upload
+request. It uses the final filename, MIME and byte length; the original request
+size must match the source bytes. Processing is synchronous CPU work: in an async
+host, prepare on a blocking worker and call `upload` with the result.
+
+For optional local FFmpeg/ffprobe, call `privacy::prepare_with_backend` with a
+configured `privacy::media::FfmpegBackend`, then upload its result. No binaries are
+downloaded. The 300 MiB configurable processing limit is separate from the
+server's API-key upload and storage quotas, including encryption overhead. See
+[coverage, limits and encryption](../condite-metadata/README.md).
+
 `Client::with_api_key` marks the Bearer header sensitive and disables API redirects
 on native hosts. Credentials are sent only to the API client, never to signed
 storage requests. JS constructors accept an optional second `apiKey` argument.

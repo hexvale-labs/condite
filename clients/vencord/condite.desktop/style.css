@@ -1,0 +1,45 @@
+.vc-condite-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--text-default);
+}
+
+.vc-condite-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.vc-condite-field input,
+.vc-condite-field textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--input-border, var(--border-subtle));
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--input-background, var(--background-base-lowest));
+    color: var(--text-default);
+    font: inherit;
+}
+
+.vc-condite-field textarea {
+    resize: vertical;
+    overflow-wrap: anywhere;
+    font-weight: 400;
+    user-select: text;
+}
+
+.vc-condite-field input:focus-visible,
+.vc-condite-field textarea:focus-visible {
+    outline: 2px solid var(--focus-primary);
+    outline-offset: 2px;
+}
+
+.vc-condite-filename,
+.vc-condite-endpoint {
+    overflow-wrap: anywhere;
+}

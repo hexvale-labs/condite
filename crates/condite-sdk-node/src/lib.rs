@@ -1,3 +1,4 @@
+pub mod privacy;
 use condite_sdk as sdk;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;

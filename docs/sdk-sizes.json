@@ -1,12 +1,15 @@
 {
   "target": "arm64-linux",
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "profile": "sdk (opt-level=z, LTO, codegen-units=1, symbols stripped)",
+  "profile": "sdk",
   "bytes": {
-    "nativeAddon": 2889968,
-    "wasm": 431787,
-    "wasmGzip": 164009,
-    "wasmGlue": 33449,
-    "rustExample": 2626544
+    "nativeAddon": 4200848,
+    "wasm": 1772539,
+    "wasmGzip": 685118,
+    "wasmGlue": 40187,
+    "rustExample": 2626544,
+    "privacyFacade": 6827,
+    "privacyWorker": 1412,
+    "mediaAdapter": 7318
   }
 }

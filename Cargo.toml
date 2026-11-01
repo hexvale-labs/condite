@@ -4,6 +4,14 @@ default-members = ["crates/condite-core"]
 resolver = "3"
 
 [workspace.dependencies]
+age = { version = "0.11", default-features = false }
+lopdf = { version = "0.46", default-features = false, features = ["wasm_js"] }
+quick-xml = { version = "0.42" }
+secrecy = { version = "0.10", features = ["serde"] }
+tempfile = { version = "3" }
+zeroize = { version = "1" }
+zip = { version = "8", default-features = false, features = ["deflate"] }
+
 clap = { version = "4", features = ["derive"] }
 getrandom = { version = "0.4" }
 sha2 = { version = "0.11" }
@@ -12,6 +20,7 @@ aws-config = { version = "1.13.0" }
 aws-sdk-s3 = { version = "1.156.0" }
 axum = { version = "0.8.9" }
 axum-anyhow = { version = "0.11.14" }
+condite-metadata = { version = "0.1.0", path = "crates/condite-metadata" }
 condite-sdk = { version = "0.1.0", path = "crates/condite-sdk", default-features = false }
 condite-shared = { version = "0.1.0", path = "crates/condite-shared" }
 dotenv = { version = "0.15.0" }
@@ -44,3 +53,15 @@ opt-level = "z"
 lto = true
 codegen-units = 1
 strip = "symbols"
+
+# Keep local privacy/KDF checks representative instead of debug-loop dominated.
+[profile.dev.package.scrypt]
+opt-level = 3
+[profile.dev.package.salsa20]
+opt-level = 3
+[profile.dev.package.pbkdf2]
+opt-level = 3
+[profile.dev.package.hmac]
+opt-level = 3
+[profile.dev.package."sha2:0.10.9"]
+opt-level = 3
