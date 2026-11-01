@@ -209,7 +209,7 @@ test("failed deletion stays visible inside the dialog and can be retried", async
     .getByRole("dialog")
     .getByRole("button", { name: "Delete", exact: true })
     .click();
-  await expect(page.getByRole("dialog")).toContainText("The request failed.");
+  await expect(page.getByRole("dialog")).toContainText("deletion failed");
   await expect(card).toBeVisible();
   await request.post("http://127.0.0.1:4322/__failure", { data: {} });
   await page
@@ -235,7 +235,7 @@ test("loads WASM only on interaction, keeps stale files on failure, and recovers
     data: { unavailable: true },
   });
   await refresh.click();
-  await expect(page.getByRole("status")).toContainText("Could not load files.");
+  await expect(page.getByRole("alert")).toContainText("fixture offline");
   await expect(page.getByText("notes.txt", { exact: true })).toBeVisible();
   expect(wasm).toHaveLength(1);
   await request.post("http://127.0.0.1:4322/__failure", { data: {} });
@@ -259,7 +259,7 @@ test("pending confirmation and failed PUT are recoverable; cursor and grid actio
   await page
     .getByRole("button", { name: "Confirm upload", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText("The request failed.");
+  await expect(page.getByRole("status")).toContainText("confirmation failed");
   await expect(
     page.getByRole("button", { name: "Confirm upload", exact: true }),
   ).toBeVisible();
@@ -363,7 +363,9 @@ test("shares stay independent, revocation can retry, and retention supports Neve
     .getByRole("button", { name: "Revoke", exact: true })
     .first()
     .click();
-  await expect(dialog.getByRole("alert")).toContainText("The request failed.");
+  await expect(dialog.getByRole("alert")).toContainText(
+    "The server couldn’t process the request.",
+  );
   await request.post("http://127.0.0.1:4322/__failure", { data: {} });
   await dialog
     .getByRole("button", { name: "Revoke", exact: true })
@@ -476,4 +478,61 @@ test("pending revocation shows cleanup status and never exposes an unpublished U
     dialog.getByRole("button", { name: "Copy link", exact: true }),
   ).toBeDisabled();
   await expect(dialog.getByRole("textbox")).toHaveValue("");
+});
+
+test("share errors show readable text and keyboard-expandable raw details", async ({
+  page,
+}) => {
+  await page.goto("/en/");
+  const row = page.getByRole("row").filter({ hasText: "notes.txt" });
+  await row.getByRole("button", { name: "Share", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  const cases = [
+    {
+      status: 400,
+      body: JSON.stringify({
+        title: "Sharing unavailable",
+        detail: "Configure a public bucket",
+        debug: "raw-only-canary",
+      }),
+      message: "Sharing unavailable: Configure a public bucket",
+    },
+    {
+      status: 502,
+      body: "Upstream temporarily unavailable",
+      message: "Upstream temporarily unavailable",
+    },
+    {
+      status: 400,
+      body: "",
+      message: "Something went wrong while sending the request.",
+    },
+    {
+      status: 500,
+      body: "",
+      message: "The server couldn’t process the request.",
+    },
+  ];
+  for (const item of cases) {
+    await page.route("**/api/v1/uploads/*/shares", (route) =>
+      route.fulfill({ status: item.status, body: item.body }),
+    );
+    await dialog
+      .getByRole("button", { name: "Create share link", exact: true })
+      .click();
+    await expect(
+      dialog.getByRole("alert").getByText(item.message, { exact: true }),
+    ).toBeVisible();
+    const details = dialog.locator("details");
+    await expect(details).not.toHaveAttribute("open");
+    const summary = details.locator("summary");
+    await summary.focus();
+    await page.keyboard.press("Enter");
+    await expect(details).toHaveAttribute("open", "");
+    await expect(details.locator("pre")).toContainText(`HTTP ${item.status}`);
+    if (item.body.includes("raw-only-canary"))
+      await expect(details.locator("pre")).toContainText("raw-only-canary");
+    await summary.press("Enter");
+    await page.unroute("**/api/v1/uploads/*/shares");
+  }
 });

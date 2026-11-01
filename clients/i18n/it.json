@@ -129,5 +129,15 @@
   "aiNotice": "Scritto con assistenza IA",
   "download": "Scarica",
   "fileExpires": "Scadenza file",
-  "apiKeyDescription": "Salvata localmente nelle impostazioni di Vencord. Inviata solo all’API Condite configurata."
+  "apiKeyDescription": "Salvata localmente nelle impostazioni di Vencord. Inviata solo all’API Condite configurata.",
+  "rawError": "Errore originale",
+  "requestError": "Si è verificato un problema durante l’invio della richiesta.",
+  "serverError": "Il server non ha potuto elaborare la richiesta.",
+  "unauthorizedError": "Autenticazione richiesta. Controlla la chiave API.",
+  "forbiddenError": "Non hai il permesso di eseguire questa azione.",
+  "notFoundError": "L’elemento richiesto non è stato trovato.",
+  "conflictError": "La richiesta è in conflitto con lo stato attuale. Aggiorna e riprova.",
+  "rateLimitError": "Troppe richieste. Riprova più tardi.",
+  "httpError": "La richiesta non è riuscita (HTTP {status}).",
+  "unknownError": "Si è verificato un problema. Riprova."
 }

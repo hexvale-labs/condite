@@ -129,5 +129,15 @@
   "aiNotice": "Escrito com assistência de IA",
   "download": "Baixar",
   "fileExpires": "Expiração do arquivo",
-  "apiKeyDescription": "Armazenada localmente nas configurações do Vencord. Enviada apenas à API do Condite configurada."
+  "apiKeyDescription": "Armazenada localmente nas configurações do Vencord. Enviada apenas à API do Condite configurada.",
+  "rawError": "Erro original",
+  "requestError": "Ocorreu um problema ao enviar a solicitação.",
+  "serverError": "O servidor não conseguiu processar a solicitação.",
+  "unauthorizedError": "Autenticação necessária. Verifique sua chave de API.",
+  "forbiddenError": "Você não tem permissão para realizar esta ação.",
+  "notFoundError": "O item solicitado não foi encontrado.",
+  "conflictError": "A solicitação conflita com o estado atual. Atualize e tente novamente.",
+  "rateLimitError": "Muitas solicitações. Tente novamente mais tarde.",
+  "httpError": "A solicitação falhou (HTTP {status}).",
+  "unknownError": "Ocorreu um problema. Tente novamente."
 }

@@ -1,3 +1,4 @@
+import ErrorMessage from "./ErrorMessage";
 import {
   createMemo,
   createSignal,
@@ -18,6 +19,7 @@ import { defaultExpiry, resolveExpiry, type ExpiryChoice } from "../lib/expiry";
 type Props = {
   locale: Locale;
   initial: ListUploadsResponse | null;
+  initialError?: unknown;
   failed: boolean;
   view: "list" | "grid";
   after: string | null;
@@ -26,7 +28,7 @@ type Activity = {
   name: string;
   stage: "preparing" | "uploading" | "confirming" | "complete" | "failed";
   requestId?: string;
-  error?: string;
+  error?: unknown;
 };
 
 export default function Files(props: Props) {
@@ -38,8 +40,9 @@ export default function Files(props: Props) {
   const [ready, setReady] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   const [feedback, setFeedback] = createSignal("");
+  const [failure, setFailure] = createSignal<unknown>(() => props.initialError);
   const [activities, setActivities] = createSignal<Activity[]>([]);
-  const [deleteError, setDeleteError] = createSignal("");
+  const [deleteError, setDeleteError] = createSignal<unknown>("");
   const [deleting, setDeleting] = createSignal<Upload | null>(null);
   const [uploadExpiry, setUploadExpiry] =
     createSignal<ExpiryChoice>(defaultExpiry());
@@ -100,12 +103,13 @@ export default function Files(props: Props) {
     if (busy()) return;
     setBusy(true);
     setFeedback("");
+    setFailure(null);
     try {
       await refreshData();
-    } catch {
+    } catch (cause) {
       if (!disposed) {
         setLoadFailed(true);
-        setFeedback(t().failedLoad);
+        setFailure(cause);
       }
     } finally {
       if (!disposed) setBusy(false);
@@ -118,6 +122,7 @@ export default function Files(props: Props) {
     if (busy()) return;
     setBusy(true);
     setFeedback("");
+    setFailure(null);
     setDeleteError("");
     try {
       const sdk = await browserClient();
@@ -149,10 +154,10 @@ export default function Files(props: Props) {
         }
         await refreshData();
       }
-    } catch {
+    } catch (cause) {
       if (!disposed) {
-        setFeedback(t().error);
-        if (operation === "delete") setDeleteError(t().error);
+        setFailure(cause);
+        if (operation === "delete") setDeleteError(cause);
       }
     } finally {
       if (!disposed) setBusy(false);
@@ -166,8 +171,10 @@ export default function Files(props: Props) {
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(download()!.url);
+      setFailure(null);
       setFeedback(t().copied);
-    } catch {
+    } catch (cause) {
+      setFailure(cause);
       setFeedback(t().copyFailed);
     }
   }
@@ -175,6 +182,7 @@ export default function Files(props: Props) {
     if (busy() || !files.length) return;
     setBusy(true);
     setFeedback("");
+    setFailure(null);
     setActivities(
       files.map((file) => ({ name: file.name, stage: "preparing" })),
     );
@@ -215,10 +223,10 @@ export default function Files(props: Props) {
           update(index, { stage: "confirming" });
           await sdk.confirm(signed.request_id);
           update(index, { stage: "complete" });
-        } catch {
+        } catch (cause) {
           update(index, {
             stage: "failed",
-            error: `${t().failedUpload} ${t().uploadAgain}`,
+            error: cause,
           });
         }
       }
@@ -229,14 +237,14 @@ export default function Files(props: Props) {
             ? t().failed
             : t().complete,
         );
-    } catch {
+    } catch (cause) {
       if (!disposed) {
-        setFeedback(t().error);
+        setFailure(cause);
         setActivities((items) =>
           items.map((item) =>
             item.stage === "complete" || item.stage === "failed"
               ? item
-              : { ...item, stage: "failed", error: t().error },
+              : { ...item, stage: "failed", error: cause },
           ),
         );
       }
@@ -439,6 +447,7 @@ export default function Files(props: Props) {
       </Show>
       <div class="feedback" role="status" aria-live="polite" aria-atomic="true">
         {feedback()}
+        <ErrorMessage error={failure()} locale={props.locale} />
       </div>
       <Show when={download()}>
         {(value) => (
@@ -499,7 +508,7 @@ export default function Files(props: Props) {
                     <span>{t()[item.stage]}</span>
                   </div>
                   <Show when={item.error}>
-                    <p class="mt-1 text-red-800">{item.error}</p>
+                    <ErrorMessage error={item.error} locale={props.locale} />
                   </Show>
                   <Show when={item.requestId && item.stage === "failed"}>
                     <p class="mt-1 break-all text-muted">
@@ -726,9 +735,9 @@ export default function Files(props: Props) {
           {t().deleteHint}
         </p>
         <p class="mt-4 break-all text-sm font-medium">{deleting()?.filename}</p>
-        <p class="mt-3 text-sm text-red-800" role="alert">
-          {deleteError()}
-        </p>
+        <div class="mt-3">
+          <ErrorMessage error={deleteError()} locale={props.locale} />
+        </div>
         <div class="mt-6 flex justify-end gap-2">
           <button
             class="button"

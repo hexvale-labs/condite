@@ -129,5 +129,15 @@
   "aiNotice": "在 AI 协助下编写",
   "download": "下载",
   "fileExpires": "文件到期时间",
-  "apiKeyDescription": "保存在本地 Vencord 设置中，仅发送到配置的 Condite API。"
+  "apiKeyDescription": "保存在本地 Vencord 设置中，仅发送到配置的 Condite API。",
+  "rawError": "原始错误",
+  "requestError": "发送请求时出错。",
+  "serverError": "服务器无法处理请求。",
+  "unauthorizedError": "需要身份验证。请检查 API 密钥。",
+  "forbiddenError": "你无权执行此操作。",
+  "notFoundError": "未找到请求的项目。",
+  "conflictError": "请求与当前状态冲突。请刷新后重试。",
+  "rateLimitError": "请求过多。请稍后重试。",
+  "httpError": "请求失败（HTTP {status}）。",
+  "unknownError": "出错了。请重试。"
 }

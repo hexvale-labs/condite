@@ -129,5 +129,15 @@
   "aiNotice": "Ditulis dengan bantuan AI",
   "download": "Unduh",
   "fileExpires": "Kedaluwarsa berkas",
-  "apiKeyDescription": "Disimpan secara lokal di pengaturan Vencord. Hanya dikirim ke API Condite yang dikonfigurasi."
+  "apiKeyDescription": "Disimpan secara lokal di pengaturan Vencord. Hanya dikirim ke API Condite yang dikonfigurasi.",
+  "rawError": "Galat asli",
+  "requestError": "Terjadi kesalahan saat mengirim permintaan.",
+  "serverError": "Server tidak dapat memproses permintaan.",
+  "unauthorizedError": "Autentikasi diperlukan. Periksa kunci API Anda.",
+  "forbiddenError": "Anda tidak memiliki izin untuk tindakan ini.",
+  "notFoundError": "Item yang diminta tidak ditemukan.",
+  "conflictError": "Permintaan bertentangan dengan status saat ini. Muat ulang dan coba lagi.",
+  "rateLimitError": "Terlalu banyak permintaan. Coba lagi nanti.",
+  "httpError": "Permintaan gagal (HTTP {status}).",
+  "unknownError": "Terjadi kesalahan. Coba lagi."
 }

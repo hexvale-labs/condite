@@ -8,8 +8,9 @@ import { Button } from "@components/Button";
 import { copyToClipboard } from "@utils/clipboard";
 import type { PluginNative } from "@utils/types";
 import type { RenderModalProps } from "@vencord/discord-types";
-import { ConfirmModal, Modal, openModal, React, useEffect, useRef, useState } from "@webpack/common";
+import { Modal, openModal, React, useEffect, useRef, useState } from "@webpack/common";
 
+import { ErrorConfirmModal, ErrorMessage } from "./ErrorMessage";
 import type { Share, Upload } from "./wire";
 
 const Native = VencordNative.pluginHelpers.Condite as PluginNative<typeof import("./native")>;
@@ -27,7 +28,7 @@ export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalPro
     const [shares, setShares] = useState<Share[]>([]);
     const [shareNext, setShareNext] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
-    const [error, setError] = useState("");
+    const [error, setError] = useState<unknown>(null);
     const [notice, setNotice] = useState("");
     const [mode, setMode] = useState("upload");
     const [date, setDate] = useState("");
@@ -36,11 +37,11 @@ export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalPro
     const [deleting, setDeleting] = useState<string>();
     const call = async (operation: Operation, id = "", request: unknown = {}) => {
         const reply = await Native.manage(apiUrl, apiKey, operation, id, request);
-        if (reply.status !== "ok") throw new Error(reply.message);
+        if (reply.status !== "ok") throw reply;
         return reply.value;
     };
     const locked = useRef(false);
-    const run = async (operation: () => Promise<void>) => { if (locked.current) return; locked.current = true; setBusy(true); setError(""); try { await operation(); } catch (cause) { setError((cause as Error).message); } finally { locked.current = false; setBusy(false); } };
+    const run = async (operation: () => Promise<void>) => { if (locked.current) return; locked.current = true; setBusy(true); setError(""); try { await operation(); } catch (cause) { setError(cause); } finally { locked.current = false; setBusy(false); } };
     const load = async (after: string | null = cursor) => { const page = await call("listUploads", "", { limit: 20, after }); setRows(page.uploads); setNext(page.next_after); };
     const loadShares = async (row: Row, after: string | null = null) => { const page = await call("listShares", row.id, { limit: 20, after }); setSelected(row); setShares(previous => after ? [...previous, ...page.shares] : page.shares); setShareNext(page.next_after); };
     useEffect(() => { void run(() => load()); }, []);
@@ -54,10 +55,9 @@ export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalPro
         if (!selected) return;
         if (expires_at && new Date(expires_at).getTime() <= Date.now()) {
             const { id } = selected;
-            openModal(confirmProps => <ConfirmModal {...confirmProps} title="Delete expired file?" confirmText="Delete" cancelText="Cancel" onConfirm={async setModalError => {
-                try { await call("delete", id); setSelected(undefined); await load(); setNotice("File and its shared copies deleted."); }
-                catch (cause) { setModalError((cause as Error).message); throw cause; }
-            }}><p>This date has passed. Delete the file and all its shared copies?</p></ConfirmModal>);
+            openModal(confirmProps => <ErrorConfirmModal {...confirmProps} title="Delete expired file?" confirmText="Delete" cancelText="Cancel" onConfirm={async () => {
+                await call("delete", id); setSelected(undefined); await load(); setNotice("File and its shared copies deleted.");
+            }}><p>This date has passed. Delete the file and all its shared copies?</p></ErrorConfirmModal>);
             return;
         }
         const row = await call("updateRetention", selected.id, { expires_at }); setSelected(row); await load(); setNotice("Expiry saved.");
@@ -65,7 +65,7 @@ export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalPro
     return <Modal {...props} title="Condite uploads" actions={[{ text: "Close", variant: "secondary", onClick: props.onClose }]}>
         <div className="vc-condite-manager">
             <div className="vc-condite-actions"><Button disabled={busy} onClick={() => void run(() => load())}>Refresh</Button><Button disabled={busy} variant="secondary" onClick={() => void run(async () => { const health = await call("health"); setNotice(health.healthy ? `Connected · ${health.runtime}` : "Unhealthy"); })}>Connection</Button></div>
-            {error && <p role="alert" className="vc-condite-error">{error}</p>}
+            {!!error && <ErrorMessage error={error} />}
             {notice && <p role="status">{notice}</p>}
             {rows.map(row => <section key={row.id} className="vc-condite-record">
                 <strong>{row.filename}</strong><small>{row.size_bytes} bytes · {row.visibility} · {row.status} · Expires {formatDate(row.expires_at)}{row.deletion_pending ? " · Cleanup pending" : ""}</small>
@@ -90,10 +90,10 @@ export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalPro
                 <label className="vc-condite-field">Adjust file retention (days)<input type="number" min="1" max="36500" value={days} onChange={event => setDays(Number(event.target.value))} /></label>
                 <div className="vc-condite-actions">{[-1,1].map(sign => <Button key={sign} variant="secondary" disabled={busy || !Number.isInteger(days) || days < 1} onClick={() => void run(() => retain(new Date(new Date(selected.expires_at ?? Date.now()).getTime() + sign * days * 86400000).toISOString()))}>{sign > 0 ? "Add interval" : "Subtract interval"}</Button>)}</div>
                 <p>File expires {formatDate(selected.expires_at)}. A share cannot keep an expired file alive.</p>
-                {shares.map(share => <section key={share.id} className="vc-condite-record"><strong>{share.status}</strong><small>Created {formatDate(share.created_at)} · Expires {formatDate(share.expires_at)}</small><textarea aria-label="Share URL" readOnly rows={2} value={share.url} onFocus={event => event.target.select()} /><div className="vc-condite-actions"><Button size="small" disabled={share.status !== "Active"} onClick={() => { void copyToClipboard(share.url).then(() => setNotice("Link copied."), () => setNotice("Select the link and copy it manually.")); }}>Copy</Button><Button size="small" variant="dangerSecondary" disabled={busy || ["Revoked","Expired"].includes(share.status)} onClick={() => void run(async () => { await call("revokeShare", selected.id, share.id); await loadShares(selected); await load(); })}>Revoke</Button></div></section>)}
+                {shares.map(share => <section key={share.id} className="vc-condite-record"><strong>{share.status}</strong><small>Created {formatDate(share.created_at)} · Expires {formatDate(share.expires_at)}</small><textarea aria-label="Share URL" readOnly rows={2} value={share.url} onFocus={event => event.target.select()} /><div className="vc-condite-actions"><Button size="small" disabled={share.status !== "Active"} onClick={() => { void copyToClipboard(share.url).then(() => { setError(null); setNotice("Link copied."); }, cause => { setError(cause); setNotice("Select the link and copy it manually."); }); }}>Copy</Button><Button size="small" variant="dangerSecondary" disabled={busy || ["Revoked","Expired"].includes(share.status)} onClick={() => void run(async () => { await call("revokeShare", selected.id, share.id); await loadShares(selected); await load(); })}>Revoke</Button></div></section>)}
                 {!shares.length && <p>No shared links.</p>}{shareNext && <Button disabled={busy} onClick={() => void run(() => loadShares(selected, shareNext))}>More links</Button>}
             </section>}
-            {link && <label className="vc-condite-field">Download / share link<textarea readOnly rows={2} value={link} onFocus={event => event.target.select()} /><Button onClick={() => { void copyToClipboard(link).then(() => setNotice("Link copied."), () => setNotice("Select the link and copy it manually.")); }}>Copy link</Button><a href={link} target="_blank" rel="noreferrer">Open download</a></label>}
+            {link && <label className="vc-condite-field">Download / share link<textarea readOnly rows={2} value={link} onFocus={event => event.target.select()} /><Button onClick={() => { void copyToClipboard(link).then(() => { setError(null); setNotice("Link copied."); }, cause => { setError(cause); setNotice("Select the link and copy it manually."); }); }}>Copy link</Button><a href={link} target="_blank" rel="noreferrer">Open download</a></label>}
             <p className="vc-condite-muted">Links go directly to storage. Condite removes expired objects approximately once per minute; downtime or storage failures can delay removal. Downloaded and cached copies cannot be recalled.</p>
         </div>
     </Modal>;

@@ -7,7 +7,6 @@
 import { Button } from "@components/Button";
 import { Heading } from "@components/Heading";
 import {
-    ConfirmModal,
     openModal,
     React,
     useEffect,
@@ -15,7 +14,8 @@ import {
     useState
 } from "@webpack/common";
 
-import { t as translate, useTranslation } from "./i18n";
+import { ErrorConfirmModal, ErrorMessage } from "./errors";
+import { useTranslation } from "./i18n";
 import { safeUrl } from "./routing";
 import { createClient, uploadFile } from "./sdk";
 import { settings } from "./settings";
@@ -35,15 +35,10 @@ export function bytes(value: bigint, locale = "en") {
     return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(scaled)} ${units[unit]}`;
 }
 
-export function errorText(error: unknown) {
-    const value = error as Error & { request_id?: string; stage?: string };
-    return `${value.message || translate("error")}${value.request_id ? ` (upload ${value.request_id}${value.stage ? `, ${value.stage}` : ""})` : ""}`;
-}
-
 interface Activity {
     name: string;
     stage: string;
-    error?: string;
+    error?: unknown;
 }
 
 export function FileManager({ onClose }: { onClose(): void }) {
@@ -57,7 +52,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
     const [history, setHistory] = useState<(string | null)[]>([]);
     const [busy, setBusy] = useState(false);
     const [loaded, setLoaded] = useState(false);
-    const [error, setError] = useState("");
+    const [error, setError] = useState<unknown>(null);
     const [notice, setNotice] = useState("");
     const [filter, setFilter] = useState("all");
     const [query, setQuery] = useState("");
@@ -94,7 +89,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
         try {
             await operation(createClient(), current);
         } catch (cause) {
-            if (current()) setError(errorText(cause));
+            if (current()) setError(cause);
         } finally {
             locked.current = false;
             if (live.current) setBusy(false);
@@ -129,7 +124,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                     setError("");
                 }
             } catch (cause) {
-                if (!cancelled) setError(errorText(cause));
+                if (!cancelled) setError(cause);
             } finally {
                 if (!cancelled) setBusy(false);
             }
@@ -173,38 +168,33 @@ export function FileManager({ onClose }: { onClose(): void }) {
         const key = apiKey;
         const sdk = createClient();
         openModal(props => (
-            <ConfirmModal
+            <ErrorConfirmModal
                 {...props}
                 title={t.deleteTitle}
                 confirmText={t.remove}
                 cancelText={t.cancel}
-                onConfirm={async setModalError => {
-                    try {
-                        if (settings.store.apiBase !== endpoint || settings.store.apiKey !== key)
-                            throw new Error(t.error);
-                        await sdk.delete(row.id);
-                        if (
-                            live.current &&
-                            settings.store.apiBase === endpoint
-                        ) {
-                            setPage(previous => ({
-                                ...previous,
-                                uploads: previous.uploads.filter(
-                                    item => item.id !== row.id
-                                )
-                            }));
-                            setNotice(t.deleted);
-                            setLink(undefined);
-                        }
-                    } catch (cause) {
-                        setModalError(errorText(cause));
-                        throw cause;
+                onConfirm={async () => {
+                    if (settings.store.apiBase !== endpoint || settings.store.apiKey !== key)
+                        throw new Error(t.error);
+                    await sdk.delete(row.id);
+                    if (
+                        live.current &&
+                        settings.store.apiBase === endpoint
+                    ) {
+                        setPage(previous => ({
+                            ...previous,
+                            uploads: previous.uploads.filter(
+                                item => item.id !== row.id
+                            )
+                        }));
+                        setNotice(t.deleted);
+                        setLink(undefined);
                     }
                 }}
             >
                 <p className="condite-break">{row.filename}</p>
                 <p>{t.deleteHint}</p>
-            </ConfirmModal>
+            </ErrorConfirmModal>
         ));
     }
 
@@ -229,7 +219,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                         update(index, { stage }), { expires_at: expiryDate(retention, retentionDate) }
                     );
                 } catch (cause) {
-                    update(index, { stage: "failed", error: errorText(cause) });
+                    update(index, { stage: "failed", error: cause });
                 }
             }
             const result = await sdk.listUploads({ limit: 50 });
@@ -335,9 +325,9 @@ export function FileManager({ onClose }: { onClose(): void }) {
                 <div role="status" aria-live="polite">
                     {busy ? t.working : notice}
                 </div>
-                {error && (
+                {!!error && (
                     <div role="alert" className="condite-error">
-                        {error}
+                        <ErrorMessage error={error} />
                         <Button
                             variant="secondary"
                             size="small"
@@ -368,8 +358,8 @@ export function FileManager({ onClose }: { onClose(): void }) {
                                     void navigator.clipboard
                                         .writeText(link.url)
                                         .then(
-                                            () => setNotice(t.copied),
-                                            () => setNotice(t.copyFailed)
+                                            () => { setError(null); setNotice(t.copied); },
+                                            cause => { setError(cause); setNotice(t.copyFailed); }
                                         );
                                 }}
                             >
@@ -407,10 +397,8 @@ export function FileManager({ onClose }: { onClose(): void }) {
                                         ]
                                     }
                                 </span>
-                                {item.error && (
-                                    <p className="condite-error">
-                                        {item.error}
-                                    </p>
+                                {!!item.error && (
+                                    <ErrorMessage error={item.error} />
                                 )}
                             </li>
                         ))}

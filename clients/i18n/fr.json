@@ -129,5 +129,15 @@
   "aiNotice": "Écrit avec l’aide de l’IA",
   "download": "Télécharger",
   "fileExpires": "Expiration du fichier",
-  "apiKeyDescription": "Stockée localement dans les paramètres Vencord. Envoyée uniquement à l’API Condite configurée."
+  "apiKeyDescription": "Stockée localement dans les paramètres Vencord. Envoyée uniquement à l’API Condite configurée.",
+  "rawError": "Erreur brute",
+  "requestError": "Un problème est survenu lors de l’envoi de la requête.",
+  "serverError": "Le serveur n’a pas pu traiter la requête.",
+  "unauthorizedError": "Authentification requise. Vérifiez votre clé API.",
+  "forbiddenError": "Vous n’avez pas l’autorisation d’effectuer cette action.",
+  "notFoundError": "L’élément demandé est introuvable.",
+  "conflictError": "La requête est en conflit avec l’état actuel. Actualisez et réessayez.",
+  "rateLimitError": "Trop de requêtes. Réessayez plus tard.",
+  "httpError": "La requête a échoué (HTTP {status}).",
+  "unknownError": "Un problème est survenu. Réessayez."
 }

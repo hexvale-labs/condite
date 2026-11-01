@@ -129,5 +129,15 @@
   "aiNotice": "Yapay zekâ yardımıyla yazıldı",
   "download": "İndir",
   "fileExpires": "Dosya süresi",
-  "apiKeyDescription": "Vencord ayarlarında yerel olarak saklanır. Yalnızca yapılandırılmış Condite API’sine gönderilir."
+  "apiKeyDescription": "Vencord ayarlarında yerel olarak saklanır. Yalnızca yapılandırılmış Condite API’sine gönderilir.",
+  "rawError": "Ham hata",
+  "requestError": "İstek gönderilirken bir sorun oluştu.",
+  "serverError": "Sunucu isteği işleyemedi.",
+  "unauthorizedError": "Kimlik doğrulaması gerekli. API anahtarınızı kontrol edin.",
+  "forbiddenError": "Bu işlemi yapma izniniz yok.",
+  "notFoundError": "İstenen öğe bulunamadı.",
+  "conflictError": "İstek mevcut durumla çakışıyor. Yenileyip tekrar deneyin.",
+  "rateLimitError": "Çok fazla istek. Daha sonra tekrar deneyin.",
+  "httpError": "İstek başarısız oldu (HTTP {status}).",
+  "unknownError": "Bir sorun oluştu. Lütfen tekrar deneyin."
 }

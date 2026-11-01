@@ -42,6 +42,7 @@ export type NativeResult<T> =
               message: string;
               code?: string;
               status?: number;
+              body?: string;
               request_id?: string;
               stage?: string;
           };
@@ -76,6 +77,7 @@ async function result<T>(
         const error = cause as Error & {
             code?: string;
             status?: number;
+              body?: string;
             request_id?: string;
             stage?: string;
         };
@@ -85,6 +87,7 @@ async function result<T>(
                 message: error.message || "Condite request failed",
                 code: error.code,
                 status: error.status,
+                body: error.body,
                 request_id: error.request_id,
                 stage: error.stage
             }

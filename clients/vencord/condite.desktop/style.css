@@ -58,3 +58,6 @@
 @keyframes condite-record-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes condite-record-fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .vc-condite-record { animation: condite-record-fade 120ms ease; } }
+.vc-condite-error { min-width: 0; overflow-wrap: anywhere; }
+.vc-condite-error summary { cursor: pointer; margin-top: 8px; }
+.vc-condite-error pre { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height: 280px; padding: 12px; border: 1px solid currentColor; border-radius: 6px; font-size: 12px; }

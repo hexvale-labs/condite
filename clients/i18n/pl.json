@@ -129,5 +129,15 @@
   "aiNotice": "Napisano z pomocą AI",
   "download": "Pobierz",
   "fileExpires": "Wygaśnięcie pliku",
-  "apiKeyDescription": "Zapisany lokalnie w ustawieniach Vencord. Wysyłany tylko do skonfigurowanego API Condite."
+  "apiKeyDescription": "Zapisany lokalnie w ustawieniach Vencord. Wysyłany tylko do skonfigurowanego API Condite.",
+  "rawError": "Surowy błąd",
+  "requestError": "Coś poszło nie tak podczas wysyłania żądania.",
+  "serverError": "Serwer nie mógł przetworzyć żądania.",
+  "unauthorizedError": "Wymagane uwierzytelnienie. Sprawdź klucz API.",
+  "forbiddenError": "Nie masz uprawnień do wykonania tej czynności.",
+  "notFoundError": "Nie znaleziono żądanego elementu.",
+  "conflictError": "Żądanie jest niezgodne z bieżącym stanem. Odśwież i spróbuj ponownie.",
+  "rateLimitError": "Zbyt wiele żądań. Spróbuj ponownie później.",
+  "httpError": "Żądanie nie powiodło się (HTTP {status}).",
+  "unknownError": "Coś poszło nie tak. Spróbuj ponownie."
 }

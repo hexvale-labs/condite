@@ -1,13 +1,15 @@
 ---
 import Admin from '../../layouts/Admin.astro';
 import Service from '../../components/Service';
-import { isLocale } from '../../i18n';
+import { isLocale, messages } from '../../i18n';
+import { presentError, type PresentedError } from '../../../../i18n/errors';
 import { serverClient, withSsrDeadline } from '../../lib/server';
 import type { HealthStatus } from 'condite-sdk-node';
 const { locale } = Astro.params;
 if (!isLocale(locale)) return new Response(null, { status: 404 });
 Astro.response.headers.set('Cache-Control', 'no-store');
+let initialError: PresentedError | undefined;
 let initial: HealthStatus | null = null;
-try { initial = await withSsrDeadline(serverClient().health()); } catch { /* Keep the administration shell available offline. */ }
+try { initial = await withSsrDeadline(serverClient().health()); } catch (cause) { initialError = presentError(cause, messages(locale)); }
 ---
-<Admin locale={locale} section="service" health={initial}><Service locale={locale} initial={initial} client:load /></Admin>
+<Admin locale={locale} section="service" health={initial}><Service locale={locale} initial={initial} initialError={initialError} client:load /></Admin>

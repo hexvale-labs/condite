@@ -129,5 +129,15 @@
   "aiNotice": "Geschreven met AI-ondersteuning",
   "download": "Downloaden",
   "fileExpires": "Vervaldatum bestand",
-  "apiKeyDescription": "Lokaal opgeslagen in de Vencord-instellingen. Alleen verzonden naar de ingestelde Condite-API."
+  "apiKeyDescription": "Lokaal opgeslagen in de Vencord-instellingen. Alleen verzonden naar de ingestelde Condite-API.",
+  "rawError": "Ruwe fout",
+  "requestError": "Er ging iets mis bij het verzenden van het verzoek.",
+  "serverError": "De server kon het verzoek niet verwerken.",
+  "unauthorizedError": "Authenticatie vereist. Controleer je API-sleutel.",
+  "forbiddenError": "Je hebt geen toestemming voor deze actie.",
+  "notFoundError": "Het gevraagde item is niet gevonden.",
+  "conflictError": "Het verzoek is in strijd met de huidige toestand. Vernieuw en probeer opnieuw.",
+  "rateLimitError": "Te veel verzoeken. Probeer het later opnieuw.",
+  "httpError": "Het verzoek is mislukt (HTTP {status}).",
+  "unknownError": "Er ging iets mis. Probeer opnieuw."
 }

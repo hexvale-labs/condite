@@ -129,5 +129,15 @@
   "aiNotice": "AI의 도움으로 작성됨",
   "download": "다운로드",
   "fileExpires": "파일 만료",
-  "apiKeyDescription": "Vencord 설정에 로컬로 저장되며 설정된 Condite API에만 전송됩니다."
+  "apiKeyDescription": "Vencord 설정에 로컬로 저장되며 설정된 Condite API에만 전송됩니다.",
+  "rawError": "원본 오류",
+  "requestError": "요청을 보내는 중 문제가 발생했습니다.",
+  "serverError": "서버가 요청을 처리하지 못했습니다.",
+  "unauthorizedError": "인증이 필요합니다. API 키를 확인하세요.",
+  "forbiddenError": "이 작업을 수행할 권한이 없습니다.",
+  "notFoundError": "요청한 항목을 찾을 수 없습니다.",
+  "conflictError": "요청이 현재 상태와 충돌합니다. 새로고침 후 다시 시도하세요.",
+  "rateLimitError": "요청이 너무 많습니다. 나중에 다시 시도하세요.",
+  "httpError": "요청에 실패했습니다(HTTP {status}).",
+  "unknownError": "문제가 발생했습니다. 다시 시도하세요."
 }

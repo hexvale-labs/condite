@@ -129,5 +129,15 @@
   "aiNotice": "Skrevet med KI-assistanse",
   "download": "Last ned",
   "fileExpires": "Filutløp",
-  "apiKeyDescription": "Lagret lokalt i Vencord-innstillingene. Sendes bare til den konfigurerte Condite-API-en."
+  "apiKeyDescription": "Lagret lokalt i Vencord-innstillingene. Sendes bare til den konfigurerte Condite-API-en.",
+  "rawError": "Råfeil",
+  "requestError": "Noe gikk galt da forespørselen ble sendt.",
+  "serverError": "Serveren kunne ikke behandle forespørselen.",
+  "unauthorizedError": "Autentisering kreves. Sjekk API-nøkkelen din.",
+  "forbiddenError": "Du har ikke tillatelse til å utføre denne handlingen.",
+  "notFoundError": "Det forespurte elementet ble ikke funnet.",
+  "conflictError": "Forespørselen er i konflikt med gjeldende tilstand. Oppdater og prøv igjen.",
+  "rateLimitError": "For mange forespørsler. Prøv igjen senere.",
+  "httpError": "Forespørselen mislyktes (HTTP {status}).",
+  "unknownError": "Noe gikk galt. Prøv igjen."
 }

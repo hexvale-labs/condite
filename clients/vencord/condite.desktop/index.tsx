@@ -16,6 +16,7 @@ import definePlugin, { type IconComponent, OptionType, type PluginNative } from 
 import type { RenderModalProps } from "@vencord/discord-types";
 import { ContextMenuApi, Menu, Modal, openModal, React, useState } from "@webpack/common";
 
+import { ErrorMessage } from "./ErrorMessage";
 import { UploadManager } from "./manager";
 import { type PrivacyReport, retainedLabels } from "./workflow";
 
@@ -42,6 +43,7 @@ let lastUpload: Uploaded | undefined;
 
 function UploadResult({ props, file }: { props: RenderModalProps; file: Uploaded; }) {
     const [message, setMessage] = useState("");
+    const [copyError, setCopyError] = useState<unknown>(null);
     const { report } = file;
     return (
         <Modal {...props} title="Condite upload ready" actions={[{ text: "Done", variant: "secondary", onClick: props.onClose }]}>
@@ -52,10 +54,11 @@ function UploadResult({ props, file }: { props: RenderModalProps; file: Uploaded
                     <textarea readOnly value={file.uri} rows={3} onFocus={event => event.currentTarget.select()} />
                 </label>
                 <Button onClick={async () => {
-                    try { await copyToClipboard(file.uri); setMessage("Direct share link copied."); }
-                    catch { setMessage("Select the link above and copy it manually."); }
+                    try { await copyToClipboard(file.uri); setCopyError(null); setMessage("Direct share link copied."); }
+                    catch (cause) { setCopyError(cause); setMessage("Select the link above and copy it manually."); }
                 }}>Copy share link</Button>
                 <Paragraph role="status">{message}</Paragraph>
+                {!!copyError && <ErrorMessage error={copyError} />}
                 <Paragraph>
                     Metadata cleaning: {report.metadataStripped ? "applied" : "off"}. Filename anonymization: {report.filenameAnonymized ? "applied" : "off"}. Encryption: {report.encrypted ? "applied" : "off"}.
                 </Paragraph>
@@ -76,7 +79,7 @@ function OperationModal({ props, mode }: { props: RenderModalProps; mode: "uploa
     const [passphrase, setPassphrase] = useState("");
     const [confirmation, setConfirmation] = useState("");
     const [busy, setBusy] = useState(false);
-    const [error, setError] = useState("");
+    const [error, setError] = useState<unknown>(null);
     const [saved, setSaved] = useState(false);
     const needsPassphrase = mode === "decrypt" || encrypt;
     const clear = () => { setPassphrase(""); setConfirmation(""); };
@@ -98,7 +101,7 @@ function OperationModal({ props, mode }: { props: RenderModalProps; mode: "uploa
                 const deadline = useDate ? new Date(retentionDate + "Z").getTime() : retentionDays === 0 ? null : Date.now() + retentionDays * 86400000;
                 if (deadline !== null && (!Number.isFinite(deadline) || deadline <= Date.now())) throw new Error("Choose a future expiry date or Never.");
                 const reply = await Native.chooseAndUpload(settings.store.apiUrl, { stripMetadata, anonymizeFilename, passphrase: secret }, settings.store.apiKey, { expires_at: deadline === null ? null : new Date(deadline).toISOString() });
-                if (reply.status === "error") setError(reply.request_id ? `${reply.message} Upload ID: ${reply.request_id}${reply.stage ? ` (${reply.stage})` : ""}` : reply.message);
+                if (reply.status === "error") setError(reply);
                 if (reply.status === "ok") {
                     lastUpload = reply;
                     props.onClose();
@@ -106,11 +109,11 @@ function OperationModal({ props, mode }: { props: RenderModalProps; mode: "uploa
                 }
             } else {
                 const reply = await Native.chooseDecryptAndSave(secret!);
-                if (reply.status === "error") setError(reply.request_id ? `${reply.message} Upload ID: ${reply.request_id}${reply.stage ? ` (${reply.stage})` : ""}` : reply.message);
+                if (reply.status === "error") setError(reply);
                 if (reply.status === "ok") setSaved(true);
             }
         } catch (cause) {
-            setError((cause as Error).message || "The desktop bridge is unavailable. Rebuild Vencord with this plugin and restart Discord.");
+            setError(cause);
         } finally { clear(); setBusy(false); }
     };
     return (
@@ -153,7 +156,7 @@ function OperationModal({ props, mode }: { props: RenderModalProps; mode: "uploa
                 {mode === "upload" && <Paragraph>One file at a time, up to 300 MiB before processing and 100 MiB after processing. The share link is offered for copying; no Discord message is sent.</Paragraph>}
                 {busy && <Paragraph role="status">Choose the file in the desktop dialog, then wait for processing to finish.</Paragraph>}
                 {saved && <Paragraph role="status">Decrypted file saved.</Paragraph>}
-                {error && <Paragraph role="alert">{error}</Paragraph>}
+                {!!error && <ErrorMessage error={error} />}
             </div>
         </Modal>
     );

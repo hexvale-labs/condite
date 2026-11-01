@@ -9,12 +9,12 @@ import {
     createRoot,
     React,
     ReactDOM,
-    showToast,
     useEffect,
     useState
 } from "@webpack/common";
 import type { Root } from "react-dom/client";
 
+import { showError } from "./errors";
 import { FileManager } from "./fileManager";
 import { t, useTranslation } from "./i18n";
 
@@ -79,10 +79,7 @@ function UploadsPane() {
             const main = document.querySelector<HTMLElement>("main");
             setHost(main);
             if (!main) {
-                showToast({
-                    text: t("failedLoad"),
-                    variant: "critical"
-                });
+                showError(new Error(t("failedLoad")), t("files"));
                 setPaneOpen(false);
             }
         };

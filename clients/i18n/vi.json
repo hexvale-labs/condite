@@ -129,5 +129,15 @@
   "aiNotice": "Được viết với sự hỗ trợ của AI",
   "download": "Tải xuống",
   "fileExpires": "Hạn dùng tệp",
-  "apiKeyDescription": "Lưu cục bộ trong cài đặt Vencord. Chỉ gửi đến API Condite đã cấu hình."
+  "apiKeyDescription": "Lưu cục bộ trong cài đặt Vencord. Chỉ gửi đến API Condite đã cấu hình.",
+  "rawError": "Lỗi gốc",
+  "requestError": "Đã xảy ra lỗi khi gửi yêu cầu.",
+  "serverError": "Máy chủ không thể xử lý yêu cầu.",
+  "unauthorizedError": "Cần xác thực. Hãy kiểm tra khóa API.",
+  "forbiddenError": "Bạn không có quyền thực hiện thao tác này.",
+  "notFoundError": "Không tìm thấy mục được yêu cầu.",
+  "conflictError": "Yêu cầu xung đột với trạng thái hiện tại. Hãy làm mới và thử lại.",
+  "rateLimitError": "Quá nhiều yêu cầu. Vui lòng thử lại sau.",
+  "httpError": "Yêu cầu thất bại (HTTP {status}).",
+  "unknownError": "Đã xảy ra lỗi. Vui lòng thử lại."
 }

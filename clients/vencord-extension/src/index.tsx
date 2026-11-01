@@ -21,7 +21,7 @@ import {
 } from "@webpack/common";
 
 import { chooseProviders, closeChoosers } from "./chooser";
-import { errorText } from "./fileManager";
+import { showError } from "./errors";
 import { t, useTranslation } from "./i18n";
 import { fallbackLimit, MiB } from "./limits";
 import {
@@ -115,19 +115,12 @@ export default definePlugin({
                 });
             },
             report: (filename, error) =>
-                showToast({
-                    text: `${filename}: ${errorText(error)}`,
-                    variant: "critical",
-                    duration: 8000
-                })
+                showError(error, filename)
         });
         try {
             startNavigation();
         } catch (error) {
-            showToast({
-                text: `${t("failedLoad")}: ${errorText(error)}`,
-                variant: "critical"
-            });
+            showError(error, t("failedLoad"));
         }
     },
     stop() {
@@ -146,10 +139,7 @@ export default definePlugin({
         try {
             await router.route(uploads, native);
         } catch (error) {
-            showToast({
-                text: `${t("keepAttachments")}: ${errorText(error)}`,
-                variant: "critical"
-            });
+            showError(error, t("keepAttachments"));
         }
     }
 });
