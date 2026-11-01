@@ -9,15 +9,24 @@ use crate::{db::sql::UploadRecord, state::app::AppState};
 
 pub use condite_shared::{PresignRequest as Payload, PresignResponse as Response};
 
-#[tracing::instrument(name = "uploads.presign", skip_all, fields(size_bytes = payload.size_bytes, upload_id = tracing::field::Empty), err(Debug, level = "warn"))]
 pub async fn handler(
+    State(state): State<AppState>,
+    auth: crate::auth::AuthenticatedKey,
+    Json(payload): Json<Payload>,
+) -> ApiResult<Json<Response>> {
+    crate::db::sql::retry::api(|| attempt(State(state.clone()), auth, Json(payload.clone()))).await
+}
+
+#[tracing::instrument(name = "uploads.presign", skip_all, fields(size_bytes = payload.size_bytes, upload_id = tracing::field::Empty), err(Debug, level = "warn"))]
+async fn attempt(
     State(mut state): State<AppState>,
+    auth: crate::auth::AuthenticatedKey,
     Json(payload): Json<Payload>,
 ) -> ApiResult<Json<Response>> {
     let expires_in = Span::new().minutes(2);
     let expires_at_utc = Timestamp::now() + expires_in;
 
-    if payload.size_bytes > 104_857_600
+    if payload.size_bytes > i64::MAX as u64
         || payload.filename.is_empty()
         || payload.filename.len() > 255
         || payload.mime_type.is_empty()
@@ -27,10 +36,20 @@ pub async fn handler(
         tracing::debug!("Upload request rejected: invalid size, filename, or MIME type");
         return Err(axum_anyhow::bad_request(
             "invalid upload",
-            "maximum size is 100 MiB; filename and MIME type must be valid and at most 255 bytes",
+            "size must fit a signed 64-bit integer; filename and MIME type must be valid and at most 255 bytes",
         ));
     }
 
+    let mut tx = state.sql.transaction().await?;
+    let key = auth.lock(&mut tx).await?;
+    let reserved = crate::db::sql::api_key::storage_size(&mut tx, key.id, false).await?;
+    if payload.size_bytes > key.per_upload_quota
+        || reserved
+            .checked_add(payload.size_bytes)
+            .is_none_or(|total| total > key.storage_quota)
+    {
+        return Err(crate::auth::quota_error());
+    }
     let id = uuid::Uuid::now_v7();
     tracing::Span::current().record("upload_id", tracing::field::display(id));
     tracing::debug!("Generating signed upload authorization");
@@ -58,13 +77,15 @@ pub async fn handler(
 
     toasty::create!(UploadRecord {
         id: id,
+        owner_id: key.id,
         filename: payload.filename.clone(),
         mime_type: payload.mime_type.clone(),
         size_bytes: payload.size_bytes
     })
-    .exec(&mut state.sql)
+    .exec(&mut tx)
     .await?;
 
+    tx.commit().await?;
     tracing::info!(upload_id = %id, expires_at = %expires_at_utc, "Upload authorization created");
     Ok(Json(Response {
         request_id: id.to_string(),

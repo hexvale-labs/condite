@@ -56,3 +56,7 @@ workflows here, CI rationale in `ci.md`, and future sharing requirements in
 [file visibility architecture](file-visibility-architecture.md). Historical specs
 and plans under `superpowers/` explain intent; verify current behavior in source.
 Record limitations explicitly rather than describing planned features as shipped.
+
+Local administration is provided by [condite-ctl](../crates/condite-ctl/README.md).
+Its control DTOs live in `condite-shared::control`; the executable does not depend
+on core, AWS or database crates.

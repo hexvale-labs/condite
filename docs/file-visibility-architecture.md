@@ -2,7 +2,7 @@
 
 Condite will support both public and private files. Most sharing is expected to
 use public links pointing directly to S3-compatible storage. No public domain is
-chosen yet. **This is a proposal; the current API has no visibility or auth.**
+chosen yet. **This is a proposal; the API has key-based ownership but no visibility controls.**
 
 ## Storage and delivery
 
@@ -24,7 +24,7 @@ expires. Never call a signed URL a permanent public share link.
 
 ## Core changes before exposing visibility controls
 
-1. Add owner/tenant authorization and a `visibility: public | private` field.
+1. Preserve API-key ownership and add a `visibility: public | private` field.
    Default new uploads to private. Require authorization for list, presign,
    confirm, delete and access changes; preserve the owner on confirmation.
 2. Extend upload creation and metadata with visibility. Keep confirmation

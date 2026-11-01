@@ -8,9 +8,18 @@ use uuid::Uuid;
 
 pub use condite_shared::{ListUploadsRequest as Parameters, ListUploadsResponse as Response};
 
-#[tracing::instrument(name = "uploads.list", skip_all, err(Debug, level = "warn"))]
 pub async fn handler(
+    State(state): State<AppState>,
+    auth: crate::auth::AuthenticatedKey,
+    Query(params): Query<Parameters>,
+) -> ApiResult<Json<Response>> {
+    crate::db::sql::retry::api(|| attempt(State(state.clone()), auth, Query(params.clone()))).await
+}
+
+#[tracing::instrument(name = "uploads.list", skip_all, err(Debug, level = "warn"))]
+async fn attempt(
     State(mut state): State<AppState>,
+    auth: crate::auth::AuthenticatedKey,
     Query(params): Query<Parameters>,
 ) -> ApiResult<Json<Response>> {
     let limit = params.limit.unwrap_or(50);
@@ -21,7 +30,9 @@ pub async fn handler(
         ));
     }
     let limit = limit as usize;
-    let mut query = UploadRecord::all();
+    let mut tx = state.sql.transaction().await?;
+    let key = auth.lock(&mut tx).await?;
+    let mut query = UploadRecord::filter(UploadRecord::fields().owner_id().eq(key.id));
     if let Some(after) = params.after {
         query = query.filter(
             UploadRecord::fields().id().gt(after
@@ -32,8 +43,9 @@ pub async fn handler(
     let mut uploads = query
         .order_by(UploadRecord::fields().id().asc())
         .limit(limit + 1)
-        .exec(&mut state.sql)
+        .exec(&mut tx)
         .await?;
+    tx.commit().await?;
     let has_more = uploads.len() > limit;
     uploads.truncate(limit);
     let next_after = if has_more {
