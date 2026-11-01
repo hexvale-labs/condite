@@ -7,12 +7,15 @@ console for listing, uploading, confirming and deleting files.
 This is early software: the API has no authentication or owner isolation.
 Deploy the API and dashboard behind trusted access. Download links currently
 expire; public/private visibility is [planned](docs/file-visibility-architecture.md).
-The Vencord upload extension is also planned.
+A [desktop Vencord userplugin](clients/vencord/README.md) adds Condite uploads and
+local privacy options beside the Discord message box. Installation requires a
+source-built Vencord; it is not enabled automatically.
 
 ## Start here
 
 - [Core setup and API](crates/condite-core/README.md): database, bucket and server.
 - [Dashboard setup](clients/dashboard/README.md): SDK build, development and deployment.
+- [File privacy coverage](crates/condite-metadata/README.md): metadata, filenames, encryption and limits.
 - [Development guide](docs/development.md): repository map, checks and change workflow.
 - [SDK build and tests](scripts/sdk/README.md): native addon and browser WASM prerequisites.
 - SDK usage: [Rust](crates/condite-sdk/README.md),

@@ -7,6 +7,8 @@
 | HTTP, SQL, S3, shutdown | `crates/condite-core/` | [Core README](../crates/condite-core/README.md), [agent guidance](../crates/condite-core/AGENTS.md) |
 | API wire types and TypeScript export | `crates/condite-shared/` | [Shared README](../crates/condite-shared/README.md) |
 | HTTP client and upload orchestration | `crates/condite-sdk/` | [Rust SDK](../crates/condite-sdk/README.md) |
+| Local metadata/privacy processors | `crates/condite-metadata/` | [Privacy README](../crates/condite-metadata/README.md) |
+| Discord composer integration | `clients/vencord/` | [Vencord README](../clients/vencord/README.md) |
 | Native and browser bindings | `crates/condite-sdk-node/`, `crates/condite-sdk-wasm/` | [SDK tooling](../scripts/sdk/README.md) |
 | SSR, browser UI and API proxy | `clients/dashboard/` | [Dashboard README](../clients/dashboard/README.md), [agent guidance](../clients/dashboard/AGENTS.md) |
 
@@ -25,6 +27,7 @@ Run commands from the repository root unless specified:
 | Rust service or shared/client code | `just check-rust` (format, Clippy, tests; all targets/features) |
 | Browser Rust | `just check-sdk-wasm` (requires the WASM target) |
 | SDK bindings or generated types | `just check-sdk` (build, independent consumer, lint/types, runtime tests, WASM Clippy) |
+| Vencord plugin | `bun test clients/vencord/tests`; upstream build/type/lint checks in its README |
 | Dashboard | In `clients/dashboard`: `bun run check`, `bun run test:unit`, `bun run build`, `bun run test`, `bun run test:dev` |
 | Documentation only | Verify relative links and source claims; run `git diff --check` |
 

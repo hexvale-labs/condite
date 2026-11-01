@@ -1,5 +1,6 @@
 //! Async Condite HTTP client for native Rust and browser WebAssembly.
 mod error;
+pub use condite_metadata as privacy;
 pub use condite_shared::*;
 pub use error::Error;
 use reqwest::{Method, Url};
@@ -139,6 +140,28 @@ impl Client {
         }
         Self::checked(request.body(data).send().await?).await?;
         Ok(())
+    }
+    /// Transform locally before presigning; failures never upload original bytes.
+    pub async fn upload_sanitized(
+        &self,
+        payload: &PresignRequest,
+        data: &[u8],
+        options: &privacy::PrivacyOptions,
+        config: &privacy::Config,
+    ) -> Result<(UploadResult, privacy::Report), Error> {
+        if payload.size_bytes != data.len() as u64 {
+            return Err(Error::Input("size_bytes does not match data".into()));
+        }
+        let prepared =
+            privacy::prepare(data, &payload.filename, &payload.mime_type, options, config)
+                .map_err(|e| Error::Input(e.to_string()))?;
+        let request = PresignRequest {
+            filename: prepared.filename,
+            mime_type: prepared.mime_type,
+            size_bytes: prepared.data.len() as u64,
+        };
+        let uploaded = self.upload(&request, prepared.data).await?;
+        Ok((uploaded, prepared.report))
     }
     pub async fn upload(
         &self,

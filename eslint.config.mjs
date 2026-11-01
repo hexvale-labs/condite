@@ -7,6 +7,7 @@ export default [
       "scripts/sdk/**/*.mjs",
       "scripts/sdk/**/*.cjs",
       "crates/condite-sdk-node/*.cjs",
+      "crates/condite-sdk-wasm/*.js",
       "eslint.config.mjs",
     ],
     ...js.configs.recommended,

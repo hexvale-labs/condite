@@ -9,6 +9,7 @@ crate-type = ["cdylib"]
 test = false
 
 [dependencies]
+zeroize = { workspace = true }
 condite-sdk = { workspace = true, features = ["rustls"] }
 napi = { workspace = true, features = ["napi6", "tokio_rt", "dyn-symbols"] }
 napi-derive = { workspace = true }

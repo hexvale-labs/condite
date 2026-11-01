@@ -46,8 +46,32 @@ if (
     "Shared TypeScript declarations are stale; regenerate bindings.d.ts with export-types",
   );
 }
+const privacyDeclarations = `
+export interface PrivacyConfig {
+  maxInputBytes?: bigint; maxOutputBytes?: bigint; maxInflatedBytes?: bigint;
+  maxEntryBytes?: bigint; maxEntries?: number;
+}
+export interface PrivacyOptions { stripMetadata?: boolean; anonymizeFilename?: boolean; passphrase?: string; }
+export interface PrivacyReport {
+  policyVersion: string; metadataStripped: boolean; filenameAnonymized: boolean;
+  encrypted: boolean; changed: boolean; retained: string[];
+}
+export interface PrivacyAssessment { canAttempt: boolean; format: string | null; reason: string | null; }
+export interface PreparedFile { data: Uint8Array; filename: string; mimeType: string; sizeBytes: bigint; report: PrivacyReport; }
+export interface NativeMediaPaths { ffmpegPath:string; ffprobePath:string; }
+export interface MediaBackend { strip(data:Uint8Array,config?:PrivacyConfig,control?:{signal?:AbortSignal}):Promise<{data:Uint8Array;mimeType:string;retained:string[]}>; }
+export class MetadataSanitizer {
+  constructor(config?: PrivacyConfig, mediaBackend?: MediaBackend);
+  assess(source: Uint8Array | Blob): Promise<PrivacyAssessment>;
+  canStripMetadata(source: Uint8Array | Blob): Promise<boolean>;
+  prepare(source: Uint8Array | Blob, filename: string, mimeType: string, options?: PrivacyOptions, control?: {signal?: AbortSignal}): Promise<PreparedFile>;
+  strip(source: Uint8Array | Blob, filename?: string, mimeType?: string, control?: {signal?: AbortSignal}): Promise<PreparedFile>;
+  decrypt(source: Uint8Array | Blob, passphrase: string, control?: {signal?: AbortSignal}): Promise<Uint8Array>;
+}
+`;
 const declarations =
   types.stdout +
+  privacyDeclarations +
   `
 export interface SdkError extends Error {
   code: 'input' | 'transport' | 'http' | 'decode';
@@ -65,6 +89,7 @@ export class Client {
   delete(id: string): Promise<void>;
   putUpload(signed: PresignResponse, data: Uint8Array): Promise<void>;
   upload(request: PresignRequest, data: Uint8Array): Promise<UploadResult>;
+  uploadSanitized(request: PresignRequest, source:Uint8Array|Blob, options?:PrivacyOptions, config?:PrivacyConfig, mediaBackend?:MediaBackend):Promise<{upload:UploadResult;privacy:PrivacyReport}>;
 }
 `;
 run("bun", [
@@ -85,7 +110,15 @@ run("bun", [
 const nodeDir = "crates/condite-sdk-node/dist";
 copyFileSync("crates/condite-sdk-node/index.cjs", `${nodeDir}/index.cjs`);
 copyFileSync("crates/condite-sdk-node/LICENSE", `${nodeDir}/LICENSE`);
-writeFileSync(`${nodeDir}/index.d.cts`, declarations);
+const nodeDeclarations = declarations
+  .replaceAll("mediaBackend?: MediaBackend", "mediaPaths?: NativeMediaPaths")
+  .replaceAll("mediaBackend?:MediaBackend", "mediaPaths?:NativeMediaPaths")
+  .replaceAll(", control?: {signal?: AbortSignal}", "")
+  .replace(
+    "  assess(source:",
+    "  prepareFile(path:string, options?:PrivacyOptions):Promise<PreparedFile>;\n  assess(source:",
+  );
+writeFileSync(`${nodeDir}/index.d.cts`, nodeDeclarations);
 writeFileSync(
   `${nodeDir}/package.json`,
   JSON.stringify(
@@ -130,11 +163,21 @@ run(bindgen, [
 // Replace untyped JsValue declarations with the generated public contract.
 writeFileSync(
   `${wasmDir}/index.d.ts`,
-  declarations + '\nexport {default} from "./condite_sdk.js";\n',
+  declarations +
+    '\nexport function createFfmpegBackend<T>(ffmpeg:T, options?:{timeoutMs?:number;legacyProbeExitCode?:boolean;reload?:(ffmpeg:T)=>Promise<unknown>}):MediaBackend;\nexport {default} from "./condite_sdk.js";\n',
 );
 writeFileSync(
   `${wasmDir}/index.js`,
-  'export {default, Client} from "./condite_sdk.js";\n',
+  'export * from "./privacy.js"; export {default} from "./privacy.js";\n',
+);
+copyFileSync("crates/condite-sdk-wasm/privacy.js", `${wasmDir}/privacy.js`);
+copyFileSync(
+  "crates/condite-sdk-wasm/privacy-worker.js",
+  `${wasmDir}/privacy-worker.js`,
+);
+copyFileSync(
+  "crates/condite-sdk-wasm/ffmpeg-backend.js",
+  `${wasmDir}/ffmpeg-backend.js`,
 );
 copyFileSync("crates/condite-sdk-wasm/LICENSE", `${wasmDir}/LICENSE`);
 writeFileSync(
@@ -174,6 +217,9 @@ if (profile === "sdk") {
       wasm: statSync(`${wasmDir}/condite_sdk_bg.wasm`).size,
       wasmGzip: gzipSync(readFileSync(`${wasmDir}/condite_sdk_bg.wasm`)).length,
       wasmGlue: statSync(`${wasmDir}/condite_sdk.js`).size,
+      privacyFacade: statSync(`${wasmDir}/privacy.js`).size,
+      privacyWorker: statSync(`${wasmDir}/privacy-worker.js`).size,
+      mediaAdapter: statSync(`${wasmDir}/ffmpeg-backend.js`).size,
       rustExample: statSync(resolve(targetDir, profileDir, "examples/health"))
         .size,
     },

@@ -1,0 +1,19 @@
+[package]
+name = "condite-metadata"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+zip = { workspace = true }
+quick-xml = { workspace = true }
+lopdf = { workspace = true }
+age = { workspace = true }
+getrandom = { workspace = true }
+zeroize = { workspace = true }
+secrecy = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tempfile = { workspace = true }
