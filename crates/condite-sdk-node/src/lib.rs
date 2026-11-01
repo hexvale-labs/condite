@@ -174,9 +174,13 @@ pub struct NativeClient {
 #[napi]
 impl NativeClient {
     #[napi(constructor)]
-    pub fn new(base: String) -> Result<Self> {
+    pub fn new(base: String, api_key: Option<String>) -> Result<Self> {
         Ok(Self {
-            inner: sdk::Client::new(base).map_err(error)?,
+            inner: match api_key {
+                Some(key) => sdk::Client::with_api_key(base, &key),
+                None => sdk::Client::new(base),
+            }
+            .map_err(error)?,
         })
     }
     #[napi]

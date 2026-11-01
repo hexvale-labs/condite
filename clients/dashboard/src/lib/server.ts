@@ -6,8 +6,13 @@ export function coreOrigin(): string {
     "http://127.0.0.1:8080"
   );
 }
+export function coreApiKey(): string | undefined {
+  return (
+    process.env.CONDITE_API_KEY || import.meta.env.CONDITE_API_KEY || undefined
+  );
+}
 export function serverClient(): Client {
-  return new Client(coreOrigin());
+  return new Client(coreOrigin(), coreApiKey());
 }
 
 // The native SDK has no cancellation API; bound how long SSR waits for it.
@@ -17,7 +22,10 @@ export async function withSsrDeadline<T>(operation: Promise<T>): Promise<T> {
     return await Promise.race([
       operation,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error("Core response timed out")), 5000);
+        timer = setTimeout(
+          () => reject(new Error("Core response timed out")),
+          5000,
+        );
       }),
     ]);
   } finally {

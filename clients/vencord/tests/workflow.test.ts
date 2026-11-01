@@ -22,7 +22,7 @@ describe("Condite SDK boundary", () => {
                 async decrypt() { return new Uint8Array(); }
             },
             Client: class {
-                constructor(url: string) { expect(url).toBe("https://condite.example"); }
+                constructor(url: string, key?: string) { expect(url).toBe("https://condite.example"); expect(key).toBe("test-key"); }
                 async upload(request: { filename: string; mime_type: string; size_bytes: bigint; }, data: Uint8Array) {
                     steps.push("upload");
                     expect(request).toEqual({ filename: "anonymous.age", mime_type: "application/octet-stream", size_bytes: 2n });
@@ -31,7 +31,7 @@ describe("Condite SDK boundary", () => {
                 }
             }
         };
-        const result = await uploadPrepared(sdk, "https://condite.example/", new Uint8Array([1]), "private-name.docx", options);
+        const result = await uploadPrepared(sdk, "https://condite.example/", new Uint8Array([1]), "private-name.docx", options, undefined, "test-key");
         expect(steps).toEqual(["prepare", "upload"]);
         expect(result).toEqual({ filename: "anonymous.age", uri: "https://storage.example/file?signed=true", expiresAt: "later", report });
     });

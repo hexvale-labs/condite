@@ -9,6 +9,9 @@ pub struct UploadRecord {
     #[auto(uuid(v7))]
     pub id: uuid::Uuid,
 
+    #[index]
+    pub owner_id: uuid::Uuid,
+
     pub filename: String,
     pub mime_type: String,
     pub size_bytes: u64,

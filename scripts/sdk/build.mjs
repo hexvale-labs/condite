@@ -81,7 +81,7 @@ export interface SdkError extends Error {
   stage: "put" | "confirm" | null;
 }
 export class Client {
-  constructor(baseUrl: string);
+  constructor(baseUrl: string, apiKey?: string);
   health(): Promise<HealthStatus>;
   presign(request: PresignRequest): Promise<PresignResponse>;
   listUploads(request?: ListUploadsRequest): Promise<ListUploadsResponse>;

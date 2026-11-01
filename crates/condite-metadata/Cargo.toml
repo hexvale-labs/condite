@@ -11,7 +11,7 @@ zip = { workspace = true }
 quick-xml = { workspace = true }
 lopdf = { workspace = true }
 age = { workspace = true }
-getrandom = { workspace = true }
+getrandom = { version = "0.2", features = ["js"] }
 zeroize = { workspace = true }
 secrecy = { workspace = true }
 

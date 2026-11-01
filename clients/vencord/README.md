@@ -17,6 +17,10 @@ saves a decrypted copy to a location you choose. It makes no network request.
 The encrypted original remains intact; the decrypted filename defaults to
 `decrypted-file` because the encrypted payload does not carry its original name.
 
+Uploads require `CONDITE_API_KEY` and `CONDITE_API_URL` in the desktop launch
+environment. The URL must match the plugin setting; the key stays in the native
+process and is sent only to that API.
+
 ## Install
 
 This requires a source-built desktop Vencord and a locally built Condite Node

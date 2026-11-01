@@ -16,6 +16,19 @@ impl Client {
     pub fn new(base: impl AsRef<str>) -> Result<Self, Error> {
         Self::with_client(base, reqwest::Client::new())
     }
+    /// Authenticate API calls; signed storage requests never receive this credential.
+    pub fn with_api_key(base: impl AsRef<str>, key: &str) -> Result<Self, Error> {
+        let mut value = reqwest::header::HeaderValue::from_str(&format!("Bearer {key}"))
+            .map_err(|_| Error::Input("invalid API key header".into()))?;
+        value.set_sensitive(true);
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(reqwest::header::AUTHORIZATION, value);
+        let builder = reqwest::Client::builder().default_headers(headers);
+        #[cfg(not(target_arch = "wasm32"))]
+        let builder = builder.redirect(reqwest::redirect::Policy::none());
+        let api = builder.build()?;
+        Self::with_client(base, api)
+    }
     /// The supplied client's default headers are used only for API requests.
     pub fn with_client(base: impl AsRef<str>, api: reqwest::Client) -> Result<Self, Error> {
         let mut base = Url::parse(base.as_ref()).map_err(|e| Error::Input(e.to_string()))?;
@@ -71,14 +84,14 @@ impl Client {
         Self::json(self.api.get(self.url(&["v1", "health"])?)).await
     }
     pub async fn presign(&self, payload: &PresignRequest) -> Result<PresignResponse, Error> {
-        if payload.size_bytes > 104_857_600
+        if payload.size_bytes > i64::MAX as u64
             || payload.filename.is_empty()
             || payload.filename.len() > 255
             || payload.mime_type.is_empty()
             || payload.mime_type.len() > 255
             || payload.mime_type.bytes().any(|b| b.is_ascii_control())
         {
-            return Err(Error::Input("maximum size is 100 MiB; filename and MIME type must be nonempty and at most 255 bytes; MIME type must not contain control characters".into()));
+            return Err(Error::Input("size exceeds supported byte range; filename and MIME type must be nonempty and at most 255 bytes; MIME type must not contain control characters".into()));
         }
         Self::json(self.api.post(self.url(&["v1", "uploads"])?).json(payload)).await
     }

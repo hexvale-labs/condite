@@ -11,6 +11,7 @@
 | Discord composer integration | `clients/vencord/` | [Vencord README](../clients/vencord/README.md) |
 | Native and browser bindings | `crates/condite-sdk-node/`, `crates/condite-sdk-wasm/` | [SDK tooling](../scripts/sdk/README.md) |
 | SSR, browser UI and API proxy | `clients/dashboard/` | [Dashboard README](../clients/dashboard/README.md), [agent guidance](../clients/dashboard/AGENTS.md) |
+| Discord userplugin and Vencord build tooling | `clients/vencord-extension/` | [Userplugin README](../clients/vencord-extension/README.md) |
 
 The Rust workspace shares a root lockfile and `target/`, including SDK development
 builds. SDK builds generate ignored packages under the binding crates' `dist/`
@@ -29,6 +30,7 @@ Run commands from the repository root unless specified:
 | SDK bindings or generated types | `just check-sdk` (build, independent consumer, lint/types, runtime tests, WASM Clippy) |
 | Vencord plugin | `bun test clients/vencord/tests`; upstream build/type/lint checks in its README |
 | Dashboard | In `clients/dashboard`: `bun run check`, `bun run test:unit`, `bun run build`, `bun run test`, `bun run test:dev` |
+| Vencord userplugin | In `clients/vencord-extension`: `pnpm setup`, `pnpm check`, `pnpm build` (includes native SDK), `pnpm test`, `pnpm build:web` (UI compilation only) |
 | Documentation only | Verify relative links and source claims; run `git diff --check` |
 
 See [SDK prerequisites](../scripts/sdk/README.md) before running SDK checks.
@@ -59,3 +61,7 @@ workflows here, CI rationale in `ci.md`, and future sharing requirements in
 [file visibility architecture](file-visibility-architecture.md). Historical specs
 and plans under `superpowers/` explain intent; verify current behavior in source.
 Record limitations explicitly rather than describing planned features as shipped.
+
+Local administration is provided by [condite-ctl](../crates/condite-ctl/README.md).
+Its control DTOs live in `condite-shared::control`; the executable does not depend
+on core, AWS or database crates.

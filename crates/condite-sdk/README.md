@@ -6,7 +6,7 @@ MIT-licensed async client for Condite's v1 HTTP API. Depends on `condite-shared`
 use condite_sdk::{Client, ListUploadsRequest, PresignRequest};
 
 # async fn example() -> Result<(), condite_sdk::Error> {
-let client = Client::new("http://localhost:8080")?;
+let client = Client::with_api_key("http://localhost:8080", "your-api-key")?;
 let page = client.list_uploads(&ListUploadsRequest::default()).await?;
 let result = client.upload(&PresignRequest {
     filename: "hello.txt".into(),
@@ -19,7 +19,7 @@ let result = client.upload(&PresignRequest {
 
 Native hosts supply a Tokio runtime. Default `rustls` enables HTTPS; disable default features for HTTP-only hosts or browser WASM. `Client::with_client` accepts a configured reqwest API client. Signed storage requests use a separate client without its default headers.
 
-Methods: `health`, `presign`, `list_uploads`, `put_upload`, `confirm`, `delete`, and `upload`. Base URLs may include a deployment prefix. Pagination returns `next_after` for the next request's `after`. No automatic write retries; `Error::Upload` retains the request ID and failed stage for recovery. Upload buffers must match the declared size (maximum 100 MiB).
+Methods: `health`, `presign`, `list_uploads`, `put_upload`, `confirm`, `delete`, and `upload`. Base URLs may include a deployment prefix. Pagination returns `next_after` for the next request's `after`. No automatic write retries; `Error::Upload` retains the request ID and failed stage for recovery. Upload buffers must match the declared size (the API enforces per-key limits).
 
 ## JavaScript and build checks
 
@@ -39,5 +39,9 @@ host, prepare on a blocking worker and call `upload` with the result.
 For optional local FFmpeg/ffprobe, call `privacy::prepare_with_backend` with a
 configured `privacy::media::FfmpegBackend`, then upload its result. No binaries are
 downloaded. The 300 MiB configurable processing limit is separate from the
-service's unchanged 100 MiB upload limit, including encryption overhead. See
+server's API-key upload and storage quotas, including encryption overhead. See
 [coverage, limits and encryption](../condite-metadata/README.md).
+
+`Client::with_api_key` marks the Bearer header sensitive and disables API redirects
+on native hosts. Credentials are sent only to the API client, never to signed
+storage requests. JS constructors accept an optional second `apiKey` argument.

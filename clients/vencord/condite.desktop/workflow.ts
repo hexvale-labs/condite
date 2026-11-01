@@ -29,7 +29,7 @@ export interface Sdk {
         prepare(data: Uint8Array, filename: string, mime: string, options: PrivacyOptions): Promise<PreparedFile>;
         decrypt(data: Uint8Array, passphrase: string): Promise<Uint8Array>;
     };
-    Client: new (apiUrl: string) => {
+    Client: new (apiUrl: string, apiKey?: string) => {
         upload(request: { filename: string; mime_type: string; size_bytes: bigint; }, data: Uint8Array): Promise<{
             confirmation: { public_uri: string; expires_at: string; };
         }>;
@@ -55,7 +55,7 @@ export function validateApiUrl(value: string): string {
 }
 export async function uploadPrepared(
     sdk: Sdk, apiUrl: string, data: Uint8Array, filename: string,
-    options: PrivacyOptions, media?: { ffmpegPath: string; ffprobePath: string; }
+    options: PrivacyOptions, media?: { ffmpegPath: string; ffprobePath: string; }, apiKey?: string
 ): Promise<{ filename: string; uri: string; expiresAt: string; report: PrivacyReport; }> {
     const baseUrl = validateApiUrl(apiUrl);
     let prepared: PreparedFile;
@@ -69,7 +69,7 @@ export async function uploadPrepared(
     }
     let result: Awaited<ReturnType<InstanceType<Sdk["Client"]>["upload"]>>;
     try {
-        result = await new sdk.Client(baseUrl).upload({
+        result = await new sdk.Client(baseUrl, apiKey).upload({
             filename: prepared.filename,
             mime_type: prepared.mimeType,
             size_bytes: prepared.sizeBytes

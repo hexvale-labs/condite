@@ -12,7 +12,7 @@ export const en = {
   serviceDescription:
     "Connection and runtime information for your Condite service.",
   upload: "Upload files",
-  uploadHint: "Up to 100 MiB per file. Files go directly to your storage.",
+  uploadHint: "Your API key limits apply. Files go directly to your storage.",
   refresh: "Refresh",
   refreshing: "Refreshing…",
   list: "List view",
@@ -73,7 +73,7 @@ export const en = {
   confirming: "Confirming",
   complete: "Complete",
   failed: "Failed",
-  tooLarge: "This file exceeds the 100 MiB limit.",
+  tooLarge: "This file exceeds your API key limits.",
   invalidName: "Filename must contain 1–255 UTF-8 bytes.",
   failedUpload:
     "Upload failed. Refresh files to find the pending record; retry confirmation or delete it.",
@@ -99,7 +99,7 @@ const es: Messages = {
     "Conexión e información del entorno de tu servicio Condite.",
   upload: "Subir archivos",
   uploadHint:
-    "Hasta 100 MiB por archivo. Se suben directamente al almacenamiento.",
+    "Se aplican los límites de tu clave API. Los archivos se suben directamente al almacenamiento.",
   refresh: "Actualizar",
   refreshing: "Actualizando…",
   list: "Vista de lista",
@@ -161,7 +161,7 @@ const es: Messages = {
   confirming: "Confirmando",
   complete: "Completado",
   failed: "Fallido",
-  tooLarge: "Este archivo supera el límite de 100 MiB.",
+  tooLarge: "Este archivo supera los límites de tu clave API.",
   invalidName: "El nombre debe contener entre 1 y 255 bytes UTF-8.",
   failedUpload:
     "La subida falló. Actualiza los archivos para encontrar el registro pendiente; confirma o elimínalo.",

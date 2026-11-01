@@ -13,6 +13,8 @@ let pickerCalls = 0;
 let destination = savePath;
 let trace: string[] = [];
 let plain: Uint8Array | undefined;
+const previousApiKey = process.env.CONDITE_API_KEY;
+const previousApiUrl = process.env.CONDITE_API_URL;
 const previousSdk = process.env.CONDITE_SDK_NODE_PATH;
 const previousFfmpeg = process.env.CONDITE_FFMPEG_PATH;
 const previousFfprobe = process.env.CONDITE_FFPROBE_PATH;
@@ -47,6 +49,8 @@ const native = await import("../condite.desktop/native");
 const event = {} as Parameters<typeof native.chooseAndUpload>[0];
 
 beforeEach(async () => {
+    process.env.CONDITE_API_KEY = "test-key";
+    process.env.CONDITE_API_URL = "https://condite.example";
     process.env.CONDITE_SDK_NODE_PATH = sdkPath;
     delete process.env.CONDITE_FFMPEG_PATH;
     delete process.env.CONDITE_FFPROBE_PATH;
@@ -59,7 +63,7 @@ beforeEach(async () => {
     await writeFile(inputPath, new Uint8Array([1, 2, 3]));
 });
 afterAll(async () => {
-    for (const [name, value] of [["CONDITE_SDK_NODE_PATH", previousSdk], ["CONDITE_FFMPEG_PATH", previousFfmpeg], ["CONDITE_FFPROBE_PATH", previousFfprobe]]) {
+    for (const [name, value] of [["CONDITE_API_KEY", previousApiKey], ["CONDITE_API_URL", previousApiUrl], ["CONDITE_SDK_NODE_PATH", previousSdk], ["CONDITE_FFMPEG_PATH", previousFfmpeg], ["CONDITE_FFPROBE_PATH", previousFfprobe]]) {
         if (value === undefined) delete process.env[name!]; else process.env[name!] = value;
     }
     delete (globalThis as any).__conditeNativeTest;
@@ -113,4 +117,12 @@ test("decrypt replaces an existing permissive destination with a private file", 
     expect(await native.chooseDecryptAndSave(event, "transient canary")).toEqual({ status: "ok" });
     expect((await stat(savePath)).mode & 0o777).toBe(0o600);
     expect(new Uint8Array(await readFile(inputPath))).toEqual(new Uint8Array([1, 2, 3]));
+});
+
+test("credentials cannot be sent to a different composer destination", async () => {
+    const reply = await native.chooseAndUpload(event, "https://other.example", { stripMetadata: false, anonymizeFilename: false });
+    expect(reply.status).toBe("error");
+    expect(pickerCalls).toBe(0);
+    expect(trace).toEqual([]);
+    expect(JSON.stringify(reply)).not.toContain("test-key");
 });

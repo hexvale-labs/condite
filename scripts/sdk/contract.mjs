@@ -2,7 +2,7 @@ export async function contract(Client, base) {
   const assert = (ok, message) => {
     if (!ok) throw new Error(message);
   };
-  const client = new Client(`${base}/prefix`);
+  const client = new Client(`${base}/prefix`, "contract-key");
   assert((await client.health()).healthy, "health");
   const page = await client.listUploads({ limit: 2, after: "cursor&value" });
   assert(page.next_after === null, "null cursor");

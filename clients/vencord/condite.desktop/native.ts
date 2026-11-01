@@ -75,14 +75,18 @@ export async function chooseAndUpload(_event: IpcMainInvokeEvent, apiUrl: string
     let options: PrivacyOptions | undefined;
     try {
         if (typeof apiUrl !== "string" || apiUrl.length > 2048) throw new OperationError("Invalid Condite API URL.");
-        validateApiUrl(apiUrl);
+        const destination = validateApiUrl(apiUrl);
+        const apiKey = process.env.CONDITE_API_KEY;
+        if (!apiKey || !process.env.CONDITE_API_URL || validateApiUrl(process.env.CONDITE_API_URL) !== destination) {
+            throw new OperationError("Set CONDITE_API_KEY and a matching CONDITE_API_URL in the desktop launch environment.");
+        }
         options = privacyOptions(value);
         const { sdk, media } = localSdk();
         const selected = await dialog.showOpenDialog({ title: "Choose a file for Condite", properties: ["openFile"] });
         if (selected.canceled || selected.filePaths.length !== 1) return { status: "cancelled" };
         const path = selected.filePaths[0];
         const data = await readSelectedFile(path);
-        return { status: "ok", ...await uploadPrepared(sdk, apiUrl, data, basename(path), options, media) };
+        return { status: "ok", ...await uploadPrepared(sdk, apiUrl, data, basename(path), options, media, apiKey) };
     } catch (error) { return failure(error); }
     finally {
         if (options) options.passphrase = undefined;
