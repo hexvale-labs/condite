@@ -43,32 +43,40 @@ sdk() {
     version node 22.0.0
     version bun 1.4.4
     tool cc 'Install a C compiler/toolchain.'
-    file node_modules/.bin/napi 'Run just install-sdk.'
+    file node_modules/.bin/napi 'Run just install sdk.'
     if command -v rustup >/dev/null 2>&1 && rustup target list --installed | grep -Fxq wasm32-unknown-unknown; then
         ok wasm32-unknown-unknown
-    else missing 'WASM target missing. Run just install-sdk.'; fi
+    else missing 'WASM target missing. Run just install sdk.'; fi
     local expected actual
     expected=$(awk '/^name = "wasm-bindgen"$/ {found=1; next} found && /^version =/ {gsub(/"/, "", $3); print $3; exit}' Cargo.lock)
     actual=$("${WASM_BINDGEN:-wasm-bindgen}" --version 2>/dev/null || true)
     if test "$actual" = "wasm-bindgen $expected"; then ok "$actual";
-    else missing "wasm-bindgen CLI must match Cargo.lock ($expected). Run just install-sdk; check WASM_BINDGEN if set."; fi
+    else missing "wasm-bindgen CLI must match Cargo.lock ($expected). Run just install sdk; check WASM_BINDGEN if set."; fi
 }
 dashboard() {
     printf '\nDashboard\n'
     version node 22.23.4
     version bun 1.4.4
-    file clients/dashboard/node_modules/.bin/astro 'Run just install-dashboard.'
-    file crates/condite-sdk-node/dist/condite-sdk.node 'Run just build-sdk (or just install-dashboard).'
-    file crates/condite-sdk-node/dist/package.json 'Run just build-sdk.'
-    file crates/condite-sdk-wasm/dist/condite_sdk_bg.wasm 'Run just build-sdk.'
-    file crates/condite-sdk-wasm/dist/package.json 'Run just build-sdk.'
+    file clients/dashboard/node_modules/.bin/astro 'Run just install dashboard.'
+    file crates/condite-sdk-node/dist/condite-sdk.node 'Run just build sdk (or just install dashboard).'
+    file crates/condite-sdk-node/dist/package.json 'Run just build sdk.'
+    file crates/condite-sdk-wasm/dist/condite_sdk_bg.wasm 'Run just build sdk.'
+    file crates/condite-sdk-wasm/dist/package.json 'Run just build sdk.'
     printf 'Backend defaults to http://127.0.0.1:8080; override CONDITE_API_URL in clients/dashboard/.env.\n'
+}
+vencord() {
+    printf '\nVencord\n'
+    tool git 'Install Git.'
+    version node 22.0.0
+    version pnpm 12.15.0
+    file clients/vencord-extension/.vencord/package.json 'Run just install vencord.'
 }
 case "${1:-all}" in
     backend) backend ;;
     sdk) sdk ;;
     dashboard) dashboard ;;
-    all) backend; sdk; dashboard ;;
-    *) printf 'Usage: just doctor [all|backend|dashboard|sdk]\n' >&2; exit 2 ;;
+    vencord) vencord ;;
+    all) backend; sdk; dashboard; vencord; tool mprocs 'Run just install runner.' ;;
+    *) printf 'Usage: just check tools [all|backend|dashboard|sdk|vencord]\n' >&2; exit 2 ;;
 esac
 exit "$status"

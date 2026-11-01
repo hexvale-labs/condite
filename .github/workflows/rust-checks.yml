@@ -38,4 +38,4 @@ jobs:
         with:
           kind: rust
       - name: Run Rust checks
-        run: just check-rust
+        run: just check rust

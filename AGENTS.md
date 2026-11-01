@@ -27,3 +27,14 @@
   build artifacts. Document environment names using example values only.
 - Run checks appropriate to the changed component (see development guide).
   For documentation-only changes, check local links and `git diff --check`.
+
+## Just command design
+
+- Apply the same command design to every justfile: short verbs with spaced
+  arguments, such as `just install backend` and `just check sdk` at the root.
+  Never add duplicate aliases such as `install-backend`, `check-sdk`, `setup`,
+  or bare component names. Extend the existing general command instead.
+- Keep `just help` beginner-friendly and make it the default. Component
+  justfiles use the same verbs with their local component implicit.
+- Keep implementations in one place; update help, docs and CI callers when
+  changing commands. Use `just check tools [component]` for setup diagnostics.

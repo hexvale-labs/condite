@@ -1,0 +1,9 @@
+procs:
+  backend:
+    cmd: [just, run, backend]
+    cwd: <CONFIG_DIR>
+    stop: SIGINT
+  dashboard:
+    cmd: [just, run, dashboard]
+    cwd: <CONFIG_DIR>
+    stop: SIGINT

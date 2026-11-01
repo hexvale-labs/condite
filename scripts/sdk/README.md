@@ -4,14 +4,14 @@ Prerequisites: Rust, Node 22+, a C toolchain, `wasm32-unknown-unknown`, and wasm
 
 ```sh
 just install sdk # Bun/Rust dependencies, WASM target, matching wasm-bindgen CLI
-just doctor sdk
+just check tools sdk
 bun x --no-install playwright install --with-deps chromium
 just build sdk
 bun run check:consumer
 bun run lint:sdk
 bun run test:sdk
-just check-rust
-just check-sdk-wasm
+just check rust
+just check wasm
 ```
 
 On headless Linux the Electron main-process test uses `xvfb-run`; Electron also needs GTK 3 runtime libraries. Set `WASM_BINDGEN` to an alternate CLI path if needed. Development builds reuse the root `target/` directory and Cargo dev profile. Use `bun run build:sdk:release` for the size-optimized SDK profile and production size measurements. `CARGO_TARGET_DIR` is respected; core's release configuration is unchanged.
@@ -20,7 +20,7 @@ Builds produce `crates/condite-sdk-{node,wasm}/dist` packages. Release builds al
 
 The runtime suite loads the actual addon in Node and Electron and the compiled WASM in Chromium, using local HTTP fixtures for all five API methods, upload flow, bigint precision, and partial failures. Core integration tests also run the Rust SDK against the actual server router. The independent `examples/sdk-consumer` project checks embedding outside this workspace. All SDK/shared/wrapper crates are MIT; condite-core retains AGPL-3.0-or-later.
 
-From this directory, use `just install`, `just build`, or `just doctor`. Installation
+From this directory, use `just install`, `just build`, or `just check tools`. Installation
 fetches the whole Rust workspace plus the independent SDK consumer. Build regenerates
 shared declarations before packaging; existing Bun build scripts retain their stale-type check.
 

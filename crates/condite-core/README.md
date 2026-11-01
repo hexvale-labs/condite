@@ -117,7 +117,7 @@ browser requests; the bucket still needs its own CORS configuration.
 
 Check compilation with `cargo check --locked` from this directory. Live startup
 requires the configured database; actual uploads require the S3 service.
-Install [Just](https://just.systems), then run `just check-rust` from the repository root
+Install [Just](https://just.systems), then run `just check rust` from the repository root
 for formatting, lint, and regression checks (also run in CI).
 
 ## Planned sharing model

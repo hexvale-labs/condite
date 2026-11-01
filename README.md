@@ -29,16 +29,18 @@ Install [Just](https://just.systems), Rust/rustup, Node (dashboard: 22.23.4+),
 Bun 1.4.4+, and a C toolchain. Then, from the repository root:
 
 ```sh
-just setup                # Backend + SDK tooling/build + dashboard dependencies
+just install all                # Backend + SDK tooling/build + dashboard dependencies
 # Edit crates/condite-core/.env with your database and S3 credentials.
-just doctor               # Check all prerequisites and configuration
-just backend              # Terminal 1: API on :8080
-just dashboard            # Terminal 2: dashboard on :4321 (open /en/ or /es/)
+just check tools               # Check all prerequisites and configuration
+just run backend              # Terminal 1: API on :8080
+just run dashboard            # Terminal 2: dashboard on :4321 (open /en/ or /es/)
 ```
 
-Use `just install <backend|dashboard|sdk|all>` to install dependencies and
-`just build <backend|dashboard|sdk|all>` to build. `just setup` is a shortcut for
-`just install all`. Building all regenerates SDKs and builds both applications.
+Run `just help` for all commands and examples. `just install all` includes the
+Vencord toolchain setup and mprocs (requires pnpm for Vencord). Use `just run all`
+to manage the backend and dashboard together in [mprocs](https://github.com/Rundfunk/mprocs),
+or run each component separately. Database and S3 services must be provisioned
+separately. `just build all` includes SDKs, backend, dashboard and Vencord.
 Dashboard installation prepares the SDKs first; dashboard builds assume
 installation is complete.
 `just build sdk` regenerates shared types,
@@ -62,14 +64,14 @@ builds share `target/` with the service. `bun run build:sdk:release` retains the
 size-optimized release build. The external Rust consumer deliberately keeps its
 own workspace and lockfile to test independent use.
 
-`just doctor backend`, `just doctor dashboard`, and `just doctor sdk` narrow the
-checks. Doctor is read-only, returns nonzero for missing prerequisites, and does
+`just check tools backend`, `just check tools dashboard`, and `just check tools sdk` narrow the
+checks. Tool checking is read-only, returns nonzero for missing prerequisites, and does
 not probe the database or S3. SDK browser/Electron test dependencies are documented
 in [SDK development](scripts/sdk/README.md).
 
 Local justfiles in `crates/condite-core`, `clients/dashboard`, and `scripts/sdk`
-provide `install`, `build`, `doctor`, and `run` (apps). Install commands
-preserve existing `.env` files. Run `just` anywhere for the relevant command list.
+provide `install`, `build`, `check`, `help`, and `run` (apps). Install commands
+preserve existing `.env` files. Run `just` anywhere for the command guide.
 
 ## Run the service
 
