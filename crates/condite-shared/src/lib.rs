@@ -1,4 +1,6 @@
-//! Dependency-light HTTP wire contract shared by Condite clients and server.
+//! Dependency-light HTTP and local control wire contracts for Condite.
+
+pub mod control;
 
 use serde::{Deserialize, Serialize};
 
@@ -77,5 +79,3 @@ pub enum UploadStatus {
     Pending,
     Confirmed,
 }
-
-pub mod control;

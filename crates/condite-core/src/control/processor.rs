@@ -16,6 +16,39 @@ async fn execute_attempt(state: &AppState, command: ControlCommand) -> Result<Co
     tracing::debug!(?command, "Executing control command");
     match command {
         ControlCommand::Status => Ok(ControlResponse::Status(state.health()?)),
+        ControlCommand::SetLogLevel { level } => Ok(match crate::logging::set_filter(&level) {
+            Ok(()) => ControlResponse::Success,
+            Err(_) => ControlResponse::Error {
+                code: "log_filter_failed".into(),
+                message:
+                    "Could not apply log filter; check the filter syntax and logging initialization"
+                        .into(),
+            },
+        }),
+        ControlCommand::Reload => {
+            let restart = state.config.restart_required();
+            let restart_message = if restart.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    " Restart required for: {}. These settings were not changed.",
+                    restart.join(", ")
+                )
+            };
+            Ok(match crate::logging::reload_from_env() {
+                Err(_) => ControlResponse::Error {
+                    code: "reload_failed".into(),
+                    message: format!(
+                        "RUST_LOG could not be reloaded; the active filter was retained.{restart_message}"
+                    ),
+                },
+                Ok(()) if !restart.is_empty() => ControlResponse::Error {
+                    code: "restart_required".into(),
+                    message: format!("RUST_LOG reloaded.{restart_message}"),
+                },
+                Ok(()) => ControlResponse::Success,
+            })
+        }
         ControlCommand::Shutdown => {
             tracing::info!("Shutdown requested through control socket");
             state.ct.cancel();
@@ -112,7 +145,6 @@ async fn execute_attempt(state: &AppState, command: ControlCommand) -> Result<Co
                 Err(e) => Err(anyhow::anyhow!("upload deletion failed: {e:?}")),
             }
         }
-        _ => Ok(ControlResponse::CommandNotImplemented),
     }
 }
 
