@@ -9,3 +9,18 @@ snapshot_name = "0000_snapshot.toml"
 id = 7037696958424098178
 name = "0001_rename uploaded to confirmed, make it a string instead of a native enum as they suck.sql"
 snapshot_name = "0001_snapshot.toml"
+
+[[migrations]]
+id = 6662782899803915703
+name = "0002_authentication.sql"
+snapshot_name = "0002_snapshot.toml"
+
+[[migrations]]
+id = 8234710512423501901
+name = "0003_normalize legacy upload status.sql"
+snapshot_name = "0003_snapshot.toml"
+
+[[migrations]]
+id = 4667777756903411205
+name = "0004_reset_database_require_upload_owner.sql"
+snapshot_name = "0004_snapshot.toml"

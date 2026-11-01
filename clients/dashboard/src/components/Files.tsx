@@ -176,10 +176,10 @@ export default function Files(props: Props) {
       for (const [index, file] of files.entries()) {
         if (disposed) break;
         const nameSize = new TextEncoder().encode(file.name).length;
-        if (file.size > 104_857_600 || !nameSize || nameSize > 255) {
+        if (!nameSize || nameSize > 255) {
           update(index, {
             stage: "failed",
-            error: file.size > 104_857_600 ? t.tooLarge : t.invalidName,
+            error: t.invalidName,
           });
           continue;
         }

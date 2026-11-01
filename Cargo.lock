@@ -1153,10 +1153,13 @@ dependencies = [
  "condite-sdk",
  "condite-shared",
  "dotenv",
+ "getrandom 0.4.3",
  "jiff",
  "mime2ext",
  "serde",
  "serde_json",
+ "sha2",
+ "tempfile",
  "toasty",
  "toasty-cli",
  "tokio",
@@ -1165,6 +1168,18 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "condite-ctl"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "condite-shared",
+ "serde_json",
+ "socket2 0.6.5",
+ "tempfile",
 ]
 
 [[package]]

@@ -60,9 +60,11 @@ state, not a live database or bucket readiness probe. HTTP binds to
 
 The local control socket is `$XDG_RUNTIME_DIR/condite/condite.sock`, falling back
 to `/run/condite/condite.sock`. Use a writable, private runtime directory. It
-accepts one newline-delimited JSON command per connection: `{"command":"status"}`
-or `{"command":"shutdown"}`. Other declared commands, including API-key
-generation, currently return `command_not_implemented`.
+accepts one bounded newline-delimited JSON command per connection. Use
+[condite-ctl](../condite-ctl/README.md) for status, shutdown, API-key generation,
+limit updates, revocation and administrative upload deletion. Reload and log-level
+changes return `command_not_implemented`. The directory and socket are restricted
+to the service user (0700/0600).
 
 Shutdown cancels background work, drains tracked tasks and HTTP connections, and
 removes the socket. The pending cleaner runs immediately and then every five
@@ -73,14 +75,27 @@ confirmed files are not automatically cleaned up.
 ## Upload API
 
 `POST /v1/uploads` accepts JSON with `size_bytes`, `mime_type`, and `filename`.
-Sizes above 100 MiB and empty or overlong metadata return HTTP 400.
+All upload routes require `Authorization: Bearer <api-key>`; health remains public.
+Generate a key with `condite-ctl apikey generate`. Defaults are 100 MiB per file
+and 1 GiB total. Limits are stored per key and can be changed with `apikey update`.
+Quota violations return HTTP 413; invalid metadata returns HTTP 400. Missing,
+invalid or revoked keys return 401. Keys see only their own uploads; other owners'
+IDs return 404.
+
+Pending and confirmed records reserve quota. Reservations and policy changes
+serialize through database transactions and a key-row write lock, including across
+service instances. Confirmation rechecks current limits without double counting.
+Lowering limits preserves existing files; deletion remains available over quota.
+Failed storage deletion retains metadata/reservations for retries. Revocation
+retains files and ownership; local administrative deletion remains available.
+Existing signed S3 URLs continue working until expiry even after revocation.
 The response contains `request_id`, `uri`, `headers`, and `expires_at_utc`.
 PUT the file to `uri` using the returned headers within two minutes.
 
 `POST /v1/uploads/{id}/confirm` checks the uploaded size and MIME type, copies
 it from `pending/` to `uploads/`, and removes the pending object. Repeated
 confirmation is supported. It returns `public_uri` (a signed download URL valid
-for 15 minutes), `expires_at` (URL expiry), and `new_storage_size_bytes` (total
+for 15 minutes), `expires_at` (URL expiry), and `new_storage_size_bytes` (the key's total
 confirmed bytes). Confirmed files have no automatic expiry.
 
 `GET /v1/uploads?limit=50&after=<uuid>` returns `uploads` metadata in ascending
@@ -94,8 +109,7 @@ snapshot; UUIDv7 ordering does not guarantee insertion order across machines.
 204; unknown IDs return 404. Storage failures retain metadata so deletion can
 be retried. Bucket credentials need Head/Get, Put/Copy, and Delete permissions.
 Browser uploads also require bucket CORS allowing PUT and the signed headers.
-The service currently has no authentication, owner isolation or API CORS layer.
-Keep it behind trusted access. Use the dashboard's same-origin API proxy for
+The API has no browser CORS layer. Use the dashboard's same-origin API proxy for
 browser requests; the bucket still needs its own CORS configuration.
 
 Check compilation with `cargo check --locked` from this directory. Live startup
@@ -110,3 +124,11 @@ S3-compatible storage; no domain is chosen yet. Current `public_uri` values are
 expiring signed download URLs, not permanent public links. See the
 [architecture proposal](../../docs/file-visibility-architecture.md) before adding
 visibility, authorization or delivery endpoints.
+
+Migration `0003` normalizes historical `uploaded` statuses to `confirmed`. It is a
+data-only migration; Toasty skips generation when there is no schema difference,
+so its SQL and unchanged schema snapshot are recorded explicitly.
+
+Migration `0004` intentionally wipes all upload metadata and API keys once, then
+makes `uploads.owner_id` required. Generate new keys afterward. This database
+reset does not delete S3 objects; subsequent startups preserve new records.

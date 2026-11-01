@@ -52,6 +52,9 @@ const server = http.createServer(async (req, res) => {
       res.end("<!doctype html><title>SDK integration fixture</title>");
       return;
     }
+    if (url.pathname.startsWith("/prefix/")) {
+      assert.equal(req.headers.authorization, "Bearer contract-key");
+    }
     if (req.method === "GET" && url.pathname === "/prefix/v1/health")
       return json({
         healthy: true,
