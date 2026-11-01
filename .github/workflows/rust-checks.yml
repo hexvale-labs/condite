@@ -40,4 +40,4 @@ jobs:
           # The virtual workspace manifest defines profiles but is not a member manifest.
           key: ${{ hashFiles('Cargo.toml') }}
       - name: Run Rust checks
-        run: just check-rust
+        run: just check rust

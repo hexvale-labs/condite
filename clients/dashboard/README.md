@@ -9,11 +9,11 @@ From this directory:
 
 ```sh
 just install # Installs SDK tooling, builds generated packages, then installs with Bun
-just doctor
+just check tools
 just run
 ```
 
-Start `just backend` from the repository root in a second terminal after configuring
+Start `just run backend` from the repository root in a second terminal after configuring
 `crates/condite-core/.env`. See [local development](../../README.md#local-development)
 and [SDK prerequisites](../../scripts/sdk/README.md).
 

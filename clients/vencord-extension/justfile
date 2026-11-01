@@ -1,0 +1,26 @@
+default: help
+
+# Show the shared command guide.
+help:
+    @just --justfile ../../justfile help
+
+# Fetch pinned Vencord and install its dependencies (requires pnpm).
+install:
+    pnpm setup
+
+# Build Vencord and the native SDK.
+build:
+    pnpm build
+
+# Validate the plugin, or use `check tools` for setup diagnostics.
+check target="all":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case {{quote(target)}} in
+        tools) just --justfile ../../justfile check tools vencord ;;
+        all)
+            pnpm check
+            pnpm test
+            bun test ../vencord/tests ;;
+        *) echo 'Use check [all|tools]' >&2; exit 2 ;;
+    esac

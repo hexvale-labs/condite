@@ -1,5 +1,8 @@
-default:
-    @just --list
+default: help
+
+# Show the shared command guide.
+help:
+    @just --justfile ../../justfile help
 
 # Install workspace dependencies and build the SDK packages.
 install:
@@ -17,6 +20,6 @@ build:
 run:
     bun run dev
 
-# Check runtime versions, installed packages, and generated SDK artifacts.
-doctor:
-    bash ../../scripts/dev/doctor.sh dashboard
+# Validate the dashboard, or use `check tools` for setup diagnostics.
+check target="all":
+    @bash -c 'if [[ "$1" == tools ]]; then just --justfile ../../justfile check tools dashboard; elif [[ "$1" == all ]]; then bun run check && bun run test:unit && bun run build && bun run test && bun run test:dev; else echo "Use check [all|tools]" >&2; exit 2; fi' -- {{quote(target)}}

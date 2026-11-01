@@ -1,5 +1,8 @@
-default:
-    @just --list
+default: help
+
+# Show the shared command guide.
+help:
+    @just --justfile ../../justfile help
 
 # Install JS dependencies, fetch all Rust crates, and prepare WASM tooling.
 [working-directory: "../.."]
@@ -28,6 +31,18 @@ build:
     cp "$types" crates/condite-shared/bindings.d.ts
     bun run build:sdk
 
-# Check build prerequisites; browser/Electron test tools are separate (see README).
-doctor:
-    bash ../dev/doctor.sh sdk
+# Build and validate bindings, or use `check tools` for setup diagnostics.
+[working-directory: "../.."]
+check target="all":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case {{quote(target)}} in
+        tools) just check tools sdk ;;
+        all)
+            just build sdk
+            bun run check:consumer
+            bun run lint:sdk
+            bun run test:sdk
+            just check wasm ;;
+        *) echo 'Use check [all|tools]' >&2; exit 2 ;;
+    esac
