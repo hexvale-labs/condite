@@ -1,4 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Condite contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 // Fallbacks checked 2026-10-31. Prefer the live Discord helper; experiments can differ.
 // https://support.discord.com/hc/en-us/articles/25444343291031
 // https://support.discord.com/hc/en-us/articles/115000435108

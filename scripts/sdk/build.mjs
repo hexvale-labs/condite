@@ -86,6 +86,11 @@ export class Client {
   presign(request: PresignRequest): Promise<PresignResponse>;
   listUploads(request?: ListUploadsRequest): Promise<ListUploadsResponse>;
   confirm(id: string): Promise<ConfirmResponse>;
+  download(id: string): Promise<DownloadResponse>;
+  updateRetention(id: string, retention: Retention): Promise<Upload>;
+  createShare(id: string, request: CreateShareRequest): Promise<Share>;
+  listShares(id: string, query?: ListUploadsRequest): Promise<ListSharesResponse>;
+  revokeShare(id: string, shareId: string): Promise<void>;
   delete(id: string): Promise<void>;
   putUpload(signed: PresignResponse, data: Uint8Array): Promise<void>;
   upload(request: PresignRequest, data: Uint8Array): Promise<UploadResult>;

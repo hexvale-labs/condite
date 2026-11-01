@@ -21,6 +21,15 @@ pub struct UploadRecord {
 
     #[auto]
     pub created_at: Timestamp,
+    pub expires_at: Option<Timestamp>,
+    #[index]
+    pub cleanup_at: Option<Timestamp>,
+    #[index]
+    pub pending_cleanup_at: Option<Timestamp>,
+    #[default(false)]
+    pub deletion_pending: bool,
+    #[default(false)]
+    pub shared: bool,
 }
 
 pub fn get_s3_key(id: &uuid::Uuid, mime_type: &str, status: &UploadStatus) -> String {
@@ -49,6 +58,13 @@ impl From<UploadRecord> for condite_shared::Upload {
                 UploadStatus::Confirmed => condite_shared::UploadStatus::Confirmed,
             },
             created_at: record.created_at.to_string(),
+            expires_at: record.expires_at.map(|t| t.to_string()),
+            visibility: if record.shared {
+                condite_shared::Visibility::Shared
+            } else {
+                condite_shared::Visibility::Private
+            },
+            deletion_pending: record.deletion_pending,
         }
     }
 }

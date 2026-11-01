@@ -48,3 +48,15 @@ request fields remain snake_case. Limits default to 300 MiB, while uploads remai
 limited to 100 MiB after processing. Passphrase encryption produces standard
 `.age` files; decrypt locally with this SDK or an age-compatible tool. See
 [exact coverage and exclusions](../condite-metadata/README.md).
+
+## Sharing and retention
+
+Upload requests accept optional `retention: {expires_at: string | null}`. Omit it
+for 14 days; null means Never. Confirmation returns `{upload,
+new_storage_size_bytes}` without sharing automatically. Use `download(id)` for an
+owner-only temporary download and `createShare(id, {expires_at: null,
+follows_upload: true})` for a direct share following file retention.
+`listShares(id, {limit, after})`, `revokeShare(id, shareId)` and
+`updateRetention(id, {expires_at})` manage shares and file deadlines. Returned
+nullable deadlines are null, and sizes remain bigint. Privacy upload helpers
+preserve the request's retention selection.

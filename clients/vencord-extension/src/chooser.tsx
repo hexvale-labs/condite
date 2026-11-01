@@ -1,4 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Condite contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { Button } from "@components/Button";
 import type { CloudUpload, RenderModalProps } from "@vencord/discord-types";
 import { closeModal, Modal, openModal, React, useState } from "@webpack/common";

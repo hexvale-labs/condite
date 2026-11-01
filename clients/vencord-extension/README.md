@@ -12,14 +12,15 @@ From this directory:
 ```sh
 pnpm setup      # Shallow-fetch pinned Vencord, install dependencies, copy source
 pnpm build      # Build Vencord AND the native SDK for this machine
-pnpm check      # Vencord TypeScript check
+pnpm check      # Vencord TypeScript and plugin lint checks
 pnpm test       # Routing/patch fixtures and real native SDK against local HTTP
 pnpm --dir .vencord inject
 ```
 
 Select your desktop Discord installation in the installer. Fully quit and restart
 Discord after installation or native changes; a renderer reload does not reload
-Electron helpers. Enable **Condite** and set **API base** in its settings.
+Electron helpers. Enable **Condite** and set **API base** and **API key** in its settings.
+The key is stored locally by Vencord and sent only to the configured API.
 
 Output is **`.vencord/dist/`**. Keep **`condite-sdk/`** beside the main bundles when
 moving the build. The addon is OS/architecture-specific; build on the target
@@ -51,18 +52,32 @@ aside the ignored checkout before setting up a different revision. Never commit
 Update fallback limits in [src/limits.ts](src/limits.ts), or use **Discord limit
 override in MiB** without rebuilding. A live named Discord limit helper is
 preferred when available. **Condite itself currently caps files at 100 MiB**;
-this plugin does not increase that cap. The API-key setting is reserved/disabled;
-the current SDK/API has no authentication support.
+this plugin does not increase that cap.
 
 **Uploads** appears beside Friends in the Home sidebar and opens a full React
 content pane. It provides list/grid views, page-local search/status filters,
-pagination, uploads/progress, health checks, pending confirmation, temporary links
-and deletion confirmation. Toolbox/settings actions provide access if the sidebar
+pagination, uploads/progress, health checks, pending confirmation, owner downloads,
+Share/Manage links, retention updates and deletion confirmation. Toolbox/settings actions provide access if the sidebar
 patch changes. Escape, channel navigation or **Back to Discord** closes it. This
 experimental pane uses Discord's `main` landmark and has no URL route.
 
-`public_uri` is currently a **temporary signed download**, despite its name. The
-manager displays expiry. See [visibility architecture](../../docs/file-visibility-architecture.md).
+Completed uploads automatically create an unsigned direct S3 share following the
+file's retention. Retention defaults to 14 days; change the default in settings
+or select a per-batch interval, exact UTC date or Never in Uploads. Existing files
+support interval additions/subtractions, a new date and Never. A past date asks
+for deletion confirmation. Share creates independent links; Manage links lists,
+copies and revokes them individually. Owner Download is a separate temporary
+signed S3 URL. Failed sharing retains the confirmed private upload ID for recovery.
+
+Condite removes expired uploads/share copies approximately every minute while
+online. Downtime or storage failures can delay deletion; cached/downloaded copies
+cannot be recalled. See [visibility architecture](../../docs/file-visibility-architecture.md).
+
+`pnpm check` generates an ignored TypeScript configuration selecting Vencord's
+pinned Electron declarations, avoiding conflicts with the root SDK's Electron
+package without disabling declaration checks. Lint excludes generated wire types
+and shared MIT translations, preserving their own notices. Both integrations disclose their
+[AI-assisted authorship](../../AI-NOTICE.md) in settings/about.
 
 ## First live-client checks
 

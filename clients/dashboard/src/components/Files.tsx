@@ -11,6 +11,9 @@ import { browserClient } from "../lib/client";
 import { formatBytes, formatDate, safeDownloadUrl } from "../lib/format";
 import { messages, type Locale } from "../i18n";
 import FileIcon from "./FileIcon";
+import FileAccess, { type FileAccessHandle } from "./FileAccess";
+import ExpiryPicker from "./ExpiryPicker";
+import { defaultExpiry, resolveExpiry, type ExpiryChoice } from "../lib/expiry";
 
 type Props = {
   locale: Locale;
@@ -38,6 +41,10 @@ export default function Files(props: Props) {
   const [activities, setActivities] = createSignal<Activity[]>([]);
   const [deleteError, setDeleteError] = createSignal("");
   const [deleting, setDeleting] = createSignal<Upload | null>(null);
+  const [uploadExpiry, setUploadExpiry] =
+    createSignal<ExpiryChoice>(defaultExpiry());
+  const [showUploadExpiry, setShowUploadExpiry] = createSignal(false);
+  let access!: FileAccessHandle;
   const [download, setDownload] = createSignal<{
     url: string;
     expires: string;
@@ -80,7 +87,10 @@ export default function Files(props: Props) {
   }
   async function refreshData() {
     const sdk = await browserClient();
-    const result = await sdk.listUploads({ limit: 50, after: props.after ?? undefined });
+    const result = await sdk.listUploads({
+      limit: 50,
+      after: props.after ?? undefined,
+    });
     if (!disposed) {
       setPage(result);
       setLoadFailed(false);
@@ -128,17 +138,22 @@ export default function Files(props: Props) {
         setFeedback(t.deleted);
         queueMicrotask(() => uploadButton.focus());
       } else {
-        const result = await sdk.confirm(row.id);
-        if (disposed) return;
         if (operation === "link") {
-          const url = safeDownloadUrl(result.public_uri);
+          const result = await sdk.download(row.id);
+          const url = safeDownloadUrl(result.uri);
           if (!url) throw new Error("Invalid download URL");
           setDownload({ url, expires: result.expires_at });
-        } else setFeedback(t.confirmedMessage);
+        } else {
+          await sdk.confirm(row.id);
+          if (!disposed) setFeedback(t.confirmedMessage);
+        }
         await refreshData();
       }
     } catch {
-      if (!disposed) { setFeedback(t.error); if (operation === "delete") setDeleteError(t.error); }
+      if (!disposed) {
+        setFeedback(t.error);
+        if (operation === "delete") setDeleteError(t.error);
+      }
     } finally {
       if (!disposed) setBusy(false);
     }
@@ -173,6 +188,9 @@ export default function Files(props: Props) {
     };
     try {
       const sdk = await browserClient();
+      const expires = resolveExpiry(uploadExpiry());
+      if (typeof expires === "string" && Date.parse(expires) <= Date.now())
+        throw new Error(t.invalidExpiry);
       for (const [index, file] of files.entries()) {
         if (disposed) break;
         const nameSize = new TextEncoder().encode(file.name).length;
@@ -188,6 +206,9 @@ export default function Files(props: Props) {
             filename: file.name,
             mime_type: file.type || "application/octet-stream",
             size_bytes: BigInt(file.size),
+            ...(expires === undefined
+              ? {}
+              : { retention: { expires_at: expires } }),
           });
           update(index, { stage: "uploading", requestId: signed.request_id });
           await sdk.putUpload(signed, new Uint8Array(await file.arrayBuffer()));
@@ -202,7 +223,12 @@ export default function Files(props: Props) {
         }
       }
       await refreshData();
-      if (!disposed) setFeedback(activities().some(item => item.stage === "failed") ? t.failed : t.complete);
+      if (!disposed)
+        setFeedback(
+          activities().some((item) => item.stage === "failed")
+            ? t.failed
+            : t.complete,
+        );
     } catch {
       if (!disposed) {
         setFeedback(t.error);
@@ -235,8 +261,48 @@ export default function Files(props: Props) {
       {p.row.status === "Confirmed" ? t.confirmed : t.pending}
     </span>
   );
+  const AccessStatus = (p: { row: Upload }) => (
+    <div class="mt-2 space-y-1 text-xs text-muted">
+      <p>
+        {p.row.deletion_pending
+          ? t.cleanupPending
+          : p.row.visibility === "Shared"
+            ? t.shared
+            : t.private}
+      </p>
+      <p>
+        {t.fileExpires}:{" "}
+        {p.row.expires_at
+          ? `${formatDate(p.row.expires_at, props.locale)} UTC`
+          : t.never}
+      </p>
+    </div>
+  );
   const Actions = (p: { row: Upload }) => (
-    <div class="flex flex-wrap gap-2">
+    <div class="file-actions">
+      <Show when={p.row.status === "Confirmed"}>
+        <button
+          class="button button-small"
+          disabled={blocked() || p.row.deletion_pending}
+          onClick={() => access.open(p.row, "share")}
+        >
+          {t.share}
+        </button>
+        <button
+          class="button button-small"
+          disabled={blocked()}
+          onClick={() => access.open(p.row, "links")}
+        >
+          {t.manageLinks}
+        </button>
+      </Show>
+      <button
+        class="button button-small"
+        disabled={blocked() || p.row.deletion_pending}
+        onClick={() => access.open(p.row, "expiry")}
+      >
+        {t.retention}
+      </button>
       <button
         class="button button-small"
         disabled={blocked()}
@@ -244,7 +310,7 @@ export default function Files(props: Props) {
           void operate(p.row, p.row.status === "Pending" ? "confirm" : "link")
         }
       >
-        {p.row.status === "Pending" ? t.confirm : t.link}
+        {p.row.status === "Pending" ? t.confirm : t.download}
       </button>
       <button
         class="button button-small text-red-800"
@@ -257,7 +323,7 @@ export default function Files(props: Props) {
   );
 
   return (
-    <section aria-label={t.files}>
+    <section aria-label={t.files} class="files-workspace">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <button
@@ -285,7 +351,17 @@ export default function Files(props: Props) {
               void upload(Array.from(event.currentTarget.files ?? []))
             }
           />
-          <p class="mt-2 text-xs leading-relaxed text-muted">{t.uploadHint}</p>
+          <button
+            class="ms-2 button"
+            disabled={blocked()}
+            aria-expanded={showUploadExpiry() ? "true" : "false"}
+            onClick={() => setShowUploadExpiry((value) => !value)}
+          >
+            {t.uploadRetention}
+          </button>
+          <p class="mt-3 text-xs leading-relaxed text-muted">
+            {t.uploadHint} · {t.defaultRetention}
+          </p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
           <button
@@ -350,6 +426,17 @@ export default function Files(props: Props) {
           </div>
         </div>
       </div>
+      <Show when={showUploadExpiry()}>
+        <div class="mt-5 max-w-lg rounded-xl border border-line bg-white p-5">
+          <ExpiryPicker
+            locale={props.locale}
+            value={uploadExpiry()}
+            onChange={setUploadExpiry}
+            allowDefault
+            disabled={blocked()}
+          />
+        </div>
+      </Show>
       <div class="feedback" role="status" aria-live="polite" aria-atomic="true">
         {feedback()}
       </div>
@@ -447,7 +534,7 @@ export default function Files(props: Props) {
           </select>
         </label>
       </div>
-      <Show when={loadFailed()}>
+      <Show when={loadFailed() && rows().length > 0}>
         <div class="mb-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-900">
           {t.failedLoad}{" "}
           <button
@@ -478,6 +565,15 @@ export default function Files(props: Props) {
                   ? t.error
                   : t.emptyHint}
             </p>
+            <Show when={loadFailed()}>
+              <button
+                class="button mt-4"
+                disabled={blocked()}
+                onClick={() => void refresh()}
+              >
+                {t.retry}
+              </button>
+            </Show>
           </div>
         }
       >
@@ -490,7 +586,7 @@ export default function Files(props: Props) {
             >
               <For each={rows()} keyed={(row) => row.id}>
                 {(row) => (
-                  <li class="min-w-0 rounded-lg border border-line bg-white p-5">
+                  <li class="file-card min-w-0 rounded-xl border border-line bg-white p-5">
                     <div class="flex items-start justify-between gap-2">
                       <FileIcon />
                       <Status row={row()} />
@@ -518,7 +614,10 @@ export default function Files(props: Props) {
                         </dd>
                       </div>
                     </dl>
-                    <Actions row={row()} />
+                    <AccessStatus row={row()} />
+                    <div class="mt-4">
+                      <Actions row={row()} />
+                    </div>
                   </li>
                 )}
               </For>
@@ -545,7 +644,7 @@ export default function Files(props: Props) {
               <tbody>
                 <For each={rows()} keyed={(row) => row.id}>
                   {(row) => (
-                    <tr>
+                    <tr class="file-row">
                       <td>
                         <div class="flex items-center gap-3">
                           <FileIcon />
@@ -567,6 +666,7 @@ export default function Files(props: Props) {
                       </td>
                       <td>
                         <Status row={row()} />
+                        <AccessStatus row={row()} />
                       </td>
                       <td class="whitespace-nowrap text-xs text-muted tabular-nums">
                         {formatDate(row().created_at, props.locale)}
@@ -602,11 +702,19 @@ export default function Files(props: Props) {
       <p class="mt-8 max-w-prose text-xs leading-relaxed text-muted">
         {t.temporary}
       </p>
+      <FileAccess
+        locale={props.locale}
+        onReady={(handle) => {
+          access = handle;
+        }}
+        onChanged={refreshData}
+        onDeleted={() => queueMicrotask(() => uploadButton.focus())}
+      />
       <dialog
         ref={(el) => {
           dialog = el;
         }}
-        class="m-auto w-[min(92vw,28rem)] rounded-xl border border-line bg-white p-6 text-ink shadow-xl"
+        class="file-dialog"
         aria-labelledby="delete-title"
         aria-describedby="delete-hint"
         onClose={() => setDeleting(null)}
@@ -618,7 +726,9 @@ export default function Files(props: Props) {
           {t.deleteHint}
         </p>
         <p class="mt-4 break-all text-sm font-medium">{deleting()?.filename}</p>
-        <p class="mt-3 text-sm text-red-800" role="alert">{deleteError()}</p>
+        <p class="mt-3 text-sm text-red-800" role="alert">
+          {deleteError()}
+        </p>
         <div class="mt-6 flex justify-end gap-2">
           <button
             class="button"

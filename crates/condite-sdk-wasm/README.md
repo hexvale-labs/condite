@@ -13,7 +13,7 @@ const result = await client.upload({
 
 Serve the generated WASM with `application/wasm`. API field names retain snake_case; methods use camelCase. Integer fields are `bigint`, including storage totals; avoid converting them to Number when precision matters. Errors expose `code`, `status`, `body`, and `request_id` where available.
 
-Cross-origin deployments need API CORS permitting GET/POST/DELETE and Content-Type, plus bucket CORS permitting signed PUT headers such as Content-Type. Core's CORS policy is not changed by this SDK. Fetch sets signed Host and Content-Length automatically. Same-origin proxy deployments are also supported.
+Cross-origin deployments need API CORS permitting GET/POST/PATCH/DELETE and Content-Type/Authorization, plus bucket CORS permitting signed PUT headers such as Content-Type. Core's CORS policy is not changed by this SDK. Fetch sets signed Host and Content-Length automatically. Same-origin proxy deployments are also supported.
 
 See [SDK tooling](../../scripts/sdk/README.md).
 
@@ -76,3 +76,15 @@ fail. The adapter stages fresh VFS files between loads, cleans up afterward, and
 terminates on abort/timeout. Color/rotation survive the qualified fixtures;
 bitstream metadata is outside scope. Unsupported artwork/subtitle/data/side-data
 variants reject. These are acceptance limits, not a hard FFmpeg worker heap bound.
+
+## Sharing and retention
+
+Upload requests accept optional `retention: {expires_at: string | null}`. Omit it
+for 14 days; null means Never. Confirmation returns `{upload,
+new_storage_size_bytes}` without sharing automatically. Use `download(id)` for an
+owner-only temporary download and `createShare(id, {expires_at: null,
+follows_upload: true})` for a direct share following file retention.
+`listShares(id, {limit, after})`, `revokeShare(id, shareId)` and
+`updateRetention(id, {expires_at})` manage shares and file deadlines. Returned
+nullable deadlines are null, and sizes remain bigint. Privacy upload helpers
+preserve the request's retention selection.

@@ -58,7 +58,7 @@ running a new build against a persistent database.
 ## Documentation maintenance
 
 Keep component setup and operational behavior in the component README. Put shared
-workflows here, CI rationale in `ci.md`, and future sharing requirements in
+workflows here, CI rationale in `ci.md`, and sharing behavior in
 [file visibility architecture](file-visibility-architecture.md). Historical specs
 and plans under `superpowers/` explain intent; verify current behavior in source.
 Record limitations explicitly rather than describing planned features as shipped.

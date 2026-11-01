@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, test } from "bun:test";
-import { retainedLabels, uploadPrepared, validateApiUrl, type PreparedFile, type Sdk } from "../condite.desktop/workflow";
+import { OperationError, retainedLabels, uploadPrepared, validateApiUrl, type PreparedFile, type Sdk } from "../condite.desktop/workflow";
 
 const report = { policyVersion: "test", metadataStripped: true, filenameAnonymized: true, encrypted: true, changed: true, retained: ["document-content"] };
 
@@ -27,13 +27,15 @@ describe("Condite SDK boundary", () => {
                     steps.push("upload");
                     expect(request).toEqual({ filename: "anonymous.age", mime_type: "application/octet-stream", size_bytes: 2n });
                     expect(data).toBe(prepared.data);
-                    return { confirmation: { public_uri: "https://storage.example/file?signed=true", expires_at: "later" } };
+                    return { request_id: "id", confirmation: { upload: { id: "id" } } };
+                }
+                async createShare(id: string, request: unknown) { expect(id).toBe("id"); expect(request).toEqual({follows_upload:true,expires_at:null}); steps.push("share"); return {url:"https://storage.example/file",expires_at:"later"};
                 }
             }
         };
         const result = await uploadPrepared(sdk, "https://condite.example/", new Uint8Array([1]), "private-name.docx", options, undefined, "test-key");
-        expect(steps).toEqual(["prepare", "upload"]);
-        expect(result).toEqual({ filename: "anonymous.age", uri: "https://storage.example/file?signed=true", expiresAt: "later", report });
+        expect(steps).toEqual(["prepare", "upload", "share"]);
+        expect(result).toEqual({ filename: "anonymous.age", uri: "https://storage.example/file", expiresAt: "later", report });
     });
 
     test("failed preparation makes no upload call and exposes no exception contents", async () => {
@@ -44,7 +46,8 @@ describe("Condite SDK boundary", () => {
                 async decrypt() { return new Uint8Array(); }
             },
             Client: class {
-                async upload() { calls++; return { confirmation: { public_uri: "https://storage.example/", expires_at: "later" } }; }
+                async upload(): Promise<never> { calls++; throw new Error("unexpected upload"); }
+                async createShare(): Promise<never> { throw new Error("unexpected sharing"); }
             }
         };
         let error = "";
@@ -67,4 +70,26 @@ test("retained report categories use readable labels without exposing internal c
     expect(retainedLabels(["comments-and-revisions", "icc-profile", "internal-code-not-for-ui", "another-unknown", "__proto__", "constructor"])).toEqual([
         "Comments and revision history", "Color profiles", "Additional embedded content"
     ]);
+});
+
+test("failed upload preserves its request ID and stage without exposing exception text", async () => {
+    const sdk: Sdk = {
+        MetadataSanitizer: class {
+            async prepare() { return { data: new Uint8Array([1]), filename: "a", mimeType: "text/plain", sizeBytes: 1n, report }; }
+            async decrypt() { return new Uint8Array(); }
+        },
+        Client: class {
+            async upload(): Promise<never> { throw Object.assign(new Error("PRIVATE_CANARY"), {request_id:"pending-id",stage:"confirm"}); }
+            async createShare(): Promise<never> { throw new Error("must not share failed upload"); }
+        }
+    };
+    try {
+        await uploadPrepared(sdk, "https://condite.example", new Uint8Array([1]), "a", {stripMetadata:false,anonymizeFilename:false});
+        throw new Error("expected rejection");
+    } catch (error) {
+        expect(error).toBeInstanceOf(OperationError);
+        expect((error as OperationError).request_id).toBe("pending-id");
+        expect((error as OperationError).stage).toBe("confirm");
+        expect((error as Error).message).not.toContain("PRIVATE_CANARY");
+    }
 });

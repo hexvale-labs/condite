@@ -37,7 +37,21 @@ async fn handler(State(s): State<Fixture>, req: Request) -> axum::response::Resp
             assert_eq!(body["size_bytes"], 3);
             serde_json::json!({"request_id":if body["filename"] == "fail.txt" { "bad" } else { "id" }, "uri":format!("{}/storage", s.base),"headers":{"content-type":"text/plain","content-length":"3"},"expires_at_utc":"later"}).to_string()
         }
-        ("POST", "/prefix/v1/uploads/id/confirm") => r#"{"public_uri":"https://example.com/file","expires_at":"later","new_storage_size_bytes":18446744073709551615}"#.into(),
+        ("POST", "/prefix/v1/uploads/id/confirm") => r#"{"upload":{"id":"id","filename":"a.txt","mime_type":"text/plain","size_bytes":3,"status":"Confirmed","created_at":"now","expires_at":null,"visibility":"Private","deletion_pending":false},"new_storage_size_bytes":18446744073709551615}"#.into(),
+        ("POST", "/prefix/v1/uploads/id/shares") => {
+            assert_eq!(req.headers()["authorization"], "Bearer api-only");
+            let body: serde_json::Value = serde_json::from_slice(&to_bytes(req.into_body(), 1024).await.unwrap()).unwrap();
+            assert_eq!(body, serde_json::json!({"expires_at":null,"follows_upload":true}));
+            r#"{"id":"share","upload_id":"id","url":"https://storage.example/public","created_at":"now","expires_at":null,"follows_upload":true,"status":"Active"}"#.into()
+        }
+        ("GET", "/prefix/v1/uploads/id/shares") => r#"{"shares":[{"id":"share","upload_id":"id","url":"https://storage.example/public","created_at":"now","expires_at":null,"follows_upload":true,"status":"Active"}],"next_after":null}"#.into(),
+        ("PATCH", "/prefix/v1/uploads/id/retention") => {
+            let body: serde_json::Value = serde_json::from_slice(&to_bytes(req.into_body(), 1024).await.unwrap()).unwrap();
+            assert_eq!(body, serde_json::json!({"expires_at":null}));
+            r#"{"id":"id","filename":"a.txt","mime_type":"text/plain","size_bytes":3,"status":"Confirmed","created_at":"now","expires_at":null,"visibility":"Private","deletion_pending":false}"#.into()
+        }
+        ("POST", "/prefix/v1/uploads/id/download") => r#"{"uri":"https://storage.example/private","expires_at":"later"}"#.into(),
+        ("DELETE", "/prefix/v1/uploads/id/shares/share") => return StatusCode::NO_CONTENT.into_response(),
         ("DELETE", "/prefix/v1/uploads/id") => return StatusCode::NO_CONTENT.into_response(),
         (_, "/prefix/v1/uploads/bad/confirm") => return (StatusCode::CONFLICT, "not ready").into_response(),
         (_, "/prefix/v1/uploads/fail/confirm") => return (StatusCode::OK, "invalid json").into_response(),
@@ -86,6 +100,7 @@ async fn all_operations_preserve_prefix_wire_types_and_storage_isolation() {
                 filename: "a.txt".into(),
                 mime_type: "text/plain".into(),
                 size_bytes: 3,
+                retention: None,
             },
             b"abc".to_vec(),
         )
@@ -134,7 +149,8 @@ async fn rejects_invalid_upload_and_page_inputs_before_network() {
                 &PresignRequest {
                     filename: "a".into(),
                     mime_type: "text/plain".into(),
-                    size_bytes: 4
+                    size_bytes: 4,
+                    retention: None,
                 },
                 b"abc".to_vec()
             )
@@ -154,6 +170,7 @@ async fn partial_upload_failure_preserves_identity_without_cleanup_or_retry() {
                 filename: "fail.txt".into(),
                 mime_type: "text/plain".into(),
                 size_bytes: 3,
+                retention: None,
             },
             b"abc".to_vec(),
         )
@@ -235,8 +252,42 @@ async fn presign_defers_upload_limits_to_the_api_key_policy() {
             size_bytes: 104_857_601,
             filename: "large.txt".into(),
             mime_type: "text/plain".into(),
+            retention: None,
         })
         .await;
     assert!(result.is_ok(), "{result:?}");
+    server.abort();
+}
+
+#[tokio::test]
+async fn sharing_and_retention_use_authenticated_prefixed_routes() {
+    let (client, _, server) = fixture().await;
+    let share = client
+        .create_share(
+            "id",
+            &condite_sdk::CreateShareRequest {
+                expires_at: None,
+                follows_upload: true,
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(share.status, condite_sdk::ShareStatus::Active);
+    assert!(share.follows_upload);
+    let page = client
+        .list_shares("id", &ListUploadsRequest::default())
+        .await
+        .unwrap();
+    assert_eq!(page.shares.len(), 1);
+    let upload = client
+        .update_retention("id", &condite_sdk::Retention { expires_at: None })
+        .await
+        .unwrap();
+    assert_eq!(upload.expires_at, None);
+    assert_eq!(
+        client.download("id").await.unwrap().uri,
+        "https://storage.example/private"
+    );
+    client.revoke_share("id", "share").await.unwrap();
     server.abort();
 }

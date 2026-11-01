@@ -1,9 +1,13 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Condite contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { LocaleStore, useStateFromStores } from "@webpack/common";
 
 // Populated from the MIT shared catalog by tooling.mjs sync.
-import { direction, messages, resolveLocale } from "./translations";
-import type { Messages } from "./translations";
+import { direction, type Messages, messages, resolveLocale } from "./translations";
 
 export function currentLocale() {
     return resolveLocale(LocaleStore?.locale ?? navigator.language);

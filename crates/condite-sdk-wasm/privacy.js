@@ -36,6 +36,7 @@ export class Client extends RawClient {
           filename: file.filename,
           mime_type: file.mimeType,
           size_bytes: file.sizeBytes,
+          retention: request.retention,
         },
         file.data,
       ),

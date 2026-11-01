@@ -2,14 +2,11 @@ use crate::{
     db::sql::{UploadRecord, UploadStatus, get_s3_key},
     state::app::AppState,
 };
-use aws_sdk_s3::presigning::PresigningConfig;
 use axum::{
     Json,
     extract::{Path, State},
 };
 use axum_anyhow::{ApiResult, bad_request, not_found};
-use jiff::Timestamp;
-use std::time::Duration;
 use uuid::Uuid;
 
 pub use condite_shared::ConfirmResponse as Response;
@@ -45,6 +42,7 @@ async fn attempt(
         }
         Err(e) => return Err(e.into()),
     };
+    super::retention::ensure_available(&upload)?;
     let pending = get_s3_key(&id, &upload.mime_type, &UploadStatus::Pending);
     let confirmed = get_s3_key(&id, &upload.mime_type, &UploadStatus::Confirmed);
     if upload.status == UploadStatus::Pending {
@@ -89,9 +87,15 @@ async fn attempt(
             .set_copy_source_if_match(head.e_tag().map(str::to_owned))
             .send()
             .await?;
+        let cleanup_at = upload.expires_at;
+        let pending_cleanup_at = upload
+            .created_at
+            .checked_add(jiff::Span::new().minutes(3))?;
         upload
             .update()
             .status(UploadStatus::Confirmed)
+            .cleanup_at(cleanup_at)
+            .pending_cleanup_at(Some(pending_cleanup_at))
             .exec(&mut tx)
             .await?;
     }
@@ -106,19 +110,9 @@ async fn attempt(
         .key(&pending)
         .send()
         .await?;
-    let expires_at = Timestamp::now().checked_add(jiff::Span::new().minutes(15))?;
-    let signed = state
-        .s3
-        .get_object()
-        .bucket(&state.config.s3_bucket)
-        .key(&confirmed)
-        .presigned(PresigningConfig::expires_in(Duration::from_secs(900))?)
-        .await?;
-
     tracing::info!(storage_size_bytes = total, "Upload confirmation completed");
     Ok(Json(Response {
-        public_uri: signed.uri().to_owned(),
-        expires_at: expires_at.to_string(),
+        upload: upload.into(),
         new_storage_size_bytes: total,
     }))
 }

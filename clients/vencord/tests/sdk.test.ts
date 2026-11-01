@@ -27,7 +27,10 @@ test.skipIf(!sdkPath)("generated native SDK cleans, anonymizes, encrypts and upl
             stored = new Uint8Array(body);
             response.writeHead(200).end();
         } else if (request.url === "/v1/uploads/id/confirm") {
-            response.end(JSON.stringify({ public_uri: "https://storage.example/temporary?signed=true", expires_at: "later", new_storage_size_bytes: stored.byteLength }));
+            response.end(JSON.stringify({ upload: {id:"id",filename:presign!.filename,mime_type:presign!.mime_type,size_bytes:stored.byteLength,status:"Confirmed",created_at:"2026-11-01T00:00:00Z",expires_at:null,visibility:"Private",deletion_pending:false}, new_storage_size_bytes: stored.byteLength }));
+        } else if (request.url === "/v1/uploads/id/shares") {
+            expect(JSON.parse(body.toString())).toEqual({follows_upload:true,expires_at:null});
+            response.end(JSON.stringify({id:"share",upload_id:"id",url:"https://storage.example/direct",created_at:"2026-11-01T00:00:00Z",expires_at:null,follows_upload:true,status:"Active"}));
         } else response.writeHead(404).end();
     });
     await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
@@ -37,7 +40,7 @@ test.skipIf(!sdkPath)("generated native SDK cleans, anonymizes, encrypts and upl
         const result = await uploadPrepared(sdk, baseUrl, input, "PRIVATE_CANARY.png", {
             stripMetadata: true, anonymizeFilename: true, passphrase: "synthetic local test passphrase"
         });
-        expect(calls).toEqual(["POST /v1/uploads", "PUT /storage", "POST /v1/uploads/id/confirm"]);
+        expect(calls).toEqual(["POST /v1/uploads", "PUT /storage", "POST /v1/uploads/id/confirm", "POST /v1/uploads/id/shares"]);
         expect(result.filename).not.toContain("PRIVATE_CANARY");
         expect(result.filename).toEndWith(".age");
         expect(result.report.metadataStripped).toBe(true);
@@ -49,7 +52,7 @@ test.skipIf(!sdkPath)("generated native SDK cleans, anonymizes, encrypts and upl
         expect(new TextDecoder().decode(plain)).not.toContain("PRIVATE_CANARY");
         expect(Array.from(plain.subarray(0, 8))).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
         await expect(uploadPrepared(sdk, baseUrl, new Uint8Array([1, 2, 3]), "unsupported.bin", { stripMetadata: true, anonymizeFilename: false })).rejects.toThrow("Upload was not started");
-        expect(calls).toHaveLength(3);
+        expect(calls).toHaveLength(4);
     } finally {
         server.closeAllConnections();
         await new Promise<void>(resolve => server.close(() => resolve()));

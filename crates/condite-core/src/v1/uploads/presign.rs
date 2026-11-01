@@ -50,6 +50,11 @@ async fn attempt(
     {
         return Err(crate::auth::quota_error());
     }
+    let retention = super::retention::parse(
+        payload.retention.as_ref().map(|r| r.expires_at.as_deref()),
+        Timestamp::now(),
+    )?;
+    let cleanup_at = Timestamp::now().checked_add(Span::new().hours(1))?;
     let id = uuid::Uuid::now_v7();
     tracing::Span::current().record("upload_id", tracing::field::display(id));
     tracing::debug!("Generating signed upload authorization");
@@ -80,7 +85,9 @@ async fn attempt(
         owner_id: key.id,
         filename: payload.filename.clone(),
         mime_type: payload.mime_type.clone(),
-        size_bytes: payload.size_bytes
+        size_bytes: payload.size_bytes,
+        expires_at: retention,
+        cleanup_at: Some(cleanup_at)
     })
     .exec(&mut tx)
     .await?;

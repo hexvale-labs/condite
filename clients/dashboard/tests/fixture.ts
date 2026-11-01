@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import type { Share } from "condite-sdk-node";
 const ids = [
   "00000000-0000-7000-8000-000000000001",
   "00000000-0000-7000-8000-000000000002",
@@ -11,6 +12,9 @@ const initial = () => [
     size_bytes: 18446744073709551615n,
     status: "Confirmed",
     created_at: "2026-10-31T00:00:00Z",
+    expires_at: "2099-01-01T00:00:00Z" as string | null,
+    visibility: "Private",
+    deletion_pending: false,
   },
   {
     id: ids[1]!,
@@ -19,9 +23,17 @@ const initial = () => [
     size_bytes: 3n,
     status: "Pending",
     created_at: "2026-10-31T01:00:00Z",
+    expires_at: "2099-01-01T00:00:00Z" as string | null,
+    visibility: "Private",
+    deletion_pending: false,
   },
 ];
 let rows = initial();
+let shares: Share[] = [];
+let failShare = false;
+let failRevoke = false;
+let pendingRevoke = false;
+let failRetention = false;
 let calls: string[] = [];
 let failConfirm = false;
 let failPut = false;
@@ -38,7 +50,7 @@ const server = createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "http://127.0.0.1:4321");
   res.setHeader(
     "Access-Control-Allow-Methods",
-    "GET, POST, DELETE, PUT, OPTIONS",
+    "GET, POST, PATCH, DELETE, PUT, OPTIONS",
   );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") {
@@ -53,6 +65,12 @@ const server = createServer(async (req, res) => {
   };
   if (url.pathname === "/__reset") {
     rows = initial();
+    shares = [];
+    failShare = false;
+    failRevoke = false;
+    pendingRevoke = false;
+    failRetention = false;
+    nextId = 3;
     calls = [];
     failConfirm = false;
     failPut = false;
@@ -64,6 +82,10 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/__calls") return send(200, calls);
   if (url.pathname === "/__failure") {
     const value = JSON.parse(body);
+    failShare = value.share ?? false;
+    failRevoke = value.revoke ?? false;
+    pendingRevoke = value.revokePending ?? false;
+    failRetention = value.retention ?? false;
     failConfirm = value.confirm ?? false;
     failPut = value.put ?? false;
     failDelete = value.delete ?? false;
@@ -99,6 +121,11 @@ const server = createServer(async (req, res) => {
       id,
       status: "Pending",
       created_at: "2026-10-31T02:00:00Z",
+      expires_at: value.retention
+        ? value.retention.expires_at
+        : new Date(Date.now() + 14 * 86400000).toISOString(),
+      visibility: "Private",
+      deletion_pending: false,
     });
     return send(200, {
       request_id: id,
@@ -119,10 +146,89 @@ const server = createServer(async (req, res) => {
     if (failConfirm) return send(503, { error: "confirmation failed" });
     row.status = "Confirmed";
     return send(200, {
-      public_uri: `http://127.0.0.1:4322/download/${row.id}`,
-      expires_at: "2099-01-01T00:00:00Z",
+      upload: row,
       new_storage_size_bytes: 18446744073709551615n,
     });
+  }
+  const download = url.pathname.match(/^\/v1\/uploads\/([^/]+)\/download$/);
+  if (download && req.method === "POST") {
+    const row = rows.find((r) => r.id === download[1]);
+    if (!row || row.status !== "Confirmed") return send(404, {});
+    return send(200, {
+      uri: `http://127.0.0.1:4322/download/${row.id}`,
+      expires_at: "2099-01-01T00:00:00Z",
+    });
+  }
+  const retention = url.pathname.match(/^\/v1\/uploads\/([^/]+)\/retention$/);
+  if (retention && req.method === "PATCH") {
+    if (failRetention) return send(503, {});
+    const row = rows.find((r) => r.id === retention[1]);
+    if (!row) return send(404, {});
+    row.expires_at = JSON.parse(body).expires_at;
+    for (const share of shares.filter(
+      (s) => s.upload_id === row.id && s.follows_upload,
+    ))
+      share.expires_at = row.expires_at;
+    return send(200, row);
+  }
+  const shareRoute = url.pathname.match(
+    /^\/v1\/uploads\/([^/]+)\/shares(?:\/([^/]+))?$/,
+  );
+  if (shareRoute) {
+    const row = rows.find((r) => r.id === shareRoute[1]);
+    if (!row) return send(404, {});
+    if (req.method === "GET") {
+      const after = url.searchParams.get("after");
+      const all = shares.filter(
+        (s) => s.upload_id === row.id && (!after || s.id > after),
+      );
+      return send(200, {
+        shares: all.slice(0, 2),
+        next_after: all.length > 2 ? all[1]!.id : null,
+      });
+    }
+    if (req.method === "POST") {
+      if (failShare) return send(503, {});
+      const request = JSON.parse(body);
+      const id = `share-${String(shares.length + 1).padStart(3, "0")}`;
+      const share: Share = {
+        id,
+        upload_id: row.id,
+        url: `http://127.0.0.1:4322/public/${id}`,
+        created_at: new Date().toISOString(),
+        expires_at: request.follows_upload
+          ? row.expires_at
+          : request.expires_at,
+        follows_upload: request.follows_upload,
+        status: "Active",
+      };
+      shares.push(share);
+      row.visibility = "Shared";
+      return send(200, share);
+    }
+    if (req.method === "DELETE") {
+      if (failRevoke) return send(503, {});
+      const share = shares.find(
+        (s) => s.id === shareRoute[2] && s.upload_id === row.id,
+      );
+      if (!share) return send(404, {});
+      if (pendingRevoke) {
+        share.status = "Revoking";
+        share.url = "";
+        res.writeHead(202);
+        res.end();
+        return;
+      }
+      share.status = "Revoked";
+      row.visibility = shares.some(
+        (s) => s.upload_id === row.id && s.status === "Active",
+      )
+        ? "Shared"
+        : "Private";
+      res.writeHead(204);
+      res.end();
+      return;
+    }
   }
   const remove = url.pathname.match(/^\/v1\/uploads\/([^/]+)$/);
   if (remove && req.method === "DELETE") {

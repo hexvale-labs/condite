@@ -1,6 +1,7 @@
 # Sharing, retention and client polish
 
-Status: proposed design for approval. No product changes implemented yet.
+Status: approved 2026-11-01 and implemented. Current behavior and recovery
+refinements are documented in [the architecture](../../file-visibility-architecture.md).
 
 ## Agreed behavior
 

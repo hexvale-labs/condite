@@ -18,7 +18,7 @@ On headless Linux the Electron main-process test uses `xvfb-run`; Electron also 
 
 Builds produce `crates/condite-sdk-{node,wasm}/dist` packages. Release builds also produce `target/sdk-sizes.json` with raw addon, WASM, gzip WASM, glue, and minimal Rust-example sizes. The checked-in measurement snapshot is [docs/sdk-sizes.json](../../docs/sdk-sizes.json). These depend on platform and toolchain; they are measurements, not a cross-platform size guarantee. Generation runs ts-rs from shared wire types and supplements it with the public class signatures. TypeScript checks exercise both packages.
 
-The runtime suite loads the actual addon in Node and Electron and the compiled WASM in Chromium, using local HTTP fixtures for all five API methods, upload flow, bigint precision, and partial failures. Core integration tests also run the Rust SDK against the actual server router. The independent `examples/sdk-consumer` project checks embedding outside this workspace. All SDK/shared/wrapper crates are MIT; condite-core retains AGPL-3.0-or-later.
+The runtime suite loads the actual addon in Node and Electron and the compiled WASM in Chromium, using local HTTP fixtures for the user-facing API surface, upload flow, sharing, retention, bigint precision, and partial failures. Core integration tests also run the Rust SDK against the actual server router. The independent `examples/sdk-consumer` project checks embedding outside this workspace. All SDK/shared/wrapper crates are MIT; condite-core retains AGPL-3.0-or-later.
 
 From this directory, use `just install`, `just build`, or `just check tools`. Installation
 fetches the whole Rust workspace plus the independent SDK consumer. Build regenerates

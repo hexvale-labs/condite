@@ -14,7 +14,7 @@ const built = await build({
     } }]
 });
 const { createClient, uploadFile } = await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString("base64")}`);
-const confirmation = { public_uri: "https://storage.test/file", expires_at: "2026-11-01T00:00:00Z", new_storage_size_bytes: "18446744073709551615" };
+const confirmation = { upload: { id:"id", size_bytes:"18446744073709551615" }, new_storage_size_bytes: "18446744073709551615" };
 const ok = value => Promise.resolve({ ok: true, value });
 
 test("renderer adapter restores bigint for every u64 response", async () => {
@@ -43,4 +43,37 @@ test("staged upload snapshots its endpoint and exposes failed stage/request ID",
 
 test("oversized upload errors use Discord's language before making any request", async () => {
     await assert.rejects(uploadFile({ size: 101 * 1024 * 1024 }), /Do 100 MiB na plik/);
+});
+
+test("upload creates a direct share and snapshots key/retention", async () => {
+    const calls = [];
+    globalThis.conditeSettings.store = { apiBase: "https://origin.test", apiKey: "test-key", retentionDays: 14 };
+    globalThis.VencordNative = { pluginHelpers: { Condite: {
+        presign: (...args) => { calls.push(args); globalThis.conditeSettings.store.apiKey = "changed"; return ok({request_id:"id"}); },
+        putUpload: () => ok(undefined),
+        confirm: () => ok({upload:{id:"id",size_bytes:"3"},new_storage_size_bytes:"3"}),
+        createShare: (...args) => { calls.push(args); return ok({url:"https://public.test/key",expires_at:null}); }
+    } } };
+    const value = await uploadFile(new File(["abc"], "a.txt"));
+    assert.equal(value.public_uri, "https://public.test/key");
+    assert.equal(calls[0][4], "test-key");
+    assert.equal(calls[1][3], "test-key");
+});
+
+test("invalid default retention fails before making API requests", async () => {
+    globalThis.conditeSettings.store = { apiBase: "https://origin.test", retentionDays: -1 };
+    let called = false;
+    globalThis.VencordNative = { pluginHelpers: { Condite: { presign: () => { called = true; return ok({request_id:"bad"}); } } } };
+    await assert.rejects(uploadFile(new File(["abc"], "a.txt")));
+    assert.equal(called, false);
+});
+
+test("sharing failure preserves confirmed upload ID and share stage", async () => {
+    globalThis.conditeSettings.store = { apiBase: "https://origin.test", retentionDays: 14 };
+    globalThis.VencordNative = { pluginHelpers: { Condite: {
+        presign: () => ok({request_id:"private-file"}), putUpload: () => ok(undefined),
+        confirm: () => ok({upload:{id:"private-file",size_bytes:"3"},new_storage_size_bytes:"3"}),
+        createShare: () => Promise.resolve({ok:false,error:{message:"public storage unavailable",status:503}})
+    } } };
+    await assert.rejects(uploadFile(new File(["abc"], "a.txt")), error => error.request_id === "private-file" && error.stage === "share" && error.status === 503);
 });

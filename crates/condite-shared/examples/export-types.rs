@@ -12,7 +12,14 @@ fn main() {
         ListUploadsRequest,
         ListUploadsResponse,
         ConfirmResponse,
-        UploadResult
+        UploadResult,
+        Retention,
+        Visibility,
+        DownloadResponse,
+        CreateShareRequest,
+        ShareStatus,
+        Share,
+        ListSharesResponse
     );
     print!("{output}");
 }

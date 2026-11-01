@@ -50,3 +50,36 @@ test("Arabic hydrates and retains its language after file actions", async ({
   ).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("localized sharing dialogs work on mobile and preserve RTL keyboard focus", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const locale of ["es", "ar", "de", "ja"] as const) {
+    const t = messages(locale);
+    await page.goto(`/${locale}/?view=grid`);
+    const card = page.getByRole("listitem").filter({ hasText: "notes.txt" });
+    const share = card.getByRole("button", { name: t.share, exact: true });
+    await share.click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading")).toHaveText(t.share);
+    await dialog.getByRole("combobox").selectOption("never");
+    await dialog
+      .getByRole("button", { name: t.createShare, exact: true })
+      .click();
+    await expect(dialog.getByRole("textbox")).toHaveValue(/\/public\//);
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
+    await expect(share).toBeFocused();
+    await card.getByRole("button", { name: t.retention, exact: true }).click();
+    await expect(dialog.getByRole("heading")).toHaveText(t.retention);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
+  }
+});

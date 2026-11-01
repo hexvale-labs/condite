@@ -10,7 +10,7 @@ use axum::{Router, routing};
 
 use crate::v1::{
     health,
-    uploads::{confirm, delete, list, presign},
+    uploads::{confirm, delete, download, list, presign, retention, shares},
 };
 
 pub async fn start_app() {
@@ -53,6 +53,22 @@ pub fn app_router(state: state::app::AppState) -> Router {
         )
         .route("/v1/uploads/{id}", routing::delete(delete::handler))
         .route("/v1/uploads/{id}/confirm", routing::post(confirm::handler))
+        .route(
+            "/v1/uploads/{id}/retention",
+            routing::patch(retention::handler),
+        )
+        .route(
+            "/v1/uploads/{id}/download",
+            routing::post(download::handler),
+        )
+        .route(
+            "/v1/uploads/{id}/shares",
+            routing::post(shares::create).get(shares::list),
+        )
+        .route(
+            "/v1/uploads/{id}/shares/{share_id}",
+            routing::delete(shares::revoke),
+        )
         .route("/v1/health", routing::get(health::handler))
         .with_state(state)
 }

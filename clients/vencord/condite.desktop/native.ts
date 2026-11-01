@@ -10,9 +10,9 @@ import { basename, dirname, isAbsolute, join } from "node:path";
 
 import { dialog, type IpcMainInvokeEvent } from "electron";
 
-import { limits, OperationError, type PrivacyOptions, type Sdk, uploadPrepared, validateApiUrl } from "./workflow";
+import { limits, OperationError, type PrivacyOptions, type Retention, type Sdk, uploadPrepared, validateApiUrl } from "./workflow";
 
-type Reply<T> = ({ status: "ok"; } & T) | { status: "cancelled"; } | { status: "error"; message: string; };
+type Reply<T> = ({ status: "ok"; } & T) | { status: "cancelled"; } | { status: "error"; message: string; request_id?: string; stage?: "put" | "confirm" | "share"; };
 let busy = false;
 
 function localSdk(): { sdk: Sdk; media?: { ffmpegPath: string; ffprobePath: string; }; } {
@@ -65,28 +65,39 @@ async function readSelectedFile(path: string): Promise<Uint8Array> {
     } finally { await file.close(); }
 }
 
-function failure(error: unknown): { status: "error"; message: string; } {
-    return { status: "error", message: error instanceof OperationError ? error.message : "The local operation failed. Check the selected file and desktop setup." };
+function failure(error: unknown): { status: "error"; message: string; request_id?: string; stage?: "put" | "confirm" | "share"; } {
+    return error instanceof OperationError
+        ? { status: "error", message: error.message, request_id: error.request_id, stage: error.stage }
+        : { status: "error", message: "The local operation failed. Check the selected file and desktop setup." };
 }
 
-export async function chooseAndUpload(_event: IpcMainInvokeEvent, apiUrl: string, value: PrivacyOptions): Promise<Reply<Awaited<ReturnType<typeof uploadPrepared>>>> {
+function apiCredentials(apiUrl: string, suppliedKey?: string) {
+    const destination = validateApiUrl(apiUrl);
+    if (suppliedKey) {
+        if (typeof suppliedKey !== "string" || suppliedKey.length > 4096 || /[\r\n]/.test(suppliedKey)) throw new OperationError("Invalid API key.");
+        return { destination, apiKey: suppliedKey };
+    }
+    const apiKey = process.env.CONDITE_API_KEY;
+    if (!apiKey || !process.env.CONDITE_API_URL || validateApiUrl(process.env.CONDITE_API_URL) !== destination) {
+        throw new OperationError("Set the API key in Condite settings, or supply CONDITE_API_KEY with matching CONDITE_API_URL in the desktop environment.");
+    }
+    return { destination, apiKey };
+}
+
+export async function chooseAndUpload(_event: IpcMainInvokeEvent, apiUrl: string, value: PrivacyOptions, suppliedKey?: string, retention?: Retention): Promise<Reply<Awaited<ReturnType<typeof uploadPrepared>>>> {
     if (busy) return { status: "error", message: "A Condite operation is already running." };
     busy = true;
     let options: PrivacyOptions | undefined;
     try {
         if (typeof apiUrl !== "string" || apiUrl.length > 2048) throw new OperationError("Invalid Condite API URL.");
-        const destination = validateApiUrl(apiUrl);
-        const apiKey = process.env.CONDITE_API_KEY;
-        if (!apiKey || !process.env.CONDITE_API_URL || validateApiUrl(process.env.CONDITE_API_URL) !== destination) {
-            throw new OperationError("Set CONDITE_API_KEY and a matching CONDITE_API_URL in the desktop launch environment.");
-        }
+        const { apiKey } = apiCredentials(apiUrl, suppliedKey);
         options = privacyOptions(value);
         const { sdk, media } = localSdk();
         const selected = await dialog.showOpenDialog({ title: "Choose a file for Condite", properties: ["openFile"] });
         if (selected.canceled || selected.filePaths.length !== 1) return { status: "cancelled" };
         const path = selected.filePaths[0];
         const data = await readSelectedFile(path);
-        return { status: "ok", ...await uploadPrepared(sdk, apiUrl, data, basename(path), options, media, apiKey) };
+        return { status: "ok", ...await uploadPrepared(sdk, apiUrl, data, basename(path), options, media, apiKey, retention) };
     } catch (error) { return failure(error); }
     finally {
         if (options) options.passphrase = undefined;
@@ -128,4 +139,32 @@ export async function chooseDecryptAndSave(_event: IpcMainInvokeEvent, passphras
         } finally { decrypted.fill(0); }
     } catch (error) { return failure(error); }
     finally { passphrase = ""; busy = false; }
+}
+
+// Explicit operation allowlist keeps renderer input away from arbitrary SDK methods.
+export async function manage(_event: IpcMainInvokeEvent, apiUrl: string, apiKey: string, operation: "health" | "listUploads" | "confirm" | "delete" | "download" | "createShare" | "listShares" | "revokeShare" | "updateRetention", id = "", request: unknown = {}) {
+    try {
+        const credentials = apiCredentials(apiUrl, apiKey);
+        const { sdk } = localSdk();
+        type Manager = {
+            health(): Promise<unknown>; listUploads(request: unknown): Promise<unknown>; confirm(id: string): Promise<unknown>;
+            delete(id: string): Promise<unknown>; download(id: string): Promise<unknown>; createShare(id: string, request: unknown): Promise<unknown>;
+            listShares(id: string, request: unknown): Promise<unknown>; revokeShare(id: string, share: string): Promise<unknown>; updateRetention(id: string, request: unknown): Promise<unknown>;
+        };
+        const client = new sdk.Client(credentials.destination, credentials.apiKey) as unknown as Manager;
+        let value: unknown;
+        switch (operation) {
+            case "health": value = await client.health(); break;
+            case "listUploads": value = await client.listUploads(request); break;
+            case "confirm": value = await client.confirm(id); break;
+            case "delete": value = await client.delete(id); break;
+            case "download": value = await client.download(id); break;
+            case "createShare": value = await client.createShare(id, request); break;
+            case "listShares": value = await client.listShares(id, request); break;
+            case "revokeShare": if (typeof request !== "string") throw new OperationError("Invalid share ID."); value = await client.revokeShare(id, request); break;
+            case "updateRetention": value = await client.updateRetention(id, request); break;
+            default: throw new OperationError("Unsupported Condite operation.");
+        }
+        return { status: "ok" as const, value: value === undefined ? null : JSON.parse(JSON.stringify(value, (_key, item) => typeof item === "bigint" ? item.toString() : item)) };
+    } catch (cause) { return { status: "error" as const, message: (cause as Error).message || "Condite request failed." }; }
 }

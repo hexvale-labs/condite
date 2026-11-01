@@ -1,4 +1,9 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Condite contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import ErrorBoundary from "@components/ErrorBoundary";
 import {
     createRoot,
@@ -10,8 +15,8 @@ import {
 } from "@webpack/common";
 import type { Root } from "react-dom/client";
 
-import { t, useTranslation } from "./i18n";
 import { FileManager } from "./fileManager";
+import { t, useTranslation } from "./i18n";
 
 let opened = false;
 const subscribers = new Set<(value: boolean) => void>();

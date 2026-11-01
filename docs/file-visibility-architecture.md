@@ -1,60 +1,54 @@
-# Proposed public and private files
+# Private files and direct S3 shares
 
-Condite will support both public and private files. Most sharing is expected to
-use public links pointing directly to S3-compatible storage. No public domain is
-chosen yet. **This is a proposal; the API has key-based ownership but no visibility controls.**
+Original and pending objects stay in a private bucket. Uploads default to private
+and expire after **14 days**. Retention can be changed to an exact UTC deadline
+or Never. A future `config.jsonc` will configure the default; it is not implemented.
 
-## Storage and delivery
+Each share has its own database record and cryptographically random public object
+copy. Configure a separate `S3_PUBLIC_BUCKET` and `PUBLIC_OBJECT_BASE_URL` on the
+same S3-compatible service. No chosen domain, AWS-only feature or CDN is required.
+Never make the originals bucket public. Public policy should allow object reads
+only, without listing, writes or version reads.
 
-Keep pending uploads and private files in a private bucket. Publish public files
-into a separate public bucket (or an equally strict public-only prefix). A
-separate bucket is the safer default: a public bucket policy cannot accidentally
-expose private/pending keys. Private storage must block anonymous access.
+Confirmation validates the original without sharing it. Dashboard users choose
+Share explicitly; Vencord creates a direct share for composer/privacy uploads.
+Every client supports share creation/listing/revocation, owner downloads, file
+retention and deletion. The API returns URLs; clients do not construct them.
 
-Store an opaque object key and visibility in the database, not a signed URL.
-Configure `PUBLIC_OBJECT_BASE_URL` server-side when a delivery endpoint is known;
-combine it with the public key to return a stable, unsigned `public_url`. It can
-be an S3 endpoint initially and a CDN/custom domain later. Keep this independent
-from the S3 signing endpoint, since public and private delivery have different
-access rules. Do not hard-code a domain in the dashboard.
+## Lifetime and revocation
 
-Private downloads require authorization and a short-lived signed GET URL.
-Presigned URLs are bearer capabilities: anyone holding one can use it until it
-expires. Never call a signed URL a permanent public share link.
+A share may follow its file's retention, use an earlier deadline, or have no
+independent deadline. No share keeps its file alive. Expiring an individual share
+removes its copy; expiring/deleting a file removes every copy and its original.
+Logical quotas count originals once; every live share uses extra storage.
 
-## Core changes before exposing visibility controls
+Condite runs indexed, bounded cleanup at startup and every **60 seconds**.
+Storage failures and downtime delay expiration; this is an accepted limitation.
+Revocation succeeds only after deleting the public copy. Storage consistency
+varies by provider. Previously downloaded, in-flight and third-party cached data
+cannot be recalled. Objects use `Cache-Control: no-store` to discourage caching.
 
-1. Preserve API-key ownership and add a `visibility: public | private` field.
-   Default new uploads to private. Require authorization for list, presign,
-   confirm, delete and access changes; preserve the owner on confirmation.
-2. Extend upload creation and metadata with visibility. Keep confirmation
-   idempotent and separate it from download-link issuance. Add a download endpoint
-   that returns a permanent public URL or an authorized expiring private URL.
-3. Publish only after size/MIME validation. Give pending/private objects opaque
-   keys; never infer authorization from unguessable UUIDs. Enforce storage policy
-   independently of the UI. Do not put private URLs in shared caches/logs.
-4. Make access changes explicit operations. Private → public copies to the public
-   bucket, then commits visibility. Public → private removes public delivery
-   before reporting completion. Use durable reconciliation for partial failures;
-   do not silently change metadata while the old public object remains reachable.
-5. Delete both possible copies and pending objects with retryable cleanup.
-   Scope quota/byte accounting to logical records, not temporary physical copies.
+Durable creation/deletion intents retain object keys across partial failures;
+cleanup reconciles unfinished shares. Ambiguous remote copies keep their keys
+scheduled for repeated deletion even after parent deletion, since a failed copy
+request can still complete remotely. These unpublished URLs are not exposed;
+revocation remains pending (HTTP 202) rather than claiming completion. Upload metadata stays until initial storage deletion succeeds. Opaque private-key
+cleanup records survive logical deletion to remove late writes, without keeping
+filenames. These checks run daily after the initial cleanup; failed deletes retry
+on subsequent minute passes. Confirmed pending keys receive the same daily sweep. A file with copies awaiting deletion is not reported private.
 
-Public → private cannot retract downloads or cached copies already shared.
-Use short cache lifetimes if revocation matters; document the limitation.
-Private signed links can remain usable until expiry even after an access change;
-strong immediate revocation needs an authenticated download gateway instead.
+Owner-only downloads use short-lived signed GETs, up to 15 minutes. These remain
+bearer URLs until expiry and cannot be individually revoked like public copies.
+Never prefetch or persist them in browser storage. Clipboard failures must leave
+a selectable URL. Direct uploads use restricted signed PUTs and bucket CORS.
 
-## Browser and dashboard
+## Future option
 
-The backend returns the delivery URL; the UI does not construct S3 URLs. Public
-files get “Copy public link”; private files get “Create temporary link” with expiry.
-Never prefetch private links or persist them in localStorage. Clipboard errors
-must leave a selectable link as fallback. Direct uploads still use restricted
-signed PUTs; configure bucket CORS for the dashboard origin and signed headers.
+A streaming download gateway could check expiry and revocation on every new
+request while retaining only one private object. It adds host bandwidth and
+availability requirements. It is intentionally deferred; current shared URLs go
+directly to storage. [Research](share-link-research.md) records the alternatives.
 
-Until these API changes land, show the API's Pending/Confirmed states and label
-all generated downloads as temporary links. Do not add pretend visibility toggles.
-Plan migration of existing records explicitly; default to private unless existing
-bucket policy proves that they are public. Test anonymous private denial, owner
-isolation, public retrieval, expiry, failed access transitions and cleanup.
+See [core API/setup](../crates/condite-core/README.md) for routes and configuration.
+Existing records receive a 14-day migration grace period. Test provider access
+policies separately; local fake-S3 checks cannot prove anonymous original denial.

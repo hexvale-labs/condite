@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import type { Retention } from "./wire";
+export type { Retention } from "./wire";
 export interface PrivacyOptions {
     stripMetadata: boolean;
     anonymizeFilename: boolean;
@@ -30,9 +32,8 @@ export interface Sdk {
         decrypt(data: Uint8Array, passphrase: string): Promise<Uint8Array>;
     };
     Client: new (apiUrl: string, apiKey?: string) => {
-        upload(request: { filename: string; mime_type: string; size_bytes: bigint; }, data: Uint8Array): Promise<{
-            confirmation: { public_uri: string; expires_at: string; };
-        }>;
+        upload(request: { filename: string; mime_type: string; size_bytes: bigint; retention?: Retention; }, data: Uint8Array): Promise<{ request_id: string; confirmation: { upload: { id: string; }; }; }>;
+        createShare(id: string, request: { follows_upload: boolean; expires_at: string | null; }): Promise<{ url: string; expires_at: string | null; }>;
     };
 }
 export const limits = {
@@ -42,7 +43,15 @@ export const limits = {
     maxEntryBytes: 64n * 1024n * 1024n,
     maxEntries: 10_000
 };
-export class OperationError extends Error {}
+export class OperationError extends Error {
+    readonly request_id?: string;
+    readonly stage?: "put" | "confirm" | "share";
+    constructor(message: string, recovery?: { request_id?: unknown; stage?: unknown; }) {
+        super(message);
+        if (typeof recovery?.request_id === "string" && /^[\w-]{1,128}$/.test(recovery.request_id)) this.request_id = recovery.request_id;
+        if (recovery?.stage === "put" || recovery?.stage === "confirm" || recovery?.stage === "share") this.stage = recovery.stage;
+    }
+}
 export function validateApiUrl(value: string): string {
     let url: URL;
     try { url = new URL(value); }
@@ -55,8 +64,8 @@ export function validateApiUrl(value: string): string {
 }
 export async function uploadPrepared(
     sdk: Sdk, apiUrl: string, data: Uint8Array, filename: string,
-    options: PrivacyOptions, media?: { ffmpegPath: string; ffprobePath: string; }, apiKey?: string
-): Promise<{ filename: string; uri: string; expiresAt: string; report: PrivacyReport; }> {
+    options: PrivacyOptions, media?: { ffmpegPath: string; ffprobePath: string; }, apiKey?: string, retention?: Retention
+): Promise<{ filename: string; uri: string; expiresAt: string | null; report: PrivacyReport; }> {
     const baseUrl = validateApiUrl(apiUrl);
     let prepared: PreparedFile;
     try {
@@ -67,23 +76,29 @@ export async function uploadPrepared(
     } catch {
         throw new OperationError("File preparation failed. Upload was not started. Check format support, limits and optional media tools.");
     }
+    const client = new sdk.Client(baseUrl, apiKey);
     let result: Awaited<ReturnType<InstanceType<Sdk["Client"]>["upload"]>>;
     try {
-        result = await new sdk.Client(baseUrl, apiKey).upload({
+        result = await client.upload({
             filename: prepared.filename,
             mime_type: prepared.mimeType,
-            size_bytes: prepared.sizeBytes
+            size_bytes: prepared.sizeBytes,
+            ...(retention ? { retention } : {})
         }, prepared.data);
-    } catch {
-        throw new OperationError("Upload could not be confirmed. Check the Condite server; a pending upload may remain.");
+    } catch (cause) {
+        const recovery = cause && typeof cause === "object" ? cause : {};
+        throw new OperationError("Upload could not be confirmed. Check the Condite server; a pending upload may remain.", recovery);
     }
+    let share: { url: string; expires_at: string | null };
+    try { share = await client.createShare(result.request_id, { follows_upload: true, expires_at: null }); }
+    catch { throw new OperationError("Upload was confirmed privately, but sharing failed. Find it in Manage uploads to retry.", { request_id: result.request_id, stage: "share" }); }
     let uri: URL;
-    try { uri = new URL(result.confirmation.public_uri); }
+    try { uri = new URL(share.url); }
     catch { throw new OperationError("Upload was confirmed, but the server returned an invalid link."); }
     if (!["https:", "http:"].includes(uri.protocol) || uri.username || uri.password) {
         throw new OperationError("Upload was confirmed, but the server returned an unsupported link.");
     }
-    return { filename: prepared.filename, uri: uri.toString(), expiresAt: result.confirmation.expires_at, report: prepared.report };
+    return { filename: prepared.filename, uri: uri.toString(), expiresAt: share.expires_at, report: prepared.report };
 }
 
 const retainedDescriptions: Record<string, string> = {

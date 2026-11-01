@@ -1,0 +1,13 @@
+Condite contains components under different licenses. This overview does not
+relicense any component or third-party material.
+
+- condite-core and condite-ctl: AGPL-3.0-or-later; see each crate's LICENSE.
+- condite-shared, condite-sdk, condite-sdk-node, condite-sdk-wasm and
+  condite-metadata: MIT; see each crate's LICENSE.
+- Vencord integrations: GPL-3.0-or-later; see clients/vencord/COPYING and
+  clients/vencord-extension/COPYING.
+- Shared client translations: MIT; see clients/i18n/LICENSE.
+
+Other files retain their existing copyright and license notices. A directory
+without an explicit license is not granted a new license by this overview.
+Bundled agent skills retain their upstream licenses and notices.

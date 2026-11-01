@@ -43,6 +43,7 @@ pub struct PresignRequest {
     pub mime_type: String,
     #[napi(js_name = "filename")]
     pub filename: String,
+    pub retention: Option<Retention>,
 }
 
 #[napi(object)]
@@ -81,6 +82,11 @@ pub struct Upload {
     pub status: String,
     #[napi(js_name = "created_at")]
     pub created_at: String,
+    #[napi(js_name = "expires_at")]
+    pub expires_at: Either<String, Null>,
+    pub visibility: String,
+    #[napi(js_name = "deletion_pending")]
+    pub deletion_pending: bool,
 }
 impl From<sdk::Upload> for Upload {
     fn from(value: sdk::Upload) -> Self {
@@ -94,6 +100,9 @@ impl From<sdk::Upload> for Upload {
                 sdk::UploadStatus::Confirmed => "Confirmed".into(),
             },
             created_at: value.created_at,
+            expires_at: value.expires_at.map(Either::A).unwrap_or(Either::B(Null)),
+            visibility: format!("{:?}", value.visibility),
+            deletion_pending: value.deletion_pending,
         }
     }
 }
@@ -124,18 +133,14 @@ impl From<sdk::ListUploadsResponse> for ListUploadsResponse {
 
 #[napi(object)]
 pub struct ConfirmResponse {
-    #[napi(js_name = "public_uri")]
-    pub public_uri: String,
-    #[napi(js_name = "expires_at")]
-    pub expires_at: String,
+    pub upload: Upload,
     #[napi(js_name = "new_storage_size_bytes")]
     pub new_storage_size_bytes: BigInt,
 }
 impl From<sdk::ConfirmResponse> for ConfirmResponse {
     fn from(value: sdk::ConfirmResponse) -> Self {
         Self {
-            public_uri: value.public_uri,
-            expires_at: value.expires_at,
+            upload: value.upload.into(),
             new_storage_size_bytes: value.new_storage_size_bytes.into(),
         }
     }
@@ -164,7 +169,84 @@ impl TryFrom<PresignRequest> for sdk::PresignRequest {
             size_bytes: integer(v.size_bytes)?,
             mime_type: v.mime_type,
             filename: v.filename,
+            retention: v.retention.map(|r| sdk::Retention {
+                expires_at: nullable_string(r.expires_at),
+            }),
         })
+    }
+}
+fn nullable_string(value: Either<String, Null>) -> Option<String> {
+    match value {
+        Either::A(value) => Some(value),
+        Either::B(_) => None,
+    }
+}
+
+#[napi(object)]
+pub struct Retention {
+    #[napi(js_name = "expires_at")]
+    pub expires_at: Either<String, Null>,
+}
+#[napi(object)]
+pub struct CreateShareRequest {
+    #[napi(js_name = "expires_at")]
+    pub expires_at: Either<String, Null>,
+    #[napi(js_name = "follows_upload")]
+    pub follows_upload: bool,
+}
+#[napi(object)]
+pub struct DownloadResponse {
+    pub uri: String,
+    #[napi(js_name = "expires_at")]
+    pub expires_at: String,
+}
+impl From<sdk::DownloadResponse> for DownloadResponse {
+    fn from(v: sdk::DownloadResponse) -> Self {
+        Self {
+            uri: v.uri,
+            expires_at: v.expires_at,
+        }
+    }
+}
+#[napi(object)]
+pub struct Share {
+    pub id: String,
+    #[napi(js_name = "upload_id")]
+    pub upload_id: String,
+    pub url: String,
+    #[napi(js_name = "created_at")]
+    pub created_at: String,
+    #[napi(js_name = "expires_at")]
+    pub expires_at: Either<String, Null>,
+    #[napi(js_name = "follows_upload")]
+    pub follows_upload: bool,
+    pub status: String,
+}
+impl From<sdk::Share> for Share {
+    fn from(v: sdk::Share) -> Self {
+        Self {
+            id: v.id,
+            upload_id: v.upload_id,
+            url: v.url,
+            created_at: v.created_at,
+            expires_at: v.expires_at.map(Either::A).unwrap_or(Either::B(Null)),
+            follows_upload: v.follows_upload,
+            status: format!("{:?}", v.status),
+        }
+    }
+}
+#[napi(object)]
+pub struct ListSharesResponse {
+    pub shares: Vec<Share>,
+    #[napi(js_name = "next_after")]
+    pub next_after: Either<String, Null>,
+}
+impl From<sdk::ListSharesResponse> for ListSharesResponse {
+    fn from(v: sdk::ListSharesResponse) -> Self {
+        Self {
+            shares: v.shares.into_iter().map(Into::into).collect(),
+            next_after: v.next_after.map(Either::A).unwrap_or(Either::B(Null)),
+        }
     }
 }
 #[napi]
@@ -209,6 +291,63 @@ impl NativeClient {
     #[napi]
     pub async fn confirm(&self, id: String) -> Result<ConfirmResponse> {
         self.inner.confirm(&id).await.map(Into::into).map_err(error)
+    }
+    #[napi]
+    pub async fn download(&self, id: String) -> Result<DownloadResponse> {
+        self.inner
+            .download(&id)
+            .await
+            .map(Into::into)
+            .map_err(error)
+    }
+    #[napi]
+    pub async fn update_retention(&self, id: String, retention: Retention) -> Result<Upload> {
+        self.inner
+            .update_retention(
+                &id,
+                &sdk::Retention {
+                    expires_at: nullable_string(retention.expires_at),
+                },
+            )
+            .await
+            .map(Into::into)
+            .map_err(error)
+    }
+    #[napi]
+    pub async fn create_share(&self, id: String, request: CreateShareRequest) -> Result<Share> {
+        self.inner
+            .create_share(
+                &id,
+                &sdk::CreateShareRequest {
+                    expires_at: nullable_string(request.expires_at),
+                    follows_upload: request.follows_upload,
+                },
+            )
+            .await
+            .map(Into::into)
+            .map_err(error)
+    }
+    #[napi]
+    pub async fn list_shares(
+        &self,
+        id: String,
+        query: ListUploadsRequest,
+    ) -> Result<ListSharesResponse> {
+        self.inner
+            .list_shares(
+                &id,
+                &sdk::ListUploadsRequest {
+                    limit: query.limit,
+                    after: query.after,
+                },
+            )
+            .await
+            .map(Into::into)
+            .map_err(error)
+    }
+    #[napi]
+    pub async fn revoke_share(&self, id: String, share_id: String) -> Result<()> {
+        self.inner.revoke_share(&id, &share_id).await.map_err(error)
     }
     #[napi]
     pub async fn delete(&self, id: String) -> Result<()> {
