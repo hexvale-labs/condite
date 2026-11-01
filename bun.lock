@@ -15,14 +15,6 @@
         "typescript": "catalog:",
       },
     },
-    "crates/condite-sdk-node": {
-      "name": "condite-sdk-node",
-      "version": "0.1.0",
-    },
-    "crates/condite-sdk-wasm": {
-      "name": "condite-sdk-wasm",
-      "version": "0.1.0",
-    },
     "clients/dashboard": {
       "name": "@condite/dashboard",
       "version": "0.1.0",
@@ -46,6 +38,17 @@
         "@types/node": "22.19.15",
         "typescript": "catalog:",
       },
+    },
+    "clients/vencord-extension": {
+      "name": "condite-vencord-extension",
+    },
+    "crates/condite-sdk-node": {
+      "name": "condite-sdk-node",
+      "version": "0.1.0",
+    },
+    "crates/condite-sdk-wasm": {
+      "name": "condite-sdk-wasm",
+      "version": "0.1.0",
     },
   },
   "trustedDependencies": [
@@ -682,6 +685,8 @@
     "condite-sdk-node": ["condite-sdk-node@workspace:crates/condite-sdk-node"],
 
     "condite-sdk-wasm": ["condite-sdk-wasm@workspace:crates/condite-sdk-wasm"],
+
+    "condite-vencord-extension": ["condite-vencord-extension@workspace:clients/vencord-extension"],
 
     "content-type": ["content-type@3.1.1", "", {}, "sha512-GW4qUsfFo59d0HbUibDlWv5wPz+vAAcaTWbKIuKCf0JkC7wWkSyf8f13IpXn5JkeMlB2P8iTSSIjwXljorg2vA=="],
 
