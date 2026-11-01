@@ -2,6 +2,7 @@ import { defineConfig, fontProviders } from "astro/config";
 import node from "@astrojs/node";
 import solid from "astro-solid-next";
 import tailwind from "@tailwindcss/vite";
+import { locales } from "../i18n";
 const origin = process.env.DASHBOARD_ORIGIN ? new URL(process.env.DASHBOARD_ORIGIN) : null;
 export default defineConfig({
   security: { allowedDomains: [
@@ -13,7 +14,7 @@ export default defineConfig({
   integrations: [solid()],
   i18n: {
     defaultLocale: "en",
-    locales: ["en", "es"],
+    locales,
     routing: { prefixDefaultLocale: true },
   },
   fonts: [

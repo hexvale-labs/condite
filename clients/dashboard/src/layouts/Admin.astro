@@ -1,7 +1,7 @@
 ---
 import type { HealthStatus } from 'condite-sdk-node';
 import { Font } from 'astro:assets';
-import { messages, type Locale } from '../i18n';
+import { messages, locales, localeNames, direction, type Locale } from '../i18n';
 import '../styles/global.css';
 interface Props { locale: Locale; section: 'files' | 'service'; health?: HealthStatus | null; }
 const { locale, section, health } = Astro.props;
@@ -10,7 +10,7 @@ const suffix = section === 'service' ? 'service' : '';
 const languageHref = (lang: Locale) => `/${lang}/${suffix}${Astro.url.search}`;
 ---
 <!doctype html>
-<html lang={locale}>
+<html lang={locale} dir={direction(locale)}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -41,10 +41,12 @@ const languageHref = (lang: Locale) => `/${lang}/${suffix}${Astro.url.search}`;
       <div class="min-w-0">
         <header class="flex min-h-16 items-center justify-between gap-4 border-b border-line bg-white px-5 sm:px-10">
           <span class:list={['badge', health?.healthy ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-muted']}><span aria-hidden="true">{health?.healthy ? '✓' : '◷'}</span>{health ? (health.healthy ? t.healthy : t.unhealthy) : t.offline}</span>
-          <nav aria-label={t.language} class="flex items-center gap-1 text-sm">
-            <a class="language-link" href={languageHref('en')} lang="en" hreflang="en" aria-current={locale === 'en' ? 'true' : undefined}>English</a>
-            <a class="language-link" href={languageHref('es')} lang="es" hreflang="es" aria-current={locale === 'es' ? 'true' : undefined}>Español</a>
-          </nav>
+          <details class="relative text-sm">
+            <summary class="cursor-pointer rounded px-3 py-2 focus-visible:outline">{t.language}: {localeNames[locale]}</summary>
+            <nav aria-label={t.language} class="absolute end-0 z-10 mt-2 grid max-h-80 w-56 overflow-y-auto rounded border border-line bg-white p-2 shadow-lg">
+              {locales.map(lang => <a class="language-link" href={languageHref(lang)} lang={lang} hreflang={lang} dir={direction(lang)} aria-current={locale === lang ? 'true' : undefined}>{localeNames[lang]}</a>)}
+            </nav>
+          </details>
         </header>
         <main id="main" tabindex="-1" class="mx-auto max-w-[1500px] px-5 py-8 sm:px-10 sm:py-10">
           <div class="mb-8">

@@ -2,38 +2,66 @@
 import { definePluginSettings } from "@api/Settings";
 import { OptionType } from "@utils/types";
 
+import { t } from "./i18n";
+
 export const settings = definePluginSettings(
     {
         apiBase: {
             type: OptionType.STRING,
-            description: "Condite API base URL",
+            get displayName() {
+                return t("apiBase");
+            },
+            get description() {
+                return t("apiBase");
+            },
             default: "http://localhost:8080"
         },
         apiKeyPlaceholder: {
             type: OptionType.STRING,
-            description: "API key (reserved for future authentication support)",
+            get displayName() {
+                return t("apiKey");
+            },
+            get description() {
+                return t("apiKey");
+            },
             default: ""
         },
         uploadBehavior: {
             type: OptionType.SELECT,
-            description: "Default upload behavior",
+            get displayName() {
+                return t("uploadBehavior");
+            },
+            get description() {
+                return t("uploadBehavior");
+            },
             options: [
                 {
-                    label: "Always Condite",
+                    label: "Condite",
                     value: "condite" as const,
                     default: true
                 },
                 {
-                    label: "Discord within its limit, Condite for larger files",
+                    get label() {
+                        return t("automatic");
+                    },
                     value: "automatic" as const
                 },
-                { label: "Choose for each file", value: "choose" as const }
+                {
+                    get label() {
+                        return t("chooseEach");
+                    },
+                    value: "choose" as const
+                }
             ]
         },
         discordLimitMiB: {
             type: OptionType.NUMBER,
-            description:
-                "Discord limit override in MiB (0 uses Discord's live limit, then account/server fallbacks)",
+            get displayName() {
+                return t("limitOverride");
+            },
+            get description() {
+                return t("limitOverride");
+            },
             default: 0
         }
     },

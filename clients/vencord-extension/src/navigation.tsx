@@ -10,6 +10,7 @@ import {
 } from "@webpack/common";
 import type { Root } from "react-dom/client";
 
+import { t, useTranslation } from "./i18n";
 import { FileManager } from "./fileManager";
 
 let opened = false;
@@ -22,6 +23,7 @@ export function setPaneOpen(value: boolean) {
 }
 
 function UploadsNavigation() {
+    const { t, locale, dir } = useTranslation();
     const [open, setOpen] = useState(opened);
     useEffect(() => {
         subscribers.add(setOpen);
@@ -31,6 +33,8 @@ function UploadsNavigation() {
     }, []);
     return (
         <button
+            lang={locale}
+            dir={dir}
             className="condite-nav"
             aria-pressed={open}
             onClick={() => setPaneOpen(!open)}
@@ -46,7 +50,7 @@ function UploadsNavigation() {
             >
                 <path d="M12 16V3m-4 4 4-4 4 4M4 15v5h16v-5" />
             </svg>
-            <span>Uploads</span>
+            <span>{t.uploads}</span>
         </button>
     );
 }
@@ -71,7 +75,7 @@ function UploadsPane() {
             setHost(main);
             if (!main) {
                 showToast({
-                    text: "Could not locate Discord's main pane. Open Friends and try Uploads again.",
+                    text: t("failedLoad"),
                     variant: "critical"
                 });
                 setPaneOpen(false);

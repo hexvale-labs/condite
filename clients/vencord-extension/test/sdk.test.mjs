@@ -4,10 +4,13 @@ import { build } from "../.vencord/node_modules/esbuild/lib/main.js";
 
 globalThis.conditeSettings = { store: { apiBase: "http://origin.test" } };
 const built = await build({
-    entryPoints: [new URL("../src/sdk.ts", import.meta.url).pathname], bundle: true, write: false, format: "esm", platform: "node",
+    entryPoints: [new URL("../.vencord/src/userplugins/condite/sdk.ts", import.meta.url).pathname], bundle: true, write: false, format: "esm", platform: "node",
     plugins: [{ name: "settings-fixture", setup(build) {
         build.onResolve({ filter: /^\.\/settings$/ }, () => ({ path: "settings", namespace: "fixture" }));
-        build.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({ contents: "export const settings = globalThis.conditeSettings;" }));
+        build.onResolve({ filter: /^@webpack\/common$/ }, () => ({ path: "common", namespace: "fixture" }));
+        build.onLoad({ filter: /.*/, namespace: "fixture" }, ({ path }) => ({ contents: path === "settings"
+            ? "export const settings = globalThis.conditeSettings;"
+            : 'export const LocaleStore = { locale: "pl" }; export const useStateFromStores = (_, selector) => selector();' }));
     } }]
 });
 const { createClient, uploadFile } = await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString("base64")}`);
@@ -36,4 +39,8 @@ test("staged upload snapshots its endpoint and exposes failed stage/request ID",
     } } };
     await assert.rejects(uploadFile(new File(["abc"], "a.txt")), error => error.request_id === "pending" && error.stage === "confirm" && error.status === 409);
     assert.deepEqual(bases, ["http://origin.test", "http://origin.test", "http://origin.test"]);
+});
+
+test("oversized upload errors use Discord's language before making any request", async () => {
+    await assert.rejects(uploadFile({ size: 101 * 1024 * 1024 }), /Do 100 MiB na plik/);
 });

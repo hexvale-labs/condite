@@ -11,6 +11,7 @@
 | Discord composer integration | `clients/vencord/` | [Vencord README](../clients/vencord/README.md) |
 | Native and browser bindings | `crates/condite-sdk-node/`, `crates/condite-sdk-wasm/` | [SDK tooling](../scripts/sdk/README.md) |
 | SSR, browser UI and API proxy | `clients/dashboard/` | [Dashboard README](../clients/dashboard/README.md), [agent guidance](../clients/dashboard/AGENTS.md) |
+| Shared client translations | `clients/i18n/` | [Translation guide](../clients/i18n/README.md) |
 | Discord userplugin and Vencord build tooling | `clients/vencord-extension/` | [Userplugin README](../clients/vencord-extension/README.md) |
 
 The Rust workspace shares a root lockfile and `target/`, including SDK development

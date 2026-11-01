@@ -113,3 +113,8 @@
     transform: translateY(1px);
   }
 }
+
+[dir="rtl"] input[readonly],
+[dir="rtl"] .break-all {
+  unicode-bidi: plaintext;
+}

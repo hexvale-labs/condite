@@ -33,6 +33,7 @@ function sync() {
     rmSync(target, { recursive: true });
   }
   cpSync(join(root, "src"), target, { recursive: true });
+  cpSync(join(repository, "clients/i18n"), join(target, "translations"), { recursive: true, filter: source => !source.endsWith(".test.ts") });
   cpSync(join(repository, "crates/condite-shared/bindings.d.ts"), join(target, "wire.d.ts"));
   writeFileSync(marker, "Managed by clients/vencord-extension/tooling.mjs\n");
 }

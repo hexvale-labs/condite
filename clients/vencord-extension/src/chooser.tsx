@@ -3,6 +3,7 @@ import { Button } from "@components/Button";
 import type { CloudUpload, RenderModalProps } from "@vencord/discord-types";
 import { closeModal, Modal, openModal, React, useState } from "@webpack/common";
 
+import { useTranslation } from "./i18n";
 import { conditeMaxBytes } from "./limits";
 import type { Provider } from "./routing";
 
@@ -18,6 +19,7 @@ function Chooser({
     failure: boolean;
     finish(value: Provider[] | null): void;
 }) {
+    const { t, locale, dir } = useTranslation();
     const [choices, setChoices] = useState<Provider[]>(
         uploads.map(u =>
             u.item.file.size <= conditeMaxBytes ? "condite" : "discord"
@@ -28,39 +30,27 @@ function Chooser({
     return (
         <Modal
             {...props}
-            title={
-                failure
-                    ? "Discord upload failed"
-                    : single
-                      ? "Upload file"
-                      : "Choose where to upload"
-            }
-            subtitle={
-                failure
-                    ? "Upload the failed files to Condite instead, or keep the attachments to retry in Discord."
-                    : "Condite adds a download link to the original channel draft."
-            }
+            title={failure ? t.failed : single ? t.upload : t.chooseDestination}
+            subtitle={failure ? t.chooseDestination : t.draftHint}
             actions={
                 single
                     ? undefined
                     : [
                           {
-                              text: failure
-                                  ? "Upload selected to Condite"
-                                  : "Upload files",
+                              text: failure ? t.uploadCondite : t.upload,
                               variant: "primary",
                               disabled: failure && !eligible,
                               onClick: () => finish(choices)
                           },
                           {
-                              text: failure ? "Keep attachments" : "Cancel",
+                              text: failure ? t.keepAttachments : t.cancel,
                               variant: "secondary",
                               onClick: () => finish(null)
                           }
                       ]
             }
         >
-            <div className="condite-chooser">
+            <div className="condite-chooser" lang={locale} dir={dir}>
                 {uploads.map((upload, index) => (
                     <div
                         className="condite-choice-row"
@@ -69,14 +59,15 @@ function Chooser({
                         <div className="condite-file-name">
                             <strong>{upload.filename}</strong>
                             <small>
-                                {upload.item.file.size.toLocaleString()} bytes
+                                {upload.item.file.size.toLocaleString(locale)}{" "}
+                                {t.bytes}
                             </small>
                         </div>
                         {!single && (
                             <label>
-                                Upload to{" "}
+                                {t.chooseDestination}{" "}
                                 <select
-                                    aria-label={`Upload ${upload.filename} to`}
+                                    aria-label={`${t.chooseDestination}: ${upload.filename}`}
                                     value={choices[index]}
                                     onChange={event =>
                                         setChoices(previous =>
@@ -100,7 +91,7 @@ function Chooser({
                                     </option>
                                     <option value="discord">
                                         {failure
-                                            ? "Keep attachment"
+                                            ? t.keepAttachments
                                             : "Discord"}
                                     </option>
                                 </select>
@@ -109,9 +100,7 @@ function Chooser({
                     </div>
                 ))}
                 {uploads.some(u => u.item.file.size > conditeMaxBytes) && (
-                    <p className="condite-muted">
-                        Condite currently accepts files up to 100 MiB.
-                    </p>
+                    <p className="condite-muted">{t.fileLimit}</p>
                 )}
                 {single && (
                     <div className="condite-actions">
@@ -119,13 +108,13 @@ function Chooser({
                             disabled={!eligible}
                             onClick={() => finish(["condite"])}
                         >
-                            Upload to Condite
+                            {t.uploadCondite}
                         </Button>
                         <Button
                             variant="secondary"
                             onClick={() => finish(failure ? null : ["discord"])}
                         >
-                            {failure ? "Keep attachment" : "Upload to Discord"}
+                            {failure ? t.keepAttachments : t.uploadDiscord}
                         </Button>
                     </div>
                 )}

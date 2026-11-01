@@ -13,7 +13,7 @@
     "build": "bun --bun astro build",
     "start": "node ./dist/server/entry.mjs",
     "test": "playwright test",
-    "test:unit": "bun test tests/transport.test.ts",
+    "test:unit": "bun test tests/transport.test.ts ../i18n/catalog.test.ts",
     "test:dev": "DASHBOARD_DEV=1 playwright test"
   },
   "dependencies": {

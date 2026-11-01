@@ -10,20 +10,28 @@ import {
     useState
 } from "@webpack/common";
 
+import { t as translate, useTranslation } from "./i18n";
 import { safeUrl } from "./routing";
 import { createClient, uploadFile } from "./sdk";
 import { settings } from "./settings";
 import type { ListUploadsResponse, Upload } from "./wire";
 
-export function bytes(value: bigint) {
-    if (value < 1024n) return `${value} B`;
-    if (value < 1024n ** 2n) return `${value / 1024n} KiB`;
-    return `${(value * 10n) / 1024n ** 2n / 10n}.${((value * 10n) / 1024n ** 2n) % 10n} MiB`;
+export function bytes(value: bigint, locale = "en") {
+    const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
+    let divisor = 1n;
+    let unit = 0;
+    while (value >= divisor * 1024n && unit < units.length - 1) {
+        divisor *= 1024n;
+        unit++;
+    }
+    // Convert only after scaling, so the original u64 never passes through Number.
+    const scaled = Number((value * 10n + divisor / 2n) / divisor) / 10;
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(scaled)} ${units[unit]}`;
 }
 
 export function errorText(error: unknown) {
     const value = error as Error & { request_id?: string; stage?: string };
-    return `${value.message || "Request failed"}${value.request_id ? ` (upload ${value.request_id}${value.stage ? `, ${value.stage}` : ""})` : ""}`;
+    return `${value.message || translate("error")}${value.request_id ? ` (upload ${value.request_id}${value.stage ? `, ${value.stage}` : ""})` : ""}`;
 }
 
 interface Activity {
@@ -33,6 +41,7 @@ interface Activity {
 }
 
 export function FileManager({ onClose }: { onClose(): void }) {
+    const { t, locale, dir } = useTranslation();
     const { apiBase } = settings.use(["apiBase"]);
     const [page, setPage] = useState<ListUploadsResponse>({
         uploads: [],
@@ -145,7 +154,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                     url: safeUrl(value.public_uri),
                     expires: value.expires_at
                 });
-            else setNotice(`Confirmed ${row.filename}`);
+            else setNotice(t.confirmedMessage);
             const result = await sdk.listUploads({ limit: 50, after });
             if (current()) setPage(result);
         });
@@ -156,15 +165,13 @@ export function FileManager({ onClose }: { onClose(): void }) {
         openModal(props => (
             <ConfirmModal
                 {...props}
-                title="Delete file?"
-                confirmText="Delete file"
-                cancelText="Keep file"
+                title={t.deleteTitle}
+                confirmText={t.remove}
+                cancelText={t.cancel}
                 onConfirm={async setModalError => {
                     try {
                         if (settings.store.apiBase !== endpoint)
-                            throw new Error(
-                                "API base changed. Close this dialog and try again."
-                            );
+                            throw new Error(t.error);
                         await createClient().delete(row.id);
                         if (
                             live.current &&
@@ -176,7 +183,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                                     item => item.id !== row.id
                                 )
                             }));
-                            setNotice(`Deleted ${row.filename}`);
+                            setNotice(t.deleted);
                             setLink(undefined);
                         }
                     } catch (cause) {
@@ -186,7 +193,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                 }}
             >
                 <p className="condite-break">{row.filename}</p>
-                <p>The stored file will be removed. This cannot be undone.</p>
+                <p>{t.deleteHint}</p>
             </ConfirmModal>
         ));
     }
@@ -195,7 +202,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
         if (!files.length) return;
         void run(async (sdk, current) => {
             setActivity(
-                files.map(file => ({ name: file.name, stage: "Queued" }))
+                files.map(file => ({ name: file.name, stage: "preparing" }))
             );
             const update = (index: number, changes: Partial<Activity>) => {
                 if (current())
@@ -212,7 +219,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                         update(index, { stage })
                     );
                 } catch (cause) {
-                    update(index, { stage: "Failed", error: errorText(cause) });
+                    update(index, { stage: "failed", error: errorText(cause) });
                 }
             }
             const result = await sdk.listUploads({ limit: 50 });
@@ -240,7 +247,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                     operate(row, row.status === "Pending" ? "confirm" : "link")
                 }
             >
-                {row.status === "Pending" ? "Confirm" : "Get link"}
+                {row.status === "Pending" ? t.confirm : t.link}
             </Button>
             <Button
                 size="small"
@@ -248,17 +255,22 @@ export function FileManager({ onClose }: { onClose(): void }) {
                 disabled={busy}
                 onClick={() => askDelete(row)}
             >
-                Delete
+                {t.remove}
             </Button>
         </div>
     );
 
     return (
-        <section className="condite-manager" aria-label="Uploads">
+        <section
+            lang={locale}
+            dir={dir}
+            className="condite-manager"
+            aria-label={t.uploads}
+        >
             <header className="condite-pane-header">
-                <Heading tag="h1">Uploads</Heading>
+                <Heading tag="h1">{t.uploads}</Heading>
                 <Button variant="secondary" size="small" onClick={onClose}>
-                    Back to Discord
+                    {t.backDiscord}
                 </Button>
             </header>
             <div className="condite-manager-body">
@@ -267,7 +279,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                         disabled={busy}
                         onClick={() => picker.current?.click()}
                     >
-                        Upload files
+                        {t.upload}
                     </Button>
                     <input
                         ref={picker}
@@ -283,7 +295,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                         disabled={busy}
                         onClick={refresh}
                     >
-                        Refresh
+                        {t.refresh}
                     </Button>
                     <Button
                         variant="secondary"
@@ -294,20 +306,18 @@ export function FileManager({ onClose }: { onClose(): void }) {
                                 if (current())
                                     setNotice(
                                         health.healthy
-                                            ? `Connected · ${health.runtime}`
-                                            : "Service reports unhealthy"
+                                            ? `${t.healthy} · ${health.runtime}`
+                                            : t.unhealthy
                                     );
                             })
                         }
                     >
-                        Check connection
+                        {t.connection}
                     </Button>
-                    <span className="condite-muted">
-                        Up to 100 MiB per file
-                    </span>
+                    <span className="condite-muted">{t.fileLimit}</span>
                 </div>
                 <div role="status" aria-live="polite">
-                    {busy ? "Working…" : notice}
+                    {busy ? t.working : notice}
                 </div>
                 {error && (
                     <div role="alert" className="condite-error">
@@ -318,19 +328,21 @@ export function FileManager({ onClose }: { onClose(): void }) {
                             disabled={busy}
                             onClick={refresh}
                         >
-                            Retry
+                            {t.retry}
                         </Button>
                     </div>
                 )}
                 {link && (
-                    <section
-                        className="condite-link"
-                        aria-label="Download link"
-                    >
-                        <strong>Temporary download link</strong>
-                        <p>Expires {new Date(link.expires).toLocaleString()}</p>
+                    <section className="condite-link" aria-label={t.link}>
+                        <strong>{t.linkReady}</strong>
+                        <p>
+                            {t.expires}:{" "}
+                            {new Date(link.expires).toLocaleString(locale, {
+                                timeZone: "UTC"
+                            })}
+                        </p>
                         <input
-                            aria-label="Download URL"
+                            aria-label={t.link}
                             readOnly
                             value={link.url}
                             onFocus={event => event.target.select()}
@@ -342,40 +354,45 @@ export function FileManager({ onClose }: { onClose(): void }) {
                                     void navigator.clipboard
                                         .writeText(link.url)
                                         .then(
-                                            () => setNotice("Link copied"),
-                                            () =>
-                                                setNotice(
-                                                    "Select and copy the link above"
-                                                )
+                                            () => setNotice(t.copied),
+                                            () => setNotice(t.copyFailed)
                                         );
                                 }}
                             >
-                                Copy link
+                                {t.copy}
                             </Button>
                             <a href={link.url} target="_blank" rel="noreferrer">
-                                Open file
+                                {t.open}
                             </a>
                             <Button
                                 variant="secondary"
                                 size="small"
                                 onClick={() => setLink(undefined)}
                             >
-                                Dismiss
+                                {t.close}
                             </Button>
                         </div>
                     </section>
                 )}
                 {!!activity.length && (
-                    <ul
-                        className="condite-activity"
-                        aria-label="Upload progress"
-                    >
+                    <ul className="condite-activity" aria-label={t.uploads}>
                         {activity.map((item, i) => (
                             <li key={i}>
                                 <strong className="condite-break">
                                     {item.name}
                                 </strong>
-                                <span>{item.stage}</span>
+                                <span>
+                                    {
+                                        t[
+                                            item.stage as
+                                                | "preparing"
+                                                | "uploading"
+                                                | "confirming"
+                                                | "complete"
+                                                | "failed"
+                                        ]
+                                    }
+                                </span>
                                 {item.error && (
                                     <p className="condite-error">
                                         {item.error}
@@ -388,28 +405,28 @@ export function FileManager({ onClose }: { onClose(): void }) {
                 <div className="condite-toolbar condite-filters">
                     <input
                         type="search"
-                        aria-label="Search this page"
-                        placeholder="Search this page"
+                        aria-label={t.search}
+                        placeholder={t.search}
                         value={query}
                         onChange={event => setQuery(event.target.value)}
                     />
                     <select
-                        aria-label="File status"
+                        aria-label={t.status}
                         value={filter}
                         onChange={event => setFilter(event.target.value)}
                     >
-                        <option value="all">All files</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Confirmed">Confirmed</option>
+                        <option value="all">{t.all}</option>
+                        <option value="Pending">{t.pending}</option>
+                        <option value="Confirmed">{t.confirmed}</option>
                     </select>
-                    <div role="group" aria-label="File view">
+                    <div role="group" aria-label={t.view}>
                         <Button
                             size="small"
                             variant="secondary"
                             aria-pressed={view === "list"}
                             onClick={() => setView("list")}
                         >
-                            List
+                            {t.list}
                         </Button>
                         <Button
                             size="small"
@@ -417,7 +434,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                             aria-pressed={view === "grid"}
                             onClick={() => setView("grid")}
                         >
-                            Grid
+                            {t.grid}
                         </Button>
                     </div>
                 </div>
@@ -425,16 +442,12 @@ export function FileManager({ onClose }: { onClose(): void }) {
                     <div className="condite-empty">
                         <Heading tag="h2">
                             {!loaded
-                                ? "Could not load files"
+                                ? t.failedLoad
                                 : page.uploads.length
-                                  ? "No matching files"
-                                  : "No uploads yet"}
+                                  ? t.noMatches
+                                  : t.empty}
                         </Heading>
-                        <p>
-                            {!loaded
-                                ? "Check your API base in Condite settings and retry."
-                                : "Upload files here, or attach them to a conversation."}
-                        </p>
+                        <p>{!loaded ? t.error : t.emptyHint}</p>
                     </div>
                 )}
                 {!!rows.length &&
@@ -443,11 +456,11 @@ export function FileManager({ onClose }: { onClose(): void }) {
                             <table className="condite-table">
                                 <thead>
                                     <tr>
-                                        <th>Name</th>
-                                        <th>Size</th>
-                                        <th>Status</th>
-                                        <th>Created</th>
-                                        <th>Actions</th>
+                                        <th>{t.name}</th>
+                                        <th>{t.size}</th>
+                                        <th>{t.status}</th>
+                                        <th>{t.created}</th>
+                                        <th>{t.actions}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -458,19 +471,23 @@ export function FileManager({ onClose }: { onClose(): void }) {
                                                 <small>{row.mime_type}</small>
                                             </td>
                                             <td
-                                                title={`${row.size_bytes} bytes`}
+                                                title={`${row.size_bytes} ${t.bytes}`}
                                             >
-                                                {bytes(row.size_bytes)}
+                                                {bytes(row.size_bytes, locale)}
                                             </td>
                                             <td>
                                                 <span className="condite-status">
-                                                    {row.status}
+                                                    {row.status === "Pending"
+                                                        ? t.pending
+                                                        : t.confirmed}
                                                 </span>
                                             </td>
                                             <td>
                                                 {new Date(
                                                     row.created_at
-                                                ).toLocaleString()}
+                                                ).toLocaleString(locale, {
+                                                    timeZone: "UTC"
+                                                })}
                                             </td>
                                             <td>{actions(row)}</td>
                                         </tr>
@@ -483,19 +500,23 @@ export function FileManager({ onClose }: { onClose(): void }) {
                             {rows.map(row => (
                                 <li key={row.id}>
                                     <span className="condite-status">
-                                        {row.status}
+                                        {row.status === "Pending"
+                                            ? t.pending
+                                            : t.confirmed}
                                     </span>
                                     <Heading tag="h3" className="condite-break">
                                         {row.filename}
                                     </Heading>
                                     <p>
-                                        {bytes(row.size_bytes)} ·{" "}
+                                        {bytes(row.size_bytes, locale)} ·{" "}
                                         {row.mime_type}
                                     </p>
                                     <p>
                                         {new Date(
                                             row.created_at
-                                        ).toLocaleString()}
+                                        ).toLocaleString(locale, {
+                                            timeZone: "UTC"
+                                        })}
                                     </p>
                                     {actions(row)}
                                 </li>
@@ -504,7 +525,9 @@ export function FileManager({ onClose }: { onClose(): void }) {
                     ))}
                 <footer className="condite-toolbar">
                     <span className="condite-muted">
-                        {rows.length} shown · Filters apply to this page
+                        {t.shown}:{" "}
+                        {new Intl.NumberFormat(locale).format(rows.length)} ·{" "}
+                        {t.pageNote}
                     </span>
                     <Button
                         variant="secondary"
@@ -514,7 +537,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                             void navigate(history.at(-1) ?? null, true)
                         }
                     >
-                        Previous
+                        {t.previous}
                     </Button>
                     <Button
                         variant="secondary"
@@ -522,12 +545,11 @@ export function FileManager({ onClose }: { onClose(): void }) {
                         disabled={busy || !page.next_after}
                         onClick={() => void navigate(page.next_after)}
                     >
-                        Next
+                        {t.next}
                     </Button>
                 </footer>
                 <p className="condite-muted">
-                    Download links currently expire. “Confirm” checks a pending
-                    upload in storage; it does not re-upload missing bytes.
+                    {t.temporary} {t.uploadAgain}
                 </p>
             </div>
         </section>

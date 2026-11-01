@@ -3,6 +3,7 @@ import type { PluginNative } from "@utils/types";
 
 import { conditeMaxBytes } from "./limits";
 import type { NativeResult } from "./native";
+import { t } from "./i18n";
 import { settings } from "./settings";
 import type { ListUploadsRequest, PresignResponse } from "./wire";
 
@@ -82,19 +83,18 @@ export async function uploadFile(
     filename = file.name,
     onStage: (stage: string) => void = () => {}
 ) {
-    if (file.size > conditeMaxBytes)
-        throw new Error("Condite currently accepts files up to 100 MiB");
+    if (file.size > conditeMaxBytes) throw new Error(t("fileLimit"));
     const sdk = createClient();
-    onStage("Preparing");
+    onStage("preparing");
     const signed = await sdk.presign(file, filename);
     let stage = "put";
     try {
-        onStage("Uploading");
+        onStage("uploading");
         await sdk.putUpload(signed, new Uint8Array(await file.arrayBuffer()));
         stage = "confirm";
-        onStage("Confirming");
+        onStage("confirming");
         const value = await sdk.confirm(signed.request_id);
-        onStage("Complete");
+        onStage("complete");
         return value;
     } catch (error) {
         // Retain pending records for recovery; the SDK/server know whether a PUT was completed.
