@@ -129,5 +129,15 @@
   "aiNotice": "Skrivet med AI-assistans",
   "download": "Hämta",
   "fileExpires": "Filens utgångstid",
-  "apiKeyDescription": "Sparas lokalt i Vencords inställningar. Skickas bara till det konfigurerade Condite-API:et."
+  "apiKeyDescription": "Sparas lokalt i Vencords inställningar. Skickas bara till det konfigurerade Condite-API:et.",
+  "rawError": "Rått fel",
+  "requestError": "Något gick fel när begäran skickades.",
+  "serverError": "Servern kunde inte behandla begäran.",
+  "unauthorizedError": "Autentisering krävs. Kontrollera din API-nyckel.",
+  "forbiddenError": "Du har inte behörighet att utföra åtgärden.",
+  "notFoundError": "Det begärda objektet hittades inte.",
+  "conflictError": "Begäran strider mot det aktuella tillståndet. Uppdatera och försök igen.",
+  "rateLimitError": "För många förfrågningar. Försök igen senare.",
+  "httpError": "Begäran misslyckades (HTTP {status}).",
+  "unknownError": "Något gick fel. Försök igen."
 }

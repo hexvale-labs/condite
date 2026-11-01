@@ -129,5 +129,15 @@
   "aiNotice": "Written with AI assistance",
   "download": "Download",
   "fileExpires": "File expiry",
-  "apiKeyDescription": "Stored locally in Vencord settings. Sent only to the configured Condite API."
+  "apiKeyDescription": "Stored locally in Vencord settings. Sent only to the configured Condite API.",
+  "rawError": "Raw error",
+  "requestError": "Something went wrong while sending the request.",
+  "serverError": "The server couldn’t process the request.",
+  "unauthorizedError": "Authentication is required. Check your API key.",
+  "forbiddenError": "You don’t have permission to perform this action.",
+  "notFoundError": "The requested item could not be found.",
+  "conflictError": "The request conflicts with the current state. Refresh and try again.",
+  "rateLimitError": "Too many requests. Please try again later.",
+  "httpError": "The request failed (HTTP {status}).",
+  "unknownError": "Something went wrong. Please try again."
 }

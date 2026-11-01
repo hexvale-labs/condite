@@ -129,5 +129,15 @@
   "aiNotice": "Kirjoitettu tekoälyn avulla",
   "download": "Lataa",
   "fileExpires": "Tiedoston vanheneminen",
-  "apiKeyDescription": "Tallennetaan paikallisesti Vencordin asetuksiin. Lähetetään vain määritettyyn Condite-rajapintaan."
+  "apiKeyDescription": "Tallennetaan paikallisesti Vencordin asetuksiin. Lähetetään vain määritettyyn Condite-rajapintaan.",
+  "rawError": "Raaka virhe",
+  "requestError": "Pyynnön lähettämisessä tapahtui virhe.",
+  "serverError": "Palvelin ei voinut käsitellä pyyntöä.",
+  "unauthorizedError": "Todennus vaaditaan. Tarkista API-avaimesi.",
+  "forbiddenError": "Sinulla ei ole oikeutta tähän toimintoon.",
+  "notFoundError": "Pyydettyä kohdetta ei löytynyt.",
+  "conflictError": "Pyyntö on ristiriidassa nykyisen tilan kanssa. Päivitä ja yritä uudelleen.",
+  "rateLimitError": "Liian monta pyyntöä. Yritä myöhemmin uudelleen.",
+  "httpError": "Pyyntö epäonnistui (HTTP {status}).",
+  "unknownError": "Jokin meni pieleen. Yritä uudelleen."
 }

@@ -1,7 +1,8 @@
 ---
 import Admin from '../../layouts/Admin.astro';
 import Files from '../../components/Files';
-import { isLocale } from '../../i18n';
+import { isLocale, messages } from '../../i18n';
+import { presentError, type PresentedError } from '../../../../i18n/errors';
 import { serverClient, withSsrDeadline } from '../../lib/server';
 import type { ListUploadsResponse, HealthStatus } from 'condite-sdk-node';
 const { locale } = Astro.params;
@@ -10,13 +11,15 @@ Astro.response.headers.set('Cache-Control', 'no-store');
 const view = Astro.url.searchParams.get('view') === 'grid' ? 'grid' : 'list';
 const after = Astro.url.searchParams.get('after');
 if (after && !/^[a-fA-F0-9-]{36}$/.test(after)) return new Response(null, { status: 400 });
+let initialError: PresentedError | undefined;
 let initial: ListUploadsResponse | null = null;
 let health: HealthStatus | null = null;
 try {
   const sdk = serverClient();
   const [files, status] = await Promise.allSettled([withSsrDeadline(sdk.listUploads({ limit: 50, after: after ?? undefined })), withSsrDeadline(sdk.health())]);
   if (files.status === 'fulfilled') initial = files.value;
+  else initialError = presentError(files.reason, messages(locale));
   if (status.status === 'fulfilled') health = status.value;
-} catch { /* The island renders a localized retry state. */ }
+} catch (cause) { initialError = presentError(cause, messages(locale)); }
 ---
-<Admin locale={locale} section="files" health={health}><Files locale={locale} initial={initial} failed={!initial} view={view} after={after} client:load /></Admin>
+<Admin locale={locale} section="files" health={health}><Files locale={locale} initial={initial} initialError={initialError} failed={!initial} view={view} after={after} client:load /></Admin>

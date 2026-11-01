@@ -1,3 +1,4 @@
+import ErrorMessage from "./ErrorMessage";
 import { createSignal, onSettled } from "solid-js";
 import type { HealthStatus } from "condite-sdk-wasm";
 import { browserClient } from "../lib/client";
@@ -6,11 +7,13 @@ import { messages, type Locale } from "../i18n";
 export default function Service(props: {
   locale: Locale;
   initial: HealthStatus | null;
+  initialError?: unknown;
 }) {
   const t = messages(props.locale);
   const [health, setHealth] = createSignal(() => props.initial);
   const [ready, setReady] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
+  const [error, setError] = createSignal<unknown>(() => props.initialError);
   const [failed, setFailed] = createSignal(!props.initial);
   onSettled(() => {
     setReady(true);
@@ -22,7 +25,9 @@ export default function Service(props: {
       const sdk = await browserClient();
       setHealth(await sdk.health());
       setFailed(false);
-    } catch {
+      setError(null);
+    } catch (cause) {
+      setError(cause);
       setFailed(true);
     } finally {
       setBusy(false);
@@ -43,6 +48,7 @@ export default function Service(props: {
       <p class="feedback" role="status" aria-live="polite">
         {failed() ? t.serviceError : ""}
       </p>
+      <ErrorMessage error={error()} locale={props.locale} />
       <dl class="divide-y divide-line rounded-lg border border-line bg-white px-5">
         <div class="flex flex-wrap items-center justify-between gap-3 py-5">
           <dt class="text-sm text-muted">{t.status}</dt>

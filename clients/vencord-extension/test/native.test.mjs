@@ -60,7 +60,7 @@ test("packaged Electron SDK bridge exercises every SDK method and preserves u64 
         assert.equal((await value(native.download(null,base,"id", "fixture-key"))).uri,"https://storage.test/private?signed");
         await value(native.deleteUpload(null, base, "id", "fixture-key"));
         const failed = await native.upload(null, base, "fail.txt", "text/plain", new Uint8Array(Buffer.from("abc")), "fixture-key");
-        assert.equal(failed.ok, false); assert.equal(failed.error.status, 409); assert.equal(failed.error.stage, "confirm"); assert.equal(failed.error.request_id, "fail");
+        assert.equal(failed.ok, false); assert.equal(failed.error.status, 409); assert.equal(failed.error.stage, "confirm"); assert.equal(failed.error.request_id, "fail"); assert.equal(failed.error.body, "not ready");
         const invalid = await native.health(null, "file:///tmp"); assert.equal(invalid.ok, false);
         assert.equal(requests.filter(value => value === "PUT /storage").length, 3);
     } finally {

@@ -10,9 +10,10 @@ import { basename, dirname, isAbsolute, join } from "node:path";
 
 import { dialog, type IpcMainInvokeEvent } from "electron";
 
+import { presentError } from "./errors";
 import { limits, OperationError, type PrivacyOptions, type Retention, type Sdk, uploadPrepared, validateApiUrl } from "./workflow";
 
-type Reply<T> = ({ status: "ok"; } & T) | { status: "cancelled"; } | { status: "error"; message: string; request_id?: string; stage?: "put" | "confirm" | "share"; };
+type Reply<T> = ({ status: "ok"; } & T) | { status: "cancelled"; } | { status: "error"; message: string; raw?: string; request_id?: string; stage?: "put" | "confirm" | "share"; };
 let busy = false;
 
 function localSdk(): { sdk: Sdk; media?: { ffmpegPath: string; ffprobePath: string; }; } {
@@ -23,7 +24,7 @@ function localSdk(): { sdk: Sdk; media?: { ffmpegPath: string; ffprobePath: stri
     // Module paths come from the trusted desktop launch environment, never IPC.
     let sdk: Sdk;
     try { sdk = createRequire(process.execPath)(path); }
-    catch { throw new OperationError("The local Condite SDK could not be loaded. Check its path, platform and native build."); }
+    catch (cause) { throw new OperationError("The local Condite SDK could not be loaded. Check its path, platform and native build.", undefined, cause); }
     if (typeof sdk.Client !== "function" || typeof sdk.MetadataSanitizer !== "function") {
         throw new OperationError("Rebuild the local SDK with MetadataSanitizer support.");
     }
@@ -65,10 +66,10 @@ async function readSelectedFile(path: string): Promise<Uint8Array> {
     } finally { await file.close(); }
 }
 
-function failure(error: unknown): { status: "error"; message: string; request_id?: string; stage?: "put" | "confirm" | "share"; } {
+function failure(error: unknown): { status: "error"; message: string; raw?: string; request_id?: string; stage?: "put" | "confirm" | "share"; } {
     return error instanceof OperationError
-        ? { status: "error", message: error.message, request_id: error.request_id, stage: error.stage }
-        : { status: "error", message: "The local operation failed. Check the selected file and desktop setup." };
+        ? { status: "error", message: presentError(error).message, raw: presentError(error).raw, request_id: error.request_id, stage: error.stage }
+        : { status: "error", message: presentError(error).message, raw: presentError(error).raw };
 }
 
 function apiCredentials(apiUrl: string, suppliedKey?: string) {
@@ -117,7 +118,7 @@ export async function chooseDecryptAndSave(_event: IpcMainInvokeEvent, passphras
         const data = await readSelectedFile(selected.filePaths[0]);
         let decrypted: Uint8Array;
         try { decrypted = await new sdk.MetadataSanitizer(limits, media).decrypt(data, passphrase); }
-        catch { throw new OperationError("Decryption failed. Check the passphrase and encrypted file."); }
+        catch (cause) { throw new OperationError("Decryption failed. Check the passphrase and encrypted file.", undefined, cause); }
         passphrase = "";
         try {
             const target = await dialog.showSaveDialog({ title: "Save decrypted file", defaultPath: "decrypted-file", properties: ["showOverwriteConfirmation"] });
@@ -166,5 +167,5 @@ export async function manage(_event: IpcMainInvokeEvent, apiUrl: string, apiKey:
             default: throw new OperationError("Unsupported Condite operation.");
         }
         return { status: "ok" as const, value: value === undefined ? null : JSON.parse(JSON.stringify(value, (_key, item) => typeof item === "bigint" ? item.toString() : item)) };
-    } catch (cause) { return { status: "error" as const, message: (cause as Error).message || "Condite request failed." }; }
+    } catch (cause) { return { status: "error" as const, message: presentError(cause).message, raw: presentError(cause).raw }; }
 }

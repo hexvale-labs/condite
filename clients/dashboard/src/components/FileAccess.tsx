@@ -1,3 +1,4 @@
+import ErrorMessage from "./ErrorMessage";
 import { createMemo, createSignal, untrack, For, Show } from "solid-js";
 import type { Share, Upload } from "condite-sdk-wasm";
 import { browserClient } from "../lib/client";
@@ -23,7 +24,7 @@ export default function FileAccess(props: Props) {
   const [mode, setMode] = createSignal<AccessMode>("share");
   const [choice, setChoice] = createSignal<ExpiryChoice>(defaultExpiry());
   const [busy, setBusy] = createSignal(false);
-  const [error, setError] = createSignal("");
+  const [error, setError] = createSignal<unknown>("");
   const [notice, setNotice] = createSignal("");
   const [shares, setShares] = createSignal<Share[]>([]);
   const [next, setNext] = createSignal<string | null>(null);
@@ -72,8 +73,8 @@ export default function FileAccess(props: Props) {
       setNext(page.next_after);
       setAfter(cursor);
       return page;
-    } catch {
-      if (current === session) setError(t().error);
+    } catch (cause) {
+      if (current === session) setError(cause);
     } finally {
       if (current === session) setBusy(false);
     }
@@ -110,8 +111,10 @@ export default function FileAccess(props: Props) {
   async function copy(url: string) {
     try {
       await navigator.clipboard.writeText(url);
+      setError(null);
       setNotice(t().copied);
-    } catch {
+    } catch (cause) {
+      setError(cause);
       setNotice(t().copyFailed);
     }
   }
@@ -160,11 +163,7 @@ export default function FileAccess(props: Props) {
       if (removesFile) props.onDeleted();
     } catch (cause) {
       if (current === session) {
-        const detail =
-          cause instanceof Error && "status" in cause && cause.status === 400
-            ? cause.message
-            : "";
-        setError(detail ? `${t().error} ${detail}` : t().error);
+        setError(cause);
       }
     } finally {
       if (current === session) setBusy(false);
@@ -190,8 +189,8 @@ export default function FileAccess(props: Props) {
           : t().cleanupPending,
       );
       await props.onChanged();
-    } catch {
-      if (current === session) setError(t().error);
+    } catch (cause) {
+      if (current === session) setError(cause);
     } finally {
       if (current === session) setBusy(false);
     }
@@ -390,9 +389,9 @@ export default function FileAccess(props: Props) {
           </div>
         </div>
       </Show>
-      <p class="mt-4 text-sm text-red-800" role="alert">
-        {error()}
-      </p>
+      <div class="mt-4">
+        <ErrorMessage error={error()} locale={props.locale} />
+      </div>
       <p class="mt-2 text-sm text-muted" role="status" aria-live="polite">
         {notice()}
       </p>

@@ -129,5 +129,15 @@
   "aiNotice": "AIの支援を受けて作成",
   "download": "ダウンロード",
   "fileExpires": "ファイルの有効期限",
-  "apiKeyDescription": "Vencordの設定にローカル保存され、設定したCondite APIにのみ送信されます。"
+  "apiKeyDescription": "Vencordの設定にローカル保存され、設定したCondite APIにのみ送信されます。",
+  "rawError": "元のエラー",
+  "requestError": "リクエストの送信中に問題が発生しました。",
+  "serverError": "サーバーがリクエストを処理できませんでした。",
+  "unauthorizedError": "認証が必要です。API キーを確認してください。",
+  "forbiddenError": "この操作を行う権限がありません。",
+  "notFoundError": "要求された項目が見つかりません。",
+  "conflictError": "リクエストが現在の状態と競合しています。更新して再試行してください。",
+  "rateLimitError": "リクエストが多すぎます。後でもう一度お試しください。",
+  "httpError": "リクエストに失敗しました（HTTP {status}）。",
+  "unknownError": "問題が発生しました。もう一度お試しください。"
 }

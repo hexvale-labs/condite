@@ -46,8 +46,8 @@ export const limits = {
 export class OperationError extends Error {
     readonly request_id?: string;
     readonly stage?: "put" | "confirm" | "share";
-    constructor(message: string, recovery?: { request_id?: unknown; stage?: unknown; }) {
-        super(message);
+    constructor(message: string, recovery?: { request_id?: unknown; stage?: unknown; }, cause?: unknown) {
+        super(message, { cause });
         if (typeof recovery?.request_id === "string" && /^[\w-]{1,128}$/.test(recovery.request_id)) this.request_id = recovery.request_id;
         if (recovery?.stage === "put" || recovery?.stage === "confirm" || recovery?.stage === "share") this.stage = recovery.stage;
     }
@@ -73,8 +73,8 @@ export async function uploadPrepared(
         if (prepared.sizeBytes !== BigInt(prepared.data.byteLength) || prepared.sizeBytes > limits.maxOutputBytes) {
             throw new Error("invalid prepared size");
         }
-    } catch {
-        throw new OperationError("File preparation failed. Upload was not started. Check format support, limits and optional media tools.");
+    } catch (cause) {
+        throw new OperationError("File preparation failed. Upload was not started. Check format support, limits and optional media tools.", undefined, cause);
     }
     const client = new sdk.Client(baseUrl, apiKey);
     let result: Awaited<ReturnType<InstanceType<Sdk["Client"]>["upload"]>>;
@@ -87,11 +87,11 @@ export async function uploadPrepared(
         }, prepared.data);
     } catch (cause) {
         const recovery = cause && typeof cause === "object" ? cause : {};
-        throw new OperationError("Upload could not be confirmed. Check the Condite server; a pending upload may remain.", recovery);
+        throw new OperationError("Upload could not be confirmed. Check the Condite server; a pending upload may remain.", recovery, cause);
     }
     let share: { url: string; expires_at: string | null };
     try { share = await client.createShare(result.request_id, { follows_upload: true, expires_at: null }); }
-    catch { throw new OperationError("Upload was confirmed privately, but sharing failed. Find it in Manage uploads to retry.", { request_id: result.request_id, stage: "share" }); }
+    catch (cause) { throw new OperationError("Upload was confirmed privately, but sharing failed. Find it in Manage uploads to retry.", { request_id: result.request_id, stage: "share" }, cause); }
     let uri: URL;
     try { uri = new URL(share.url); }
     catch { throw new OperationError("Upload was confirmed, but the server returned an invalid link."); }

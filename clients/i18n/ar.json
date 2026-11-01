@@ -129,5 +129,15 @@
   "aiNotice": "كُتب بمساعدة الذكاء الاصطناعي",
   "download": "تنزيل",
   "fileExpires": "انتهاء صلاحية الملف",
-  "apiKeyDescription": "يُحفظ محليًا في إعدادات Vencord ويُرسل فقط إلى واجهة Condite المحددة."
+  "apiKeyDescription": "يُحفظ محليًا في إعدادات Vencord ويُرسل فقط إلى واجهة Condite المحددة.",
+  "rawError": "الخطأ الخام",
+  "requestError": "حدث خطأ أثناء إرسال الطلب.",
+  "serverError": "تعذر على الخادم معالجة الطلب.",
+  "unauthorizedError": "المصادقة مطلوبة. تحقق من مفتاح API.",
+  "forbiddenError": "ليس لديك إذن لتنفيذ هذا الإجراء.",
+  "notFoundError": "لم يتم العثور على العنصر المطلوب.",
+  "conflictError": "يتعارض الطلب مع الحالة الحالية. حدّث وحاول مجددًا.",
+  "rateLimitError": "طلبات كثيرة جدًا. حاول لاحقًا.",
+  "httpError": "فشل الطلب (HTTP {status}).",
+  "unknownError": "حدث خطأ. حاول مجددًا."
 }

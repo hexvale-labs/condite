@@ -170,5 +170,18 @@ test("upload recovery identifiers cross IPC without leaking the underlying excep
         expect(reply.request_id).toBe("pending-id");
         expect(reply.stage).toBe("put");
         expect(reply.message).not.toContain("PRIVATE_CANARY");
+        expect(reply.raw).toContain("PRIVATE_CANARY");
+    }
+});
+
+test("HTTP upload failures retain readable problem details across IPC", async () => {
+    const body = '{"title":"Sharing unavailable","detail":"Configure storage","debug":"raw-canary"}';
+    (globalThis as any).__conditeNativeTest.uploadError = Object.assign(new Error(`HTTP 400: ${body}`), {status:400,body,request_id:"pending-id",stage:"confirm"});
+    const reply = await native.chooseAndUpload(event, "https://condite.example", {stripMetadata:false,anonymizeFilename:false});
+    expect(reply.status).toBe("error");
+    if (reply.status === "error") {
+        expect(reply.message).toContain("Sharing unavailable: Configure storage");
+        expect(reply.raw).toContain("raw-canary");
+        expect(reply.request_id).toBe("pending-id");
     }
 });

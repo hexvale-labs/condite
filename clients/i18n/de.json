@@ -129,5 +129,15 @@
   "aiNotice": "Mit KI-Unterstützung geschrieben",
   "download": "Herunterladen",
   "fileExpires": "Dateiablauf",
-  "apiKeyDescription": "Wird lokal in den Vencord-Einstellungen gespeichert und nur an die konfigurierte Condite-API gesendet."
+  "apiKeyDescription": "Wird lokal in den Vencord-Einstellungen gespeichert und nur an die konfigurierte Condite-API gesendet.",
+  "rawError": "Rohfehler",
+  "requestError": "Beim Senden der Anfrage ist ein Fehler aufgetreten.",
+  "serverError": "Der Server konnte die Anfrage nicht verarbeiten.",
+  "unauthorizedError": "Authentifizierung erforderlich. Prüfe deinen API-Schlüssel.",
+  "forbiddenError": "Du hast keine Berechtigung für diese Aktion.",
+  "notFoundError": "Das angeforderte Element wurde nicht gefunden.",
+  "conflictError": "Die Anfrage steht im Konflikt mit dem aktuellen Zustand. Aktualisiere und versuche es erneut.",
+  "rateLimitError": "Zu viele Anfragen. Versuche es später erneut.",
+  "httpError": "Die Anfrage ist fehlgeschlagen (HTTP {status}).",
+  "unknownError": "Ein Fehler ist aufgetreten. Versuche es erneut."
 }

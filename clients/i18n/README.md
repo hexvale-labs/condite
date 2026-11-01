@@ -20,3 +20,7 @@ managed Vencord checkout; rebuild after editing. No online translator is used.
 
 Technical plugin metadata and raw SDK/server errors may remain in English.
 Check translations in context; key parity cannot prove linguistic quality.
+
+`errors.ts` formats SDK errors for both clients. The standalone desktop plugin
+ships an MIT copy in `../vencord/condite.desktop/errors.ts`; its parity test
+requires updating both together. Raw details retain the original response text.

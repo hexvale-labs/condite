@@ -103,6 +103,6 @@ Discord upload or message was performed during development.
 
 ## License
 
-The plugin and tests are GPL-3.0-or-later. They use Vencord APIs and dynamically
+The plugin and tests are GPL-3.0-or-later; the bundled error formatter retains its MIT license. They use Vencord APIs and dynamically
 load the separate MIT-licensed Condite Node SDK. No Vencord implementation was
 copied into this directory. See [COPYING](COPYING).
