@@ -17,6 +17,7 @@ jobs:
     permissions:
       contents: read
     env:
+      CARGO_INCREMENTAL: 0
       CARGO_BUILD_JOBS: 2
       CARGO_PROFILE_DEV_DEBUG: 0
     steps:
@@ -33,14 +34,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
-      - uses: Swatinem/rust-cache@v2.9.3
+      - uses: ./.github/actions/cargo-cache
         with:
-          cache-bin: false
-          key: ${{ hashFiles('Cargo.toml') }}
-          # The consumer keeps its independent lockfile and build directory.
-          workspaces: |
-            . -> target
-            examples/sdk-consumer -> target
+          kind: sdk
+          targets: |
+            target
+            examples/sdk-consumer/target
       - run: bun install --frozen-lockfile
       - run: bun x --no-install playwright install --with-deps --only-shell chromium
       - run: sudo apt-get install -y libgtk-3-0t64 xvfb
