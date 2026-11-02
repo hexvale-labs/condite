@@ -139,5 +139,8 @@
   "conflictError": "Die Anfrage steht im Konflikt mit dem aktuellen Zustand. Aktualisiere und versuche es erneut.",
   "rateLimitError": "Zu viele Anfragen. Versuche es später erneut.",
   "httpError": "Die Anfrage ist fehlgeschlagen (HTTP {status}).",
-  "unknownError": "Ein Fehler ist aufgetreten. Versuche es erneut."
+  "unknownError": "Ein Fehler ist aufgetreten. Versuche es erneut.",
+  "doomClock": "Zeit bis zum Ende (zählt hoch)",
+  "enableTick": "Ticken einschalten",
+  "muteTick": "Ticken stummschalten"
 }

@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { Uptime } from "./Uptime";
+import type { HealthStatus } from "./wire";
 import { Button } from "@components/Button";
 import { copyToClipboard } from "@utils/clipboard";
 import type { PluginNative } from "@utils/types";
@@ -20,6 +22,7 @@ const formatDate = (value: string | null) => value ? new Date(value).toISOString
 const safeLink = (value: string) => { const url = new URL(value); if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("Unsupported download URL."); return url.href; };
 
 export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalProps; apiUrl: string; apiKey: string }) {
+    const [health, setHealth] = useState<HealthStatus | null>(null);
     const [rows, setRows] = useState<Row[]>([]);
     const [next, setNext] = useState<string | null>(null);
     const [cursor, setCursor] = useState<string | null>(null);
@@ -45,6 +48,21 @@ export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalPro
     const load = async (after: string | null = cursor) => { const page = await call("listUploads", "", { limit: 20, after }); setRows(page.uploads); setNext(page.next_after); };
     const loadShares = async (row: Row, after: string | null = null) => { const page = await call("listShares", row.id, { limit: 20, after }); setSelected(row); setShares(previous => after ? [...previous, ...page.shares] : page.shares); setShareNext(page.next_after); };
     useEffect(() => { void run(() => load()); }, []);
+    useEffect(() => {
+        let live = true;
+        let pending = false;
+        setHealth(null);
+        const poll = async () => {
+            if (pending) return;
+            pending = true;
+            try { const value = await call("health"); if (live) setHealth(value); }
+            catch { if (live) setHealth(null); }
+            finally { pending = false; }
+        };
+        void poll();
+        const timer = setInterval(() => void poll(), 30000);
+        return () => { live = false; clearInterval(timer); };
+    }, [apiUrl, apiKey]);
     const expiry = (allowPast = false) => {
         if (mode === "never" || mode === "upload") return null;
         const time = mode === "date" ? new Date(date + "Z").getTime() : Date.now() + Number(mode) * 86400000;
@@ -64,7 +82,8 @@ export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalPro
     };
     return <Modal {...props} title="Condite uploads" actions={[{ text: "Close", variant: "secondary", onClick: props.onClose }]}>
         <div className="vc-condite-manager">
-            <div className="vc-condite-actions"><Button disabled={busy} onClick={() => void run(() => load())}>Refresh</Button><Button disabled={busy} variant="secondary" onClick={() => void run(async () => { const health = await call("health"); setNotice(health.healthy ? `Connected · ${health.runtime}` : "Unhealthy"); })}>Connection</Button></div>
+            <div className="vc-condite-actions"><Button disabled={busy} onClick={() => void run(() => load())}>Refresh</Button><Button disabled={busy} variant="secondary" onClick={() => void run(async () => { try { setHealth(await call("health")); } catch (error) { setHealth(null); throw error; } })}>Connection</Button></div>
+            <Uptime health={health} />
             {!!error && <ErrorMessage error={error} />}
             {notice && <p role="status">{notice}</p>}
             {rows.map(row => <section key={row.id} className="vc-condite-record">

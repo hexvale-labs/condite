@@ -20,7 +20,8 @@ import { safeUrl } from "./routing";
 import { createClient, uploadFile } from "./sdk";
 import { settings } from "./settings";
 import { type Expiry, expiryDate, ExpiryPicker, openSharing } from "./sharing";
-import type { ListUploadsResponse, Upload } from "./wire";
+import { Uptime } from "./Uptime";
+import type { HealthStatus, ListUploadsResponse, Upload } from "./wire";
 
 export function bytes(value: bigint, locale = "en") {
     const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
@@ -53,6 +54,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
     const [busy, setBusy] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState<unknown>(null);
+    const [health, setHealth] = useState<HealthStatus | null>(null);
     const [notice, setNotice] = useState("");
     const [filter, setFilter] = useState("all");
     const [query, setQuery] = useState("");
@@ -72,6 +74,23 @@ export function FileManager({ onClose }: { onClose(): void }) {
             generation.current++;
         };
     }, []);
+
+    useEffect(() => {
+        let live = true;
+        let pending = false;
+        setHealth(null);
+        const sdk = createClient();
+        const poll = async () => {
+            if (pending) return;
+            pending = true;
+            try { const value = await sdk.health(); if (live) setHealth(value); }
+            catch { if (live) setHealth(null); }
+            finally { pending = false; }
+        };
+        void poll();
+        const timer = setInterval(() => void poll(), 30000);
+        return () => { live = false; clearInterval(timer); };
+    }, [apiBase, apiKey]);
 
     async function run(
         operation: (
@@ -307,13 +326,10 @@ export function FileManager({ onClose }: { onClose(): void }) {
                         disabled={busy}
                         onClick={() =>
                             void run(async (sdk, current) => {
-                                const health = await sdk.health();
-                                if (current())
-                                    setNotice(
-                                        health.healthy
-                                            ? `${t.healthy} · ${health.runtime}`
-                                            : t.unhealthy
-                                    );
+                                try {
+                                    const value = await sdk.health();
+                                    if (current()) setHealth(value);
+                                } catch (error) { if (current()) setHealth(null); throw error; }
                             })
                         }
                     >
@@ -321,6 +337,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                     </Button>
                     <span className="condite-muted">{t.fileLimit}</span>
                 </div>
+                <Uptime health={health} />
                 <ExpiryPicker value={retention} onChange={setRetention} date={retentionDate} onDate={setRetentionDate} />
                 <div role="status" aria-live="polite">
                     {busy ? t.working : notice}

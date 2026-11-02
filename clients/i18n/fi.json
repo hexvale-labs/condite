@@ -139,5 +139,8 @@
   "conflictError": "Pyyntö on ristiriidassa nykyisen tilan kanssa. Päivitä ja yritä uudelleen.",
   "rateLimitError": "Liian monta pyyntöä. Yritä myöhemmin uudelleen.",
   "httpError": "Pyyntö epäonnistui (HTTP {status}).",
-  "unknownError": "Jokin meni pieleen. Yritä uudelleen."
+  "unknownError": "Jokin meni pieleen. Yritä uudelleen.",
+  "doomClock": "Aikaa loppuun (kasvaa)",
+  "enableTick": "Ota tikitys käyttöön",
+  "muteTick": "Mykistä tikitys"
 }

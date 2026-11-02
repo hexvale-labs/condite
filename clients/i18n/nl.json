@@ -139,5 +139,8 @@
   "conflictError": "Het verzoek is in strijd met de huidige toestand. Vernieuw en probeer opnieuw.",
   "rateLimitError": "Te veel verzoeken. Probeer het later opnieuw.",
   "httpError": "Het verzoek is mislukt (HTTP {status}).",
-  "unknownError": "Er ging iets mis. Probeer opnieuw."
+  "unknownError": "Er ging iets mis. Probeer opnieuw.",
+  "doomClock": "Tijd tot het einde (telt op)",
+  "enableTick": "Tikken inschakelen",
+  "muteTick": "Tikken dempen"
 }

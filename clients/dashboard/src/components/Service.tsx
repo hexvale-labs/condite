@@ -1,5 +1,6 @@
+import Uptime from "./Uptime";
 import ErrorMessage from "./ErrorMessage";
-import { createSignal, onSettled } from "solid-js";
+import { createSignal, createEffect, onSettled } from "solid-js";
 import type { HealthStatus } from "condite-sdk-wasm";
 import { browserClient } from "../lib/client";
 import { formatDate } from "../lib/format";
@@ -17,6 +18,10 @@ export default function Service(props: {
   const [failed, setFailed] = createSignal(!props.initial);
   onSettled(() => {
     setReady(true);
+  });
+  createEffect(() => true, () => {
+    const timer = setInterval(() => void refresh(), 30000);
+    return () => clearInterval(timer);
   });
   async function refresh() {
     if (busy()) return;
@@ -73,7 +78,7 @@ export default function Service(props: {
         </div>
         <div class="flex flex-wrap justify-between gap-3 py-5">
           <dt class="text-sm text-muted">{t.runtime}</dt>
-          <dd class="break-all text-sm">{health()?.runtime ?? t.unknown}</dd>
+          <dd class="break-all text-sm"><Uptime health={failed() ? null : health()} locale={props.locale} /></dd>
         </div>
       </dl>
       <p class="mt-4 text-xs leading-relaxed text-muted">{t.serviceHint}</p>

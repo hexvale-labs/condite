@@ -110,3 +110,15 @@ Unsupported languages fall back to English. This localizes Condite, not Vesktop'
 own settings. The [official installation guide](https://docs.vencord.dev/installing/)
 documents selecting a custom Vencord `dist` directory in Vesktop's developer
 settings. Live Vesktop behavior still needs verification.
+
+## Releases
+
+Published `vencord/vX.Y.Z` or umbrella `vX.Y.Z` releases attach native x64/arm64
+ZIPs for Linux, Windows and macOS, in desktop and standalone/Vesktop variants.
+Extract everything, including `condite-sdk`, and verify the SHA-256 sidecar.
+ZIPs use deflate level 6. Browser/extensions/userscripts are not supported by the
+Electron bridge; `build:web` remains a compilation check only. See
+[release guidance](../../docs/releases.md) for triggers, versions and limitations.
+
+The connection display counts up live with 30-day months and checks availability
+periodically. Its optional clock tick starts muted and stops when hidden/offline.

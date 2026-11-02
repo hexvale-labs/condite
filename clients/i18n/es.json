@@ -139,5 +139,8 @@
   "conflictError": "La solicitud entra en conflicto con el estado actual. Actualiza e inténtalo de nuevo.",
   "rateLimitError": "Demasiadas solicitudes. Inténtalo más tarde.",
   "httpError": "La solicitud falló (HTTP {status}).",
-  "unknownError": "Algo salió mal. Inténtalo de nuevo."
+  "unknownError": "Algo salió mal. Inténtalo de nuevo.",
+  "doomClock": "Tiempo hasta el fin (en aumento)",
+  "enableTick": "Activar tictac",
+  "muteTick": "Silenciar tictac"
 }

@@ -101,7 +101,7 @@ const server = createServer(async (req, res) => {
     return send(200, {
       healthy: true,
       started_at: "2026-10-31T00:00:00Z",
-      runtime: "fixture",
+      runtime: "PT61.123456789S",
     });
   if (url.pathname === "/v1/uploads" && req.method === "GET") {
     const after = url.searchParams.get("after");
