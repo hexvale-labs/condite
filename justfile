@@ -24,3 +24,7 @@ check target="all" component="all":
 # Generate a database migration; review the generated SQL before running it.
 migrate name:
     just --justfile crates/condite-core/justfile migrate {{quote(name)}}
+
+# Synchronize one component version across manifests and lockfiles.
+version component value:
+    node scripts/release/version.mjs set {{quote(component)}} {{quote(value)}}

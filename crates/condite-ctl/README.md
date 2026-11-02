@@ -24,3 +24,9 @@ The CLI checks `$XDG_RUNTIME_DIR/condite/condite.sock`, falling back to
 `/run/condite/condite.sock` when absent. Use `--socket <path>` to override,
 `--json` for scripts, and `--timeout <seconds>` to adjust the default 10-second
 socket timeout. Errors go to stderr and exit nonzero. `--help` works offline.
+
+Use `just build ctl`, `just check ctl` (format, Clippy and existing CLI tests),
+`just install ctl` (install on PATH), or `just run ctl` (temporary interactive
+shell). `just run` includes this shell alongside the API and dashboard in mprocs.
+Select **control** and press Ctrl-a to interact. Exiting the shell does not stop
+other processes. All processes share the same development control socket.

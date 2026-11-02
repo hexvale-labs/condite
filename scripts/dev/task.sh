@@ -15,6 +15,7 @@ if [[ "$component" != all ]]; then
 fi
 case "$action:$target" in
     install:all)
+        bash "$0" install ctl
         bash "$0" install backend
         bash "$0" install dashboard
         bash "$0" install vencord
@@ -23,6 +24,7 @@ case "$action:$target" in
         command -v mprocs >/dev/null || cargo install mprocs --locked ;;
     build:all)
         bash "$0" build sdk
+        bash "$0" build ctl
         bash "$0" build backend
         bash "$0" build dashboard
         bash "$0" build vencord ;;
@@ -31,12 +33,21 @@ case "$action:$target" in
             echo 'Install the local process runner with: just install runner' >&2
             exit 1
         fi
-        exec mprocs --config mprocs.yaml ;;
+        # All processes inherit the same private runtime path and control socket.
+        if [[ -z "${XDG_RUNTIME_DIR:-}" ]]; then
+            runtime_dir=$(mktemp -d "${TMPDIR:-/tmp}/condite-run.XXXXXXXX")
+            chmod 700 "$runtime_dir"
+            export XDG_RUNTIME_DIR="$runtime_dir"
+            trap 'rm -rf "$runtime_dir"' EXIT
+        fi
+        mprocs --config mprocs.yaml ;;
     run:sdk|run:vencord)
         echo 'SDK and Vencord have no standalone server. Use just check sdk or just build vencord.'
         echo 'For live Vencord testing, inject the build and restart Discord; see clients/vencord-extension/README.md.' >&2
         exit 2 ;;
+    check:versions) node scripts/release/version.mjs check ;;
     check:all)
+        bash "$0" check versions
         bash "$0" check rust
         bash "$0" check sdk
         bash "$0" check dashboard
@@ -44,6 +55,7 @@ case "$action:$target" in
     check:rust|check:backend) bash scripts/dev/check-rust.sh ;;
     check:wasm)
         cargo clippy --locked -p condite-sdk-wasm --target wasm32-unknown-unknown --all-features -- -D warnings ;;
+    install:ctl|build:ctl|run:ctl|check:ctl) local_task crates/condite-ctl ;;
     install:backend|build:backend|run:backend) local_task crates/condite-core ;;
     install:dashboard|build:dashboard|run:dashboard|check:dashboard) local_task clients/dashboard ;;
     install:sdk|build:sdk|check:sdk) local_task scripts/sdk ;;

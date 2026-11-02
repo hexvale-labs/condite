@@ -7,3 +7,7 @@ procs:
     cmd: [just, run, dashboard]
     cwd: <CONFIG_DIR>
     stop: {send-keys: ["<C-c>"]}
+  control:
+    cmd: [just, run, ctl]
+    cwd: <CONFIG_DIR>
+    stop: {send-keys: ["<C-d>"]}

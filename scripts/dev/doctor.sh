@@ -71,12 +71,19 @@ vencord() {
     version pnpm 12.15.0
     file clients/vencord-extension/.vencord/package.json 'Run just install vencord.'
 }
+ctl() {
+    printf '\nControl CLI\n'
+    tool cargo 'Install Rust using rustup.'
+    tool rustc 'Install Rust using rustup.'
+    tool python3 'Install Python 3 for Cargo metadata parsing.'
+}
 case "${1:-all}" in
+    ctl) ctl ;;
     backend) backend ;;
     sdk) sdk ;;
     dashboard) dashboard ;;
     vencord) vencord ;;
-    all) backend; sdk; dashboard; vencord; tool mprocs 'Run just install runner.' ;;
-    *) printf 'Usage: just check tools [all|backend|dashboard|sdk|vencord]\n' >&2; exit 2 ;;
+    all) ctl; backend; sdk; dashboard; vencord; tool mprocs 'Run just install runner.' ;;
+    *) printf 'Usage: just check tools [all|backend|dashboard|sdk|vencord|ctl]\n' >&2; exit 2 ;;
 esac
 exit "$status"
