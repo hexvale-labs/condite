@@ -39,8 +39,13 @@
         "typescript": "catalog:",
       },
     },
+    "clients/vencord": {
+      "name": "@condite/vencord-plugin",
+      "version": "0.1.0",
+    },
     "clients/vencord-extension": {
       "name": "condite-vencord-extension",
+      "version": "0.1.0",
     },
     "crates/condite-sdk-node": {
       "name": "condite-sdk-node",
@@ -175,6 +180,8 @@
     "@clack/prompts": ["@clack/prompts@1.8.1", "", { "dependencies": { "@clack/core": "1.5.1", "fast-string-width": "^3.0.2", "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-dlT1m5e/0yUL0kRNcQn7yGLVThkgbB0Ga/1AmfDDC/8ik6AIiSf2QLQO2zPYvefsHP0aFgxO93cVLCCfDp7kzQ=="],
 
     "@condite/dashboard": ["@condite/dashboard@workspace:clients/dashboard"],
+
+    "@condite/vencord-plugin": ["@condite/vencord-plugin@workspace:clients/vencord"],
 
     "@electron-internal/extract-zip": ["@electron-internal/extract-zip@1.0.8", "", {}, "sha512-8iajeLFbzNwM0m3AsQZSZgYREWglAImyGvvFSWU34FgMW8sHlzdwj9QKvv9dgN7jMP591EFUF/sLOC3Jl9YIjQ=="],
 

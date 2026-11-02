@@ -9,6 +9,9 @@ import {
 import { gzipSync } from "node:zlib";
 import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
+const sdkVersion = JSON.parse(
+  readFileSync(resolve(root, "versions.json"), "utf8"),
+).sdk;
 process.chdir(root);
 const profile = process.argv.includes("--release") ? "sdk" : "dev";
 const profileDir = profile === "dev" ? "debug" : profile;
@@ -129,7 +132,7 @@ writeFileSync(
   JSON.stringify(
     {
       name: "condite-sdk-node",
-      version: "0.1.0",
+      version: sdkVersion,
       license: "MIT",
       main: "index.cjs",
       types: "index.d.cts",
@@ -190,7 +193,7 @@ writeFileSync(
   JSON.stringify(
     {
       name: "condite-sdk-wasm",
-      version: "0.1.0",
+      version: sdkVersion,
       license: "MIT",
       type: "module",
       main: "index.js",
