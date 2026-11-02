@@ -1,9 +1,10 @@
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "../.vencord/node_modules/esbuild/lib/main.js";
 
 const built = await build({
-    stdin: { contents: 'export * from "./src/patches"; export * from "./src/routing"; export {canonicalizeMatch,canonicalizeReplace} from "./.vencord/src/utils/patches";', resolveDir: new URL("..", import.meta.url).pathname },
+    stdin: { contents: 'export * from "./src/patches"; export * from "./src/routing"; export {canonicalizeMatch,canonicalizeReplace} from "./.vencord/src/utils/patches";', resolveDir: fileURLToPath(new URL("..", import.meta.url)) },
     bundle: true, write: false, format: "esm", platform: "node"
 });
 const { uploadPatch, navigationPatch, canonicalizeMatch, canonicalizeReplace, UploadRouter } = await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString("base64")}`);

@@ -8,6 +8,8 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 RUN cargo chef prepare --recipe-path recipe.json
 FROM chef AS builder
+ARG CARGO_BUILD_JOBS=2
+ENV CARGO_BUILD_JOBS=$CARGO_BUILD_JOBS
 COPY --from=planner /src/recipe.json ./recipe.json
 RUN cargo chef cook --locked --profile container --recipe-path recipe.json -p condite-core -p condite-ctl --bin condite-core --bin condite-ctl
 COPY Cargo.toml Cargo.lock ./

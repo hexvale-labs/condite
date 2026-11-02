@@ -35,3 +35,16 @@ test('fingerprints ignore unrelated sources and include shared build inputs', ()
     assert.notEqual(fingerprint('core', 'HEAD', directory), initial);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+import { imageFingerprint } from './images.mjs';
+test('multiarch registry configs require matching fingerprints on both Linux platforms', () => {
+  const config = value => ({ config: { Labels: { 'io.condite.inputs': value } } });
+  assert.equal(imageFingerprint({ 'linux/amd64': config('abc'), 'linux/arm64': config('abc') }), 'abc');
+  assert.equal(imageFingerprint({ 'linux/amd64': config('abc'), 'linux/arm64/v8': config('abc') }), 'abc');
+  assert.throws(() => imageFingerprint({ 'linux/amd64': config('abc') }), /platform/);
+  assert.throws(() => imageFingerprint({ 'linux/amd64': config('abc'), 'linux/arm64': config('other') }), /fingerprint/);
+});
+test('effective dashboard build origin participates in immutable inputs', () => {
+  assert.notEqual(fingerprint('dashboard', 'HEAD', undefined, 'https://one.example'), fingerprint('dashboard', 'HEAD', undefined, 'https://two.example'));
+  assert.equal(fingerprint('core', 'HEAD', undefined, 'https://one.example'), fingerprint('core', 'HEAD', undefined, 'https://two.example'));
+});

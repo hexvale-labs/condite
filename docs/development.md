@@ -40,7 +40,8 @@ use local HTTP fixtures. Dashboard browser tests use real built SDKs with a loca
 fixture, not a live database/bucket. These do not prove a provider's real S3/CORS
 configuration; verify that separately for deployment.
 
-CI currently has Rust and SDK workflows, described in [CI details](ci.md).
+CI has Rust, SDK and release-tooling checks plus tagged publishing workflows; see
+[CI details](ci.md).
 Dashboard checks are a separate local requirement; neither workflow runs them.
 
 ## Contract and schema changes

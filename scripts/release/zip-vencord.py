@@ -16,5 +16,7 @@ with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compressleve
             archive.write(path, path.relative_to(dist))
     archive.write(checkout / "LICENSE", "LICENSE-Vencord")
     archive.write(checkout.parent / "COPYING", "LICENSE-Condite-plugin")
+    archive.write(checkout.parent.parent / "i18n/LICENSE", "LICENSE-Condite-translations")
+    archive.write(checkout.parent.parent / "shared/LICENSE", "LICENSE-Condite-client-utilities")
     archive.writestr("INSTALL.txt", "Extract the entire ZIP. Keep condite-sdk beside the bundles. Native addon matches the filename OS/architecture only. For Vesktop, select this custom dist directory. See https://docs.vencord.dev/installing/ and Condite's clients/vencord-extension/README.md.\n")
-output.with_suffix(".zip.sha256").write_text(f"{hashlib.sha256(output.read_bytes()).hexdigest()}  {output.name}\n")
+output.with_suffix(".zip.sha256").write_text(f"{hashlib.sha256(output.read_bytes()).hexdigest()}  {output.name}\n", newline="\n")

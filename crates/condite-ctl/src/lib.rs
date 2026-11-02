@@ -21,6 +21,25 @@ pub fn parse_size(input: &str) -> Result<u64, String> {
         .ok_or_else(|| "size exceeds the supported byte range".into())
 }
 
+/// Format an ISO duration snapshot; months are fixed 30-day periods.
+pub fn format_uptime(runtime: &str) -> String {
+    let Ok(duration) = runtime.parse::<jiff::SignedDuration>() else {
+        return "Unknown".into();
+    };
+    let seconds = duration.as_secs();
+    if seconds < 0 {
+        return "Unknown".into();
+    }
+    format!(
+        "{}mo {}d {}h {}m {}s",
+        seconds / 2_592_000,
+        seconds / 86_400 % 30,
+        seconds / 3_600 % 24,
+        seconds / 60 % 60,
+        seconds % 60
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -50,23 +69,4 @@ mod tests {
             assert!(parse_size(input).is_err(), "{input}");
         }
     }
-}
-
-/// Format an ISO duration snapshot; months are fixed 30-day periods.
-pub fn format_uptime(runtime: &str) -> String {
-    let Ok(duration) = runtime.parse::<jiff::SignedDuration>() else {
-        return "Unknown".into();
-    };
-    let seconds = duration.as_secs();
-    if seconds < 0 {
-        return "Unknown".into();
-    }
-    format!(
-        "{}mo {}d {}h {}m {}s",
-        seconds / 2_592_000,
-        seconds / 86_400 % 30,
-        seconds / 3_600 % 24,
-        seconds / 60 % 60,
-        seconds % 60
-    )
 }

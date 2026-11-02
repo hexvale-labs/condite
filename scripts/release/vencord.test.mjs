@@ -12,3 +12,9 @@ test('desktop and standalone native packages cover six host platforms', () => {
   assert.equal(releaseTargets.length, 6);
   for (const os of ['linux', 'win32', 'darwin']) for (const arch of ['x64', 'arm64']) assert.ok(releaseTargets.some(t => t.os === os && t.arch === arch));
 });
+
+import { buildArguments } from '../../clients/vencord-extension/build-options.mjs';
+test('packaged custom builds cannot update themselves to official Vencord', () => {
+  assert.deepEqual(buildArguments(false), ['build', '--disable-updater']);
+  assert.deepEqual(buildArguments(true), ['build', '--standalone', '--disable-updater']);
+});

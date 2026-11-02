@@ -28,14 +28,17 @@ build metadata's `+` as `_` because Docker forbids `+`.
 Umbrella releases add `:release-UMBRELLA_VERSION` to each image. Component version
 images are immutable: unchanged build inputs reuse their existing digest; changed
 inputs require a version bump. Shared sources, dependency locks and build config
-count as inputs. No floating `latest` alias is published. Linux amd64 and arm64
+count as inputs; the effective dashboard origin is also fingerprinted. No floating `latest` alias is published. Linux amd64 and arm64
 build natively, smoke-test before push, then merge into multiarchitecture indexes.
 Temporary `build-RUN-ATTEMPT-ARCH` tags hold tested images while the matrix finishes;
 GHCR retention should remove old temporary tags after successful publication.
 
 Runtime images are nonroot distroless Debian 13: core uses the C/C++ runtime for
 its native database dependencies, dashboard uses Node 22. Matching Debian builders
-avoid Alpine/musl addon compatibility changes. Rust container builds use thin LTO,
+avoid Alpine/musl addon compatibility changes. Custom Vencord builds disable the upstream updater so official updates cannot
+replace Condite bundles. Upgrade them by installing a newer Condite ZIP.
+
+Rust container builds use thin LTO,
 one codegen unit and stripped symbols. Production Node dependencies are installed
 separately; no compiler or package manager is shipped. Heap flags and extra process
 managers are deliberately avoided without workload measurements.
@@ -57,6 +60,9 @@ filesystem symlinks on PATH, so direct compose exec works without a shell. The
 core data volume and private runtime socket are owned by UID 65532. Back up the
 volume before upgrading; startup applies migrations. Supply S3/database secrets
 through runtime environment files or orchestration secrets, never image builds.
+
+Check available CPU, RAM and disk first; use `--build-arg CARGO_BUILD_JOBS=1`
+on constrained machines and run builds sequentially.
 
 Local builds: `docker build -f docker/core.Dockerfile -t condite-core .` and
 `docker build -f docker/dashboard.Dockerfile --build-arg DASHBOARD_ORIGIN=https://dashboard.example -t condite-dashboard .`.
@@ -84,7 +90,9 @@ back to incomplete HTTP/Number conversions. See the [userplugin guide](../client
 [Distroless](https://github.com/GoogleContainerTools/distroless) omits shells and
 package managers. [Node's image guidance](https://github.com/nodejs/docker-node)
 describes Alpine's musl difference. [Cargo-chef](https://github.com/LukeMathWalker/cargo-chef)
-separates Rust dependency compilation from source layers. [Docker cache guidance](https://docs.docker.com/build/ci/github-actions/cache)
+separates native/WASM Rust dependency compilation from source layers. Dashboard
+builds download the lockfile-matched wasm-bindgen CLI with checksum verification
+instead of compiling it from source. [Docker cache guidance](https://docs.docker.com/build/ci/github-actions/cache)
 explains intermediate-layer export: workflows use separate `gha` scopes per image
 and architecture with `mode=max`. Cache mounts alone are not exported. Enabled
 core dependencies use Rustls; [AWS documents Rustls as its default HTTPS client](https://docs.aws.amazon.com/sdk-for-rust/latest/dg/http.html).

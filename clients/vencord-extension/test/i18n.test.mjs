@@ -1,9 +1,10 @@
+import { fileURLToPath } from "node:url";
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { build } from '../.vencord/node_modules/esbuild/lib/main.js';
 
 const result = await build({
-    entryPoints: [new URL('../.vencord/src/userplugins/condite/i18n.ts', import.meta.url).pathname],
+    entryPoints: [fileURLToPath(new URL('../.vencord/src/userplugins/condite/i18n.ts', import.meta.url))],
     bundle: true, write: false, format: 'esm', platform: 'browser',
     plugins: [{ name: 'discord-language-fixture', setup(build) {
         build.onResolve({ filter: /^@webpack\/common$/ }, () => ({ path: 'common', namespace: 'fixture' }));

@@ -26,7 +26,7 @@ test("rollovers include 30-day months, days, hours, minutes and seconds", () => 
 });
 
 test("manual-install legacy bundle retains the shared time and audio source", async () => {
-  for (const file of ["uptime.ts", "tick.ts", "uptime-dom.ts", "uptime.css"]) {
+  for (const file of ["uptime.ts", "tick.ts", "uptime-dom.ts", "uptime.css", "LICENSE"]) {
     const current = await Bun.file(new URL(file, import.meta.url)).text();
     const bundled = await Bun.file(new URL(`../vencord/condite.desktop/shared/${file}`, import.meta.url)).text();
     expect(bundled).toBe(current);

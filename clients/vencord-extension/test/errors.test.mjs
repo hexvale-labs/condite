@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -19,7 +20,7 @@ globalThis.__conditeErrorReact = {
     }
 };
 const result = await build({
-    entryPoints: [new URL('../.vencord/src/userplugins/condite/errors.tsx', import.meta.url).pathname],
+    entryPoints: [fileURLToPath(new URL('../.vencord/src/userplugins/condite/errors.tsx', import.meta.url))],
     bundle: true, write: false, format: 'esm', platform: 'browser',
     plugins: [{ name: 'error-ui-fixture', setup(build) {
         build.onResolve({ filter: /^@webpack\/common$/ }, () => ({ path: 'common', namespace: 'fixture' }));

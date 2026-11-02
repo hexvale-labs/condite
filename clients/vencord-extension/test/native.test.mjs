@@ -1,11 +1,12 @@
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "../.vencord/node_modules/esbuild/lib/main.js";
 
-const output = new URL("../.vencord/dist/condite-native-test.cjs", import.meta.url).pathname;
-await build({ entryPoints: [new URL("../src/native.ts", import.meta.url).pathname], outfile: output, bundle: true, format: "cjs", platform: "node" });
+const output = fileURLToPath(new URL("../.vencord/dist/condite-native-test.cjs", import.meta.url));
+await build({ entryPoints: [fileURLToPath(new URL("../src/native.ts", import.meta.url))], outfile: output, bundle: true, format: "cjs", platform: "node" });
 const native = createRequire(import.meta.url)(output);
 
 test("packaged Electron SDK bridge exercises every SDK method and preserves u64 precision", async () => {

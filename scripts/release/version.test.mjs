@@ -22,6 +22,9 @@ test('version checks reject manifest and lockfile drift in an independent fixtur
       mkdirSync(dirname(join(fixture, file)), { recursive: true }); copyFileSync(join(root, file), join(fixture, file));
     }
     checkVersions(fixture);
+    const json = join(fixture, 'clients/dashboard/package.json');
+    writeFileSync(json, readFileSync(json, 'utf8').replaceAll('\n', '\r\n'));
+    checkVersions(fixture);
     const file = join(fixture, 'crates/condite-ctl/Cargo.toml');
     const original = readFileSync(file, 'utf8');
     writeFileSync(file, original.replace('version = "0.1.0"', 'version = "9.0.0"'));

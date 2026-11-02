@@ -33,9 +33,9 @@ function expectedFiles(v, directory = root) {
 export function checkVersions(directory = root) {
   const v = versions(directory);
   for (const component of ['umbrella', 'core', 'sdk', 'dashboard', 'vencord']) if (!validVersion(v[component])) throw new Error(`Invalid ${component} version`);
-  for (const [file, expected] of expectedFiles(v, directory)) if (readFileSync(resolve(directory, file), 'utf8') !== expected) throw new Error(`Version drift: ${file}. Run just version COMPONENT VERSION.`);
+  for (const [file, expected] of expectedFiles(v, directory)) if (readFileSync(resolve(directory, file), 'utf8').replaceAll('\r\n', '\n') !== expected.replaceAll('\r\n', '\n')) throw new Error(`Version drift: ${file}. Run just version COMPONENT VERSION.`);
   for (const file of ['Cargo.lock', 'examples/sdk-consumer/Cargo.lock']) {
-    const content = readFileSync(resolve(directory, file), 'utf8');
+    const content = readFileSync(resolve(directory, file), 'utf8').replaceAll('\r\n', '\n');
     for (const [component, names] of Object.entries(crates)) for (const name of names) {
       const entry = content.split('[[package]]').find(part => part.includes(`name = "${name}"\n`));
       if (entry && !entry.includes(`version = "${v[component]}"\n`)) throw new Error(`Version drift: ${file}: ${name}`);

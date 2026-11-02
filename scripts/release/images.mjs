@@ -10,7 +10,14 @@ export function publication(existing, fingerprint) {
   if (existing.fingerprint !== fingerprint) throw new Error('Published component inputs changed; bump its version before releasing.');
   return { build: false, digest: existing.digest };
 }
-export function fingerprint(component, ref = 'HEAD', directory = root) {
+export function imageFingerprint(info) {
+  const platforms = Object.entries(info).filter(([name]) => name === 'linux/amd64' || /^linux\/arm64(?:\/v8)?$/.test(name));
+  if (!platforms.some(([name]) => name === 'linux/amd64') || !platforms.some(([name]) => name.startsWith('linux/arm64'))) throw new Error('Published image is missing required Linux platforms');
+  const labels = platforms.map(([, image]) => image.config?.Labels?.['io.condite.inputs']);
+  if (!labels[0] || !labels.every(value => value === labels[0])) throw new Error('Published image has inconsistent input fingerprints');
+  return labels[0];
+}
+export function fingerprint(component, ref = 'HEAD', directory = root, dashboardOrigin = process.env.DASHBOARD_ORIGIN || 'http://localhost:4321') {
   const common = ['Cargo.toml', 'Cargo.lock', '.cargo/', 'docker/', '.dockerignore', 'scripts/release/', '.github/workflows/images.yml'];
   const inputs = component === 'core' ? ['crates/condite-core/', 'crates/condite-ctl/', 'crates/condite-shared/'] : ['crates/', 'clients/dashboard/', 'clients/i18n/', 'clients/shared/', 'scripts/sdk/', 'package.json', 'bun.lock'];
   const entries = execFileSync('git', ['ls-tree', '-r', ref], { cwd: directory, encoding: 'utf8' }).split('\n').filter(line => {
@@ -19,7 +26,7 @@ export function fingerprint(component, ref = 'HEAD', directory = root) {
     if (component === 'dashboard' && (path.startsWith('crates/condite-core/') || path.startsWith('crates/condite-ctl/'))) return false;
     return [...common, ...inputs].some(p => p.endsWith('/') ? path.startsWith(p) : path === p);
   });
-  return createHash('sha256').update(entries.join('\n')).digest('hex');
+  return createHash('sha256').update(entries.join('\n')).update(component === 'dashboard' ? new URL(dashboardOrigin).origin : '').digest('hex');
 }
 function docker(args, options = {}) { return execFileSync('docker', args, { encoding: 'utf8', ...options }).trim(); }
 export function inspectImage(image) {
@@ -32,7 +39,7 @@ export function inspectImage(image) {
   const digest = /^Digest:\s+(sha256:[a-f0-9]+)/m.exec(probe.stdout)?.[1];
   if (!digest) throw new Error('Missing registry digest');
   const info = JSON.parse(docker(['buildx', 'imagetools', 'inspect', image, '--format', '{{json .Image}}']));
-  return { digest, fingerprint: info.config?.Labels?.['io.condite.inputs'] };
+  return { digest, fingerprint: imageFingerprint(info) };
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {

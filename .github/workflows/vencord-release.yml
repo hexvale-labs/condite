@@ -56,6 +56,7 @@ jobs:
       - name: Fetch pinned upstream and dependencies
         run: node clients/vencord-extension/tooling.mjs setup
       - name: Check and test integration
+        shell: bash
         run: |
           node clients/vencord-extension/tooling.mjs check
           node clients/vencord-extension/tooling.mjs sdk:build
