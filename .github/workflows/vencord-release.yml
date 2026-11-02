@@ -91,6 +91,6 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           cd release-assets
-          sha256sum --check *.sha256
+          sha256sum --check ./*.sha256
           test "$(find . -name '*.zip' | wc -l)" -eq 12
-          gh release upload "$RELEASE_TAG" *.zip *.sha256
+          gh release upload "$RELEASE_TAG" ./*.zip ./*.sha256
