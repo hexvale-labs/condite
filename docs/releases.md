@@ -33,15 +33,18 @@ build natively, smoke-test before push, then merge into multiarchitecture indexe
 Temporary `build-RUN-ATTEMPT-ARCH` tags hold tested images while the matrix finishes;
 GHCR retention should remove old temporary tags after successful publication.
 
-Runtime images are nonroot distroless Debian 13: core uses the C/C++ runtime for
-its native database dependencies, dashboard uses Node 22. Matching Debian builders
+Runtime images are nonroot distroless Debian 13: core uses the C runtime
+without OpenSSL plus its required libgcc, and dashboard uses Node 22. Matching Debian builders
 avoid Alpine/musl addon compatibility changes. Custom Vencord builds disable the upstream updater so official updates cannot
 replace Condite bundles. Upgrade them by installing a newer Condite ZIP.
 
 Rust container builds use thin LTO,
 one codegen unit and stripped symbols. Production Node dependencies are installed
 separately; no compiler or package manager is shipped. Heap flags and extra process
-managers are deliberately avoided without workload measurements.
+managers are deliberately avoided without workload measurements. Run one Node
+process per container and scale replicas externally. A reverse proxy can handle
+TLS/compression and cache fingerprinted static assets; keep authenticated API
+responses and SSR pages out of shared caches.
 
 Set repository variable `DASHBOARD_ORIGIN` to the public dashboard origin before
 building releases (defaults to `http://localhost:4321`). Astro's allowed host is

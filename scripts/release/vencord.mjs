@@ -4,12 +4,12 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseTag, root, tagMetadata } from './version.mjs';
 export const releaseTargets = [
-  { os: 'linux', arch: 'x64', runner: 'ubuntu-24.04' },
-  { os: 'linux', arch: 'arm64', runner: 'ubuntu-24.04-arm' },
-  { os: 'win32', arch: 'x64', runner: 'windows-2025' },
-  { os: 'win32', arch: 'arm64', runner: 'windows-11-arm' },
-  { os: 'darwin', arch: 'x64', runner: 'macos-15-intel' },
-  { os: 'darwin', arch: 'arm64', runner: 'macos-15' }
+  { os: 'linux', arch: 'x64', runner: 'ubuntu-24.04', rustHost: 'x86_64-unknown-linux-gnu' },
+  { os: 'linux', arch: 'arm64', runner: 'ubuntu-24.04-arm', rustHost: 'aarch64-unknown-linux-gnu' },
+  { os: 'win32', arch: 'x64', runner: 'windows-2025', rustHost: 'x86_64-pc-windows-msvc' },
+  { os: 'win32', arch: 'arm64', runner: 'windows-11-arm', rustHost: 'aarch64-pc-windows-msvc' },
+  { os: 'darwin', arch: 'x64', runner: 'macos-15-intel', rustHost: 'x86_64-apple-darwin' },
+  { os: 'darwin', arch: 'arm64', runner: 'macos-15', rustHost: 'aarch64-apple-darwin' }
 ];
 export function releaseAllowed(action, tag) {
   try { return action === 'published' && ['umbrella', 'vencord'].includes(parseTag(tag).component); } catch { return false; }

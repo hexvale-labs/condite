@@ -20,7 +20,12 @@ RUN cargo build --locked --profile container -p condite-core -p condite-ctl --bi
     && for name in ctl control condite condite-control; do ln -s condite-ctl /out/bin/$name; done \
     && ldd /out/bin/condite-core && ldd /out/bin/condite-ctl
 
-FROM gcr.io/distroless/cc-debian13:nonroot
+# ldd confirms only libc/libm/libgcc are required; avoid C++ and OpenSSL runtimes.
+RUN mkdir -p "/runtime-libs/$(gcc -print-multiarch)" \
+    && cp "$(gcc -print-file-name=libgcc_s.so.1)" "/runtime-libs/$(gcc -print-multiarch)/"
+
+FROM gcr.io/distroless/base-nossl-debian13:nonroot
+COPY --from=builder /runtime-libs/ /usr/lib/
 COPY --from=builder --chown=65532:65532 /out/ /app/
 ENV PATH="/app/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     XDG_RUNTIME_DIR=/app/run SQL_CONN_URL=turso:/app/data/condite.db
