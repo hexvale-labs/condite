@@ -1,0 +1,16 @@
+.git
+**/.env
+**/.env.*
+!**/.env.example
+**/*.db
+**/*.db-*
+**/*.sqlite*
+**/node_modules
+**/target
+**/dist
+**/.astro
+**/.vencord
+**/test-results
+**/playwright-report
+.superpowers
+.worktrees

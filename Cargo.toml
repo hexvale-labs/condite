@@ -65,3 +65,10 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package."sha2:0.10.9"]
 opt-level = 3
+
+# Production service/CLI builds: optimize throughput and remove debug symbols.
+[profile.container]
+inherits = "release"
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

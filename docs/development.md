@@ -72,3 +72,18 @@ tests use four workers and rebuild the packaged SDK first. Dashboard browser tes
 remain serial because they reset a shared fixture. Existing backend `.env` files
 need `S3_PUBLIC_BUCKET` and `PUBLIC_OBJECT_BASE_URL` for direct sharing; installation
 preserves existing configuration files.
+
+## Releases and uptime
+
+See [versioning and releases](releases.md) for component tags, GHCR images and
+Vencord ZIPs. Use `just check versions` before tagging. Release/tooling fixtures
+run with `node --test scripts/release/*.test.mjs scripts/dev/task.test.mjs` and
+`python3 scripts/release/zip-vencord.test.py`.
+
+`just run` includes a temporary control shell; `just run ctl` opens it alone.
+Use `just install ctl`, `just build ctl` and `just check ctl` for CLI-only work.
+
+Client uptime uses a sampled server duration and a monotonic local clock, with
+30-day months. It refreshes availability every 30 seconds. The optional tick
+starts muted, resets when hidden/offline, and stops on unmount. Reduced motion
+disables the pulse and number roll; CLI status is a static readable snapshot.

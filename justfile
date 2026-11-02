@@ -13,7 +13,7 @@ install target="all":
 build target="all":
     @bash scripts/dev/task.sh build {{quote(target)}}
 
-# Run backend/dashboard separately, or together in mprocs.
+# Run services and a temporary CLI shell together, or select a component.
 run target="all":
     @bash scripts/dev/task.sh run {{quote(target)}}
 

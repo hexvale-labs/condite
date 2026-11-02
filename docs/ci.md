@@ -60,3 +60,22 @@ The SDK job explicitly runs `build:sdk:release` for size measurements.
 and setup-just were already current. Dependabot already groups monthly action
 updates. Keep Node 22, the SDK size profile, and the Cargo concurrency limit;
 changing runtime coverage or native compiler memory use needs separate evidence.
+
+## Versioned releases
+
+[Release guidance](releases.md) describes independent versions and strict tag
+validation. `images.yml` publishes only core/dashboard or umbrella SemVer tag
+pushes, using native amd64/arm64 runners and scoped intermediate BuildKit caches.
+Images smoke-test locally before pushing temporary per-run tags; a final job
+creates multiarchitecture version tags and umbrella aliases. Already-published
+component versions must match the build-input fingerprint and reuse their digest.
+
+`vencord-release.yml` runs only on published GitHub releases with matching
+umbrella/Vencord SemVer tags. Six native OS/architecture jobs build desktop and
+standalone ZIPs at deflate level 6. The upload job waits for every job and verifies
+all checksums. Browser targets are unsupported by the Electron integration.
+SDK component tags also run the SDK workflow and retain built packages.
+
+Workflow and release helpers can be checked with `actionlint`,
+`node --test scripts/release/*.test.mjs scripts/dev/task.test.mjs`,
+`python3 scripts/release/zip-vencord.test.py` and `just check versions`.

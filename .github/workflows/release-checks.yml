@@ -1,0 +1,22 @@
+name: Release tooling checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  tooling:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7.1.0
+        with: { node-version: 22 }
+      - uses: taiki-e/install-action@v2.88.1
+        with: { tool: 'actionlint@1.7.12' }
+      - run: actionlint
+      - run: node scripts/release/version.mjs check
+      - run: node --test scripts/release/*.test.mjs scripts/dev/task.test.mjs
+      - run: python3 scripts/release/zip-vencord.test.py
+      - run: bash -n scripts/dev/*.sh scripts/release/*.sh

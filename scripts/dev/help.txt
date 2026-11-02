@@ -13,6 +13,8 @@ Everyday commands (omitting a target means all):
   just run     [backend|dashboard|ctl|all]
   just check   [rust|backend|dashboard|vencord|sdk|ctl|wasm|all]
   just check tools [backend|dashboard|sdk|vencord|ctl|all]
+  just version COMPONENT VERSION  Sync manifests and lockfiles (core|sdk|dashboard|vencord|umbrella)
+  just check versions      Verify manifest and lockfile version alignment
   just migrate NAME        Generate a database migration for review
 
 Examples:
