@@ -43,6 +43,14 @@ the actual compiled native/WASM SDKs; no database or bucket is required. Ports
 external platform-specific dependency. Build it for the target OS/architecture.
 Do not run the standalone production server with Bun.
 
+## Docker deployment
+
+Core and the dashboard serve HTTP only; built-in TLS is not currently planned,
+though it could be added later. Put them behind cloudflared or an HTTPS reverse
+proxy with access control. **Do not expose the dashboard directly to the internet
+on port 80.** See the [Docker Compose examples](../../docker/examples/README.md)
+for internal networking, Caddy and Cloudflare Tunnel.
+
 ## Behavior and constraints
 
 - SSR falls back to localized error states after five seconds without a core
