@@ -3,7 +3,6 @@ use crate::{
     db::sql::{ShareRecord, UploadRecord, UploadStatus, api_key::lock_key},
     state::app::AppState,
 };
-use aws_sdk_s3::types::MetadataDirective;
 use axum::{
     Json,
     extract::{Path, Query, State},
@@ -17,24 +16,6 @@ const MAX_LIVE_SHARES: usize = 20;
 
 fn missing() -> axum_anyhow::ApiError {
     not_found("share not found", "share record does not exist")
-}
-
-fn public_config(state: &AppState) -> ApiResult<(&str, &str)> {
-    let bucket = state
-        .config
-        .s3_public_bucket
-        .as_deref()
-        .filter(|b| !b.is_empty() && *b != state.config.s3_bucket);
-    let base = state.config.public_object_base_url.as_deref().filter(|b| {
-        b.parse::<axum::http::Uri>().ok().is_some_and(|u| {
-            matches!(u.scheme_str(), Some("http" | "https"))
-                && u.host().is_some()
-                && u.query().is_none()
-                && !b.contains('#')
-                && !u.authority().is_some_and(|a| a.as_str().contains('@'))
-        })
-    });
-    bucket.zip(base).ok_or_else(|| bad_request("sharing unavailable", "configure a separate S3_PUBLIC_BUCKET and an HTTP(S) PUBLIC_OBJECT_BASE_URL without credentials, query or fragment"))
 }
 
 pub async fn create(
@@ -67,7 +48,8 @@ async fn create_intent(
             "confirm the upload before sharing",
         ));
     }
-    let (bucket, base) = public_config(state)?;
+    let base = &state.config.public_api_url;
+    let bucket = "";
     if payload.follows_upload && payload.expires_at.is_some() {
         return Err(bad_request(
             "invalid expiry",
@@ -95,12 +77,11 @@ async fn create_intent(
     getrandom::fill(&mut random)
         .map_err(|e| anyhow::anyhow!("share key generation failed: {e}"))?;
     let token: String = random.iter().map(|v| format!("{v:02x}")).collect();
-    let ext = mime2ext::mime2ext(&upload.mime_type).unwrap_or("bin");
-    let object_key = format!("shares/{token}.{ext}");
-    let url = format!("{}/{}", base.trim_end_matches('/'), object_key);
+    let object_key = token;
+    let url = format!("{}/v1/shares/{}", base.trim_end_matches('/'), object_key);
     toasty::create!(ShareRecord {
         id: share_id,
-        owner_id: auth.0,
+        owner_id: upload.owner_id,
         upload_id: id,
         object_key: object_key,
         public_url: url,
@@ -135,48 +116,6 @@ async fn publish(
             "the unfinished share was cleaned up; create a new share",
         ));
     }
-    let inline = matches!(
-        upload.mime_type.as_str(),
-        "image/png"
-            | "image/jpeg"
-            | "image/gif"
-            | "image/webp"
-            | "image/avif"
-            | "image/bmp"
-            | "image/tiff"
-            | "image/x-icon"
-    );
-    let mime = if inline {
-        upload.mime_type.as_str()
-    } else {
-        "application/octet-stream"
-    };
-    let disposition = if inline {
-        "inline"
-    } else {
-        "attachment; filename=\"download\""
-    };
-    // A failed copy may still be running remotely. Never retry an ambiguous
-    // publication to the same key and subsequently expose it as an active URL.
-    let publisher = aws_sdk_s3::Client::from_conf(
-        state
-            .s3
-            .config()
-            .to_builder()
-            .retry_config(aws_sdk_s3::config::retry::RetryConfig::disabled())
-            .build(),
-    );
-    publisher
-        .copy_object()
-        .bucket(&share.public_bucket)
-        .key(&share.object_key)
-        .copy_source(format!("{}/{}", state.config.s3_bucket, upload.s3_key()))
-        .metadata_directive(MetadataDirective::Replace)
-        .content_type(mime)
-        .content_disposition(disposition)
-        .cache_control("no-store")
-        .send()
-        .await?;
     let expiry = share.expires_at(&upload);
     // The intent was committed before CopyObject; rollback retains its cleanup key.
     share
@@ -312,7 +251,8 @@ pub async fn remove_copy(state: &AppState, share_id: Uuid, only_due: bool) -> Ap
     }
     // A disconnected CopyObject can finish after DELETE. Keep its tombstone
     // scheduled even after parent deletion; only known-completed copies retire.
-    let uncertain = matches!(share.status.as_str(), "Creating" | "Reconciling");
+    let uncertain = !share.public_bucket.is_empty()
+        && matches!(share.status.as_str(), "Creating" | "Reconciling");
     let terminal = if uncertain {
         "Reconciling"
     } else if share.status == "Active" {
@@ -325,13 +265,15 @@ pub async fn remove_copy(state: &AppState, share_id: Uuid, only_due: bool) -> Ap
     } else {
         None
     };
-    state
-        .s3
-        .delete_object()
-        .bucket(&share.public_bucket)
-        .key(&share.object_key)
-        .send()
-        .await?;
+    if !share.public_bucket.is_empty() {
+        state
+            .s3
+            .delete_object()
+            .bucket(&share.public_bucket)
+            .key(&share.object_key)
+            .send()
+            .await?;
+    }
     share
         .update()
         .status(terminal)
@@ -351,4 +293,37 @@ pub async fn remove_copy(state: &AppState, share_id: Uuid, only_due: bool) -> Ap
         .await?;
     tx.commit().await?;
     Ok(())
+}
+
+/// Public tokens grant access only while the share and original remain available.
+pub async fn download(
+    State(state): State<AppState>,
+    Path(token): Path<String>,
+    method: axum::http::Method,
+    headers: axum::http::HeaderMap,
+) -> ApiResult<axum::response::Response> {
+    if token.len() != 64 || !token.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(missing());
+    }
+    let mut db = state.sql.clone();
+    let share = ShareRecord::filter(ShareRecord::fields().object_key().eq(token))
+        .get(&mut db)
+        .await
+        .map_err(|_| missing())?;
+    if share.status != "Active" || !share.public_bucket.is_empty() {
+        return Err(missing());
+    }
+    let upload = UploadRecord::get_by_id(&mut db, &share.upload_id)
+        .await
+        .map_err(|_| missing())?;
+    if share
+        .expires_at(&upload)
+        .is_some_and(|at| at <= Timestamp::now())
+        || upload.status != UploadStatus::Confirmed
+        || upload.deletion_pending
+    {
+        return Err(missing());
+    }
+    super::retention::ensure_available(&upload)?;
+    super::download::stream(&state, upload, method, headers, true).await
 }

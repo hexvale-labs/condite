@@ -51,9 +51,9 @@ fn unauthorized() -> Response {
         .into_response()
 }
 
-/// Holds only a key ID; limits and revocation are checked again under the write lock.
+/// Server-authenticated identity and root flag; limits/revocation are rechecked under the write lock.
 #[derive(Clone, Copy)]
-pub struct AuthenticatedKey(pub Uuid);
+pub struct AuthenticatedKey(pub Uuid, pub bool);
 impl AuthenticatedKey {
     pub async fn lock(
         &self,
@@ -85,23 +85,105 @@ impl FromRequestParts<AppState> for AuthenticatedKey {
             return Err(unauthorized());
         }
         let (scheme, secret) = value.split_once(' ').ok_or_else(unauthorized)?;
-        if !scheme.eq_ignore_ascii_case("bearer")
-            || secret.len() != 72
-            || !secret.starts_with("condite_")
-            || !secret[8..].bytes().all(|b| b.is_ascii_hexdigit())
-        {
+        if !scheme.eq_ignore_ascii_case("bearer") || secret.len() > 512 {
             return Err(unauthorized());
         }
+        authenticate(state, secret).await.map_err(|status| {
+            if status == StatusCode::UNAUTHORIZED {
+                unauthorized()
+            } else {
+                status.into_response()
+            }
+        })
+    }
+}
+
+pub async fn authenticate(state: &AppState, secret: &str) -> Result<AuthenticatedKey, StatusCode> {
+    if secret.starts_with("condite_session_") {
         let mut db = state.sql.clone();
-        match ApiKeyRecord::filter(ApiKeyRecord::fields().digest().eq(digest(secret)))
-            .get(&mut db)
-            .await
-        {
-            Ok(key) if !key.revoked => Ok(Self(key.id)),
-            Ok(_) => Err(unauthorized()),
-            Err(e) if e.is_record_not_found() => Err(unauthorized()),
-            Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
+        let session =
+            match crate::db::sql::SessionRecord::get_by_digest(&mut db, &digest(secret)).await {
+                Ok(session) => session,
+                Err(error) if error.is_record_not_found() => {
+                    return authenticate_direct(state, secret).await;
+                }
+                Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+            };
+        if session.upload_id.is_some() || session.expires_at <= jiff::Timestamp::now() {
+            return Err(StatusCode::UNAUTHORIZED);
         }
+        if session.root {
+            let root = state
+                .root_keys
+                .read()
+                .map_err(|_| StatusCode::UNAUTHORIZED)?
+                .iter()
+                .find(|r| digest(&r.key) == session.credential_digest)
+                .cloned()
+                .ok_or(StatusCode::UNAUTHORIZED)?;
+            let auth = authenticate_direct(state, &root.key).await?;
+            return if auth.0 == session.owner_id {
+                Ok(auth)
+            } else {
+                Err(StatusCode::UNAUTHORIZED)
+            };
+        }
+        let key = ApiKeyRecord::get_by_id(&mut db, &session.owner_id)
+            .await
+            .map_err(|_| StatusCode::UNAUTHORIZED)?;
+        return if !key.revoked && key.digest == session.credential_digest {
+            Ok(AuthenticatedKey(key.id, false))
+        } else {
+            Err(StatusCode::UNAUTHORIZED)
+        };
+    }
+    authenticate_direct(state, secret).await
+}
+
+pub async fn authenticate_direct(
+    state: &AppState,
+    secret: &str,
+) -> Result<AuthenticatedKey, StatusCode> {
+    let fingerprint = digest(secret);
+    let root = state
+        .root_keys
+        .read()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .iter()
+        .find(|r| digest(&r.key) == fingerprint)
+        .cloned();
+    let mut db = state.sql.clone();
+    if let Some(root) = root {
+        let id = root_id(&root.name);
+        let exists = ApiKeyRecord::get_by_id(&mut db, &id).await;
+        match exists {
+            Ok(_) => {}
+            Err(e) if e.is_record_not_found() => {
+                let created = toasty::create!(ApiKeyRecord {
+                    id: id,
+                    digest: format!("root:{}", root.name),
+                    per_upload_quota: i64::MAX as u64,
+                    storage_quota: i64::MAX as u64,
+                    lock_nonce: Uuid::now_v7().to_string()
+                })
+                .exec(&mut db)
+                .await;
+                if created.is_err() && ApiKeyRecord::get_by_id(&mut db, &id).await.is_err() {
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            }
+            Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+        }
+        return Ok(AuthenticatedKey(id, true));
+    }
+    match ApiKeyRecord::filter(ApiKeyRecord::fields().digest().eq(fingerprint))
+        .get(&mut db)
+        .await
+    {
+        Ok(key) if !key.revoked => Ok(AuthenticatedKey(key.id, false)),
+        Ok(_) => Err(StatusCode::UNAUTHORIZED),
+        Err(e) if e.is_record_not_found() => Err(StatusCode::UNAUTHORIZED),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
 
@@ -110,4 +192,11 @@ pub fn quota_error() -> axum_anyhow::ApiError {
         .status(StatusCode::PAYLOAD_TOO_LARGE)
         .title("API key upload or storage quota exceeded")
         .build()
+}
+
+pub fn root_id(name: &str) -> Uuid {
+    let hash = Sha256::digest(format!("condite:root:{name}").as_bytes());
+    let mut bytes = [0u8; 16];
+    bytes.copy_from_slice(&hash[..16]);
+    Uuid::from_bytes(bytes)
 }

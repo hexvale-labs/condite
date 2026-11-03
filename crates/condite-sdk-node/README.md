@@ -60,3 +60,13 @@ follows_upload: true})` for a direct share following file retention.
 `updateRetention(id, {expires_at})` manage shares and file deadlines. Returned
 nullable deadlines are null, and sizes remain bigint. Privacy upload helpers
 preserve the request's retention selection.
+
+Account usage/limits use bigint. New methods: `account()`, `login(apiKey)`,
+`logout()`, `downloadBytes(id)` and `controlJson(commandJson)`. Control accepts and
+returns raw JSON text so full u64 integers never pass through JavaScript Number.
+Owner download URLs now point through core and validate ticket/key/file state
+on each request. Keep byte downloads for files that fit available memory; ticket
+URLs support streamed downloads without buffering the whole file in the SDK.
+
+`control(command)` is the typed interface: quota inputs and usage outputs use
+bigint. `controlJson` remains available for exact raw JSON interoperability.

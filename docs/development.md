@@ -70,9 +70,9 @@ on core, AWS or database crates.
 
 Rust tests default to four threads (override `RUST_TEST_THREADS`); Vencord Node
 tests use four workers and rebuild the packaged SDK first. Dashboard browser tests
-remain serial because they reset a shared fixture. Existing backend `.env` files
-need `S3_PUBLIC_BUCKET` and `PUBLIC_OBJECT_BASE_URL` for direct sharing; installation
-preserves existing configuration files.
+remain serial because they reset a shared fixture. Core and dashboard use TOML; `.env` values are read only through explicit
+`${NAME}` references. Public downloads use core; no public bucket is required.
+Installation preserves existing configuration files.
 
 ## Releases and uptime
 
@@ -88,3 +88,8 @@ Client uptime uses a sampled server duration and a monotonic local clock, with
 30-day months. It refreshes availability every 30 seconds. The optional tick
 starts muted, resets when hidden/offline, and stops on unmount. Reduced motion
 disables the pulse and number roll; CLI status is a static readable snapshot.
+
+For builds on a separate volume, set `CARGO_TARGET_DIR` outside the checkout.
+Keep Rust builds serial on small machines. The Vencord tooling resolves external
+checkout symlinks before creating TypeScript configuration, avoiding duplicate
+source trees and rootDir errors.

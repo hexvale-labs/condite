@@ -1,6 +1,9 @@
-{$DASHBOARD_HOST} {
-	basic_auth {
-		admin {$DASHBOARD_PASSWORD_HASH}
-	}
-	reverse_proxy dashboard:4321
+# Set your public hostname here and in core/dashboard TOML.
+dashboard.example.com {
+    handle /v1/* {
+        reverse_proxy core:8080
+    }
+    handle {
+        reverse_proxy dashboard:4321
+    }
 }

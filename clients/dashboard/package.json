@@ -13,7 +13,7 @@
     "build": "bun --bun astro build",
     "start": "node ./dist/server/entry.mjs",
     "test": "playwright test",
-    "test:unit": "bun test tests/origin.test.ts tests/transport.test.ts tests/expiry.test.ts ../i18n/catalog.test.ts ../i18n/errors.test.ts ../shared/uptime.test.ts",
+    "test:unit": "bun test tests/control.test.ts ../config/config.test.ts tests/origin.test.ts tests/transport.test.ts tests/expiry.test.ts ../i18n/catalog.test.ts ../i18n/errors.test.ts ../shared/uptime.test.ts",
     "test:dev": "DASHBOARD_DEV=1 playwright test"
   },
   "dependencies": {
@@ -26,7 +26,8 @@
     "condite-sdk-node": "workspace:*",
     "condite-sdk-wasm": "workspace:*",
     "solid-js": "2.0.0-rc.20",
-    "tailwindcss": "4.3.3"
+    "tailwindcss": "4.3.3",
+    "@condite/config": "workspace:*"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.12",

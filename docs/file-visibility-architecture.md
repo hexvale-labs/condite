@@ -1,54 +1,30 @@
-# Private files and direct S3 shares
+# Private files and API delivery
 
-Original and pending objects stay in a private bucket. Uploads default to private
-and expire after **14 days**. Retention can be changed to an exact UTC deadline
-or Never. A future `config.jsonc` will configure the default; it is not implemented.
+Originals remain in the private S3-compatible bucket. Public shares and owner
+downloads stream through core; requests never redirect to signed S3 GET URLs.
+Direct signed PUT uploads remain unchanged.
 
-Each share has its own database record and cryptographically random public object
-copy. Configure a separate `S3_PUBLIC_BUCKET` and `PUBLIC_OBJECT_BASE_URL` on the
-same S3-compatible service. No chosen domain, AWS-only feature or CDN is required.
-Never make the originals bucket public. Public policy should allow object reads
-only, without listing, writes or version reads.
+A share is an independent, random API bearer URL. Core checks its current status,
+expiry and parent file before opening storage. Revoking one share immediately
+blocks subsequent requests without changing other links. A transfer already
+started may finish; revocation cannot erase bytes already downloaded or cached.
 
-Confirmation validates the original without sharing it. Dashboard users choose
-Share explicitly; Vencord creates a direct share for composer/privacy uploads.
-Every client supports share creation/listing/revocation, owner downloads, file
-retention and deletion. The API returns URLs; clients do not construct them.
+Owner download metadata returns a random API ticket lasting at most 15 minutes,
+capped by file expiry. Every ticket request checks current key revocation or root
+credential generation as well as file availability. Authenticated clients may use
+`GET /v1/uploads/{id}/content` directly. Public, ticket and authenticated paths
+support HEAD and single byte ranges, stream with bounded buffering, and release
+SQL transactions before transferring bytes. Responses use no-store, nosniff and
+safe content headers; only recognized raster images render inline.
 
-## Lifetime and revocation
+Use `public_api_url` in core's TOML for externally reachable links. Never infer it
+from a request Host. A separate public bucket is unnecessary. Keep originals
+private and configure CORS for signed PUTs only.
 
-A share may follow its file's retention, use an earlier deadline, or have no
-independent deadline. No share keeps its file alive. Expiring an individual share
-removes its copy; expiring/deleting a file removes every copy and its original.
-Logical quotas count originals once; every live share uses extra storage.
-
-Condite runs indexed, bounded cleanup at startup and every **60 seconds**.
-Storage failures and downtime delay expiration; this is an accepted limitation.
-Revocation succeeds only after deleting the public copy. Storage consistency
-varies by provider. Previously downloaded, in-flight and third-party cached data
-cannot be recalled. Objects use `Cache-Control: no-store` to discourage caching.
-
-Durable creation/deletion intents retain object keys across partial failures;
-cleanup reconciles unfinished shares. Ambiguous remote copies keep their keys
-scheduled for repeated deletion even after parent deletion, since a failed copy
-request can still complete remotely. These unpublished URLs are not exposed;
-revocation remains pending (HTTP 202) rather than claiming completion. Upload metadata stays until initial storage deletion succeeds. Opaque private-key
-cleanup records survive logical deletion to remove late writes, without keeping
-filenames. These checks run daily after the initial cleanup; failed deletes retry
-on subsequent minute passes. Confirmed pending keys receive the same daily sweep. A file with copies awaiting deletion is not reported private.
-
-Owner-only downloads use short-lived signed GETs, up to 15 minutes. These remain
-bearer URLs until expiry and cannot be individually revoked like public copies.
-Never prefetch or persist them in browser storage. Clipboard failures must leave
-a selectable URL. Direct uploads use restricted signed PUTs and bucket CORS.
-
-## Future option
-
-A streaming download gateway could check expiry and revocation on every new
-request while retaining only one private object. It adds host bandwidth and
-availability requirements. It is intentionally deferred; current shared URLs go
-directly to storage. [Research](share-link-research.md) records the alternatives.
-
-See [core API/setup](../crates/condite-core/README.md) for routes and configuration.
-Existing records receive a 14-day migration grace period. Test provider access
-policies separately; local fake-S3 checks cannot prove anonymous original denial.
+Cleanup runs at startup and every 60 seconds. Expired files and failed storage
+deletions retain durable retry records. Existing deployments retain legacy share
+bucket/key records: cleanup retires old direct copies, including uncertain late
+copies after parent deletion. Old storage URLs cannot be redirected through core;
+back up the database, deploy the migration, allow cleanup to succeed and replace
+old links. Failed deletes leave legacy URLs reachable until storage cleanup
+succeeds. Do not discard reconciliation tombstones or rewrite applied migrations.

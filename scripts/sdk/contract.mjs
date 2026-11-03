@@ -4,6 +4,46 @@ export async function contract(Client, base) {
   };
   const client = new Client(`${base}/prefix`, "contract-key");
   assert((await client.health()).healthy, "health");
+  const account = await client.account();
+  assert(
+    account.usage.charged_bytes === 18446744073709551615n,
+    "account usage precision",
+  );
+  assert(account.limits.storage_bytes === null, "unlimited quota");
+  assert(
+    (await client.controlJson('{"command":"status"}')).includes(
+      '"type":"success"',
+    ),
+    "control JSON transport",
+  );
+  const keys = await client.control({
+    command: "list_api_keys",
+    limit: 1,
+    after: null,
+  });
+  assert(
+    keys.type === "keys" &&
+      keys.keys[0].usage.charged_bytes === 18446744073709551615n,
+    "typed control u64 precision",
+  );
+  assert(
+    (
+      await client.control({
+        command: "generate_api_key",
+        per_upload_quota: 9007199254740993n,
+        storage_quota: 9007199254740993n,
+      })
+    ).type === "success",
+    "typed control bigint input",
+  );
+  const session = await client.login("contract-key");
+  assert(session.token === "fixture-session", "session login");
+  await client.logout();
+  assert(
+    new TextDecoder().decode(await client.downloadBytes("id")) ===
+      "streamed file",
+    "API download bytes",
+  );
   const page = await client.listUploads({ limit: 2, after: "cursor&value" });
   assert(page.next_after === null, "null cursor");
   assert(

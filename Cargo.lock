@@ -1301,6 +1301,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "condite-config"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "toml 1.1.8+spec-1.1.0",
+ "url",
+]
+
+[[package]]
 name = "condite-core"
 version = "0.1.0"
 dependencies = [
@@ -1309,6 +1318,7 @@ dependencies = [
  "aws-sdk-s3",
  "axum",
  "axum-anyhow",
+ "condite-config",
  "condite-sdk",
  "condite-shared",
  "dotenv",
@@ -1322,6 +1332,7 @@ dependencies = [
  "toasty",
  "toasty-cli",
  "tokio",
+ "tokio-stream",
  "tokio-util",
  "tower",
  "tower-http",
@@ -1336,8 +1347,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "condite-config",
  "condite-shared",
+ "dotenv",
  "jiff",
+ "reqwest",
+ "serde",
  "serde_json",
  "socket2 0.6.5",
  "tempfile",
@@ -4246,7 +4261,9 @@ checksum = "16a1cfa75cc186dd73d5818e510e042e40927bccc9c236b061cea97e1eb08029"
 dependencies = [
  "base64 0.23.1",
  "bytes",
+ "futures-channel",
  "futures-core",
+ "futures-util",
  "http 1.5.0",
  "http-body 1.1.0",
  "http-body-util",

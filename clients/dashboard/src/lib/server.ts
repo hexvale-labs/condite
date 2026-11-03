@@ -1,20 +1,15 @@
-import { Client } from "condite-sdk-node";
+import { createRequire } from "node:module";
+import type { Client as CoreClient } from "condite-sdk-node";
+const { Client } = createRequire(import.meta.url)(
+  "condite-sdk-node",
+) as typeof import("condite-sdk-node");
+import { dashboardConfig } from "../../server/config";
 export function coreOrigin(): string {
-  return (
-    process.env.CONDITE_API_URL ||
-    import.meta.env.CONDITE_API_URL ||
-    "http://127.0.0.1:8080"
-  );
+  return dashboardConfig().core_url;
 }
-export function coreApiKey(): string | undefined {
-  return (
-    process.env.CONDITE_API_KEY || import.meta.env.CONDITE_API_KEY || undefined
-  );
+export function serverClient(token?: string): CoreClient {
+  return new Client(coreOrigin(), token);
 }
-export function serverClient(): Client {
-  return new Client(coreOrigin(), coreApiKey());
-}
-
 // The native SDK has no cancellation API; bound how long SSR waits for it.
 export async function withSsrDeadline<T>(operation: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;

@@ -46,11 +46,11 @@ pub async fn owned(
     id: Uuid,
 ) -> ApiResult<UploadRecord> {
     auth.lock(tx).await?;
-    match UploadRecord::filter_by_id(id)
-        .filter(UploadRecord::fields().owner_id().eq(auth.0))
-        .get(tx)
-        .await
-    {
+    let mut query = UploadRecord::filter_by_id(id);
+    if !auth.1 {
+        query = query.filter(UploadRecord::fields().owner_id().eq(auth.0));
+    }
+    match query.get(tx).await {
         Ok(upload) => Ok(upload),
         Err(e) if e.is_record_not_found() => Err(not_found(
             "upload not found",

@@ -10,10 +10,9 @@
   Keep native SDK imports server-only and WASM initialization lazy in the browser.
 - Build and consume `condite-sdk`'s generated Node/WASM packages and shared types.
   Do not hand-copy wire types. Sizes are bigint; preserve full u64 precision.
-- Files will be public or private. Most sharing will use stable public links
-  directly to S3-compatible storage; no domain is chosen yet. Current API links
-  are temporary signed URLs, not permanent public links. See
-  `../../docs/file-visibility-architecture.md`; do not fake visibility controls.
+- Files stay private in storage. Public links and owner download tickets stream
+  through core; preserve request-time validation, range headers and bounded bodies.
+  See `../../docs/file-visibility-architecture.md`.
 - Favor fast, snappy, minimal, functional, responsive UI. Apply Emil Kowalski's
   design guidance. No gradients, decorative or long animations. Keep list/grid
   actions equivalent, visible keyboard focus, localized text and reserved sizing.
@@ -24,5 +23,5 @@
 - For transport changes, read `src/lib/proxy.ts`: route allowlist, write-origin
   checks, body limit and raw-byte forwarding are intentional. Update focused
   transport tests alongside new routes; never JSON-round-trip u64 values.
-- Keep `CONDITE_API_URL` server-side. `DASHBOARD_ORIGINS` is a runtime host
-  validation setting, not a storage URL or authentication mechanism.
+- Keep dashboard TOML server-side. Each visitor uses an HttpOnly core session;
+  never restore a shared server API key. Origin validation is separate from authentication.

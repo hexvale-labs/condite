@@ -59,6 +59,30 @@ impl Client {
             .map_err(error)?,
         })
     }
+    pub async fn account(&self) -> Result<JsValue, JsValue> {
+        output(self.inner.account().await.map_err(error)?)
+    }
+    #[wasm_bindgen(js_name = controlJson)]
+    pub async fn control_json(&self, command: String) -> Result<String, JsValue> {
+        let command = serde_json::from_str(&command)
+            .map_err(|_| error(sdk::Error::Input("invalid control command".into())))?;
+        let response = self.inner.control(&command).await.map_err(error)?;
+        serde_json::to_string(&response)
+            .map_err(|_| error(sdk::Error::Input("invalid control response".into())))
+    }
+    pub async fn control(&self, command: JsValue) -> Result<JsValue, JsValue> {
+        output(self.inner.control(&input(command)?).await.map_err(error)?)
+    }
+    pub async fn login(&self, api_key: String) -> Result<JsValue, JsValue> {
+        output(self.inner.login(&api_key).await.map_err(error)?)
+    }
+    pub async fn logout(&self) -> Result<(), JsValue> {
+        self.inner.logout().await.map_err(error)
+    }
+    #[wasm_bindgen(js_name = downloadBytes)]
+    pub async fn download_bytes(&self, id: String) -> Result<Vec<u8>, JsValue> {
+        self.inner.download_bytes(&id).await.map_err(error)
+    }
     pub async fn health(&self) -> Result<JsValue, JsValue> {
         output(self.inner.health().await.map_err(error)?)
     }

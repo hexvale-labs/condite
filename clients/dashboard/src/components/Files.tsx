@@ -18,6 +18,7 @@ import { defaultExpiry, resolveExpiry, type ExpiryChoice } from "../lib/expiry";
 
 type Props = {
   locale: Locale;
+  owner?: string | null;
   initial: ListUploadsResponse | null;
   initialError?: unknown;
   failed: boolean;
@@ -70,6 +71,7 @@ export default function Files(props: Props) {
 
   const href = (after: string | null) => {
     const search = new URLSearchParams();
+    if (props.owner) search.set("owner_id", props.owner);
     if (view() === "grid") search.set("view", "grid");
     if (after) search.set("after", after);
     return `/${props.locale}/${search.size ? `?${search}` : ""}`;
@@ -93,6 +95,7 @@ export default function Files(props: Props) {
     const result = await sdk.listUploads({
       limit: 50,
       after: props.after ?? undefined,
+      owner_id: props.owner ?? undefined,
     });
     if (!disposed) {
       setPage(result);

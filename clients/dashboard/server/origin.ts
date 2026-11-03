@@ -7,11 +7,11 @@ export function allowedDomains(value: string | undefined) {
     try {
       origin = new URL(entry.trim());
     } catch {
-      throw new Error("DASHBOARD_ORIGINS must contain comma-separated HTTP(S) origins");
+      throw new Error("origins must contain comma-separated HTTP(S) origins");
     }
     if (!["http:", "https:"].includes(origin.protocol) || origin.username || origin.password ||
         origin.pathname !== "/" || origin.search || origin.hash || origin.hostname.includes("*")) {
-      throw new Error("DASHBOARD_ORIGINS must contain HTTP(S) origins without credentials, paths, queries or fragments");
+      throw new Error("origins must contain HTTP(S) origins without credentials, paths, queries or fragments");
     }
     return {
       hostname: origin.hostname,

@@ -12,7 +12,15 @@
         "eslint": "^10.14.0",
         "globals": "^17.13.0",
         "prettier": "^3.9.10",
+        "smol-toml": "^1.9.0",
         "typescript": "catalog:",
+      },
+    },
+    "clients/config": {
+      "name": "@condite/config",
+      "version": "0.1.0",
+      "dependencies": {
+        "smol-toml": "^1.9.0",
       },
     },
     "clients/dashboard": {
@@ -20,6 +28,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@astrojs/node": "11.1.9",
+        "@condite/config": "workspace:*",
         "@fontsource-variable/public-sans": "5.3.0",
         "@solidjs/web": "2.0.0-rc.20",
         "@tailwindcss/vite": "4.3.3",
@@ -178,6 +187,8 @@
     "@clack/core": ["@clack/core@1.5.1", "", { "dependencies": { "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-iHTrHA8MtVuLl2TfZySmcKv1qO2PoyC9Z7pfSDozEuV5vtY3/wcOPKJXlqJ5Oq2Cx5DDGQGAMVx6HZfRRoVEbQ=="],
 
     "@clack/prompts": ["@clack/prompts@1.8.1", "", { "dependencies": { "@clack/core": "1.5.1", "fast-string-width": "^3.0.2", "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-dlT1m5e/0yUL0kRNcQn7yGLVThkgbB0Ga/1AmfDDC/8ik6AIiSf2QLQO2zPYvefsHP0aFgxO93cVLCCfDp7kzQ=="],
+
+    "@condite/config": ["@condite/config@workspace:clients/config"],
 
     "@condite/dashboard": ["@condite/dashboard@workspace:clients/dashboard"],
 

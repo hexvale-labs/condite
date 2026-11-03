@@ -7,6 +7,7 @@ const ids = [
 const initial = () => [
   {
     id: ids[0]!,
+    owner_id: "fixture-owner",
     filename: "notes.txt",
     mime_type: "text/plain",
     size_bytes: 18446744073709551615n,
@@ -18,6 +19,7 @@ const initial = () => [
   },
   {
     id: ids[1]!,
+    owner_id: "fixture-owner",
     filename: "pending.txt",
     mime_type: "text/plain",
     size_bytes: 3n,
@@ -63,6 +65,24 @@ const server = createServer(async (req, res) => {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(json(value));
   };
+  if(url.pathname === "/v1/sessions" && req.method === "POST") {
+    const key=JSON.parse(body).api_key;
+    if(!["fixture-key","fixture-root-key"].includes(key))return send(401,{});
+    return send(200,{token:key==="fixture-root-key"?"fixture-root-session":"fixture-session",expires_at:"2099-01-01T00:00:00Z"});
+  }
+  if(url.pathname === "/v1/sessions/current" && req.method === "DELETE") { res.writeHead(204);return res.end(); }
+  if(url.pathname === "/v1/account"){
+    const root=req.headers.authorization==="Bearer fixture-root-session";
+    if(!root&&req.headers.authorization!=="Bearer fixture-session")return send(401,{});
+    return send(200,{id:"fixture-owner",role:root?"root":"key",usage:{confirmed_bytes:100n,reserved_bytes:3n,charged_bytes:103n},limits:{per_file_bytes:root?null:104857600n,storage_bytes:root?null:1073741824n},global_usage:root?{confirmed_bytes:100n,reserved_bytes:3n,charged_bytes:103n}:null});
+  }
+  if(url.pathname==="/v1/control"){
+    if(req.headers.authorization!=="Bearer fixture-root-session")return send(403,{});
+    const command=JSON.parse(body);calls.push(`CONTROL ${command.command}`);
+    if(command.command==="list_api_keys")return send(200,{type:"keys",keys:[{id:ids[0],label:null,created_at:"2026-11-03T00:00:00Z",revoked:false,limits:{per_file_bytes:104857600n,storage_bytes:1073741824n},usage:{confirmed_bytes:100n,reserved_bytes:3n,charged_bytes:103n}}],next_after:null});
+    if(command.command==="generate_api_key")return send(200,{type:"api_key",id:ids[0],api_key:"fixture-generated-copy-once-key"});
+    return send(200,{type:"success"});
+  }
   if (url.pathname === "/__reset") {
     rows = initial();
     shares = [];

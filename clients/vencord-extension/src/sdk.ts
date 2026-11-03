@@ -33,6 +33,7 @@ export function createClient() {
     const { apiKey } = settings.store;
     const row = <T extends { size_bytes: string }>(value: T) => ({ ...value, size_bytes: BigInt(value.size_bytes) });
     return {
+        account: () => unwrap(native().account(base, apiKey)),
         createShare: (id: string, request: CreateShareRequest) => unwrap(native().createShare(base, id, request, apiKey)),
         listShares: (id: string, request: ListUploadsRequest = {}) => unwrap(native().listShares(base, id, request, apiKey)),
         revokeShare: (id: string, share: string) => unwrap(native().revokeShare(base, id, share, apiKey)),

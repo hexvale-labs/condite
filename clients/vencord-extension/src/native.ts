@@ -9,6 +9,7 @@ import { join } from "node:path";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { conditeMaxBytes } from "./limits";
+import { importConfigFile, nativeConfig } from "./shared/native-config";
 import type {
     ConfirmResponse,
 CreateShareRequest, DownloadResponse,
@@ -20,6 +21,7 @@ ListSharesResponse, ListUploadsRequest,
 Retention, Share, Upload, UploadResult } from "./wire";
 
 interface SdkClient {
+    account(): Promise<import("./wire").Account>;
     createShare(id: string, request: CreateShareRequest): Promise<Share>;
     listShares(id: string, request: ListUploadsRequest): Promise<ListSharesResponse>;
     revokeShare(id: string, share: string): Promise<void>;
@@ -65,7 +67,9 @@ function client(base: string, apiKey?: string): SdkClient {
     const { Client } = require(sdkPath) as {
         Client: new (base: string, apiKey?: string) => SdkClient;
     };
-    return new Client(url.href, apiKey || undefined);
+    const config=nativeConfig();
+    const configuredKey=config.api_url && new URL(config.api_url).href===url.href ? config.api_key : undefined;
+    return new Client(url.href, apiKey || configuredKey);
 }
 
 async function result<T>(
@@ -208,4 +212,13 @@ export function updateRetention(_event: IpcMainInvokeEvent, base: string, id: st
 }
 export function download(_event: IpcMainInvokeEvent, base: string, id: string, apiKey?: string) {
     return result(() => client(base, apiKey).download(id));
+}
+
+export async function importSettings(_event: IpcMainInvokeEvent) { return importConfigFile(); }
+export function account(_event: IpcMainInvokeEvent, base: string, apiKey?: string) {
+    return result(async () => {
+        const value=await client(base,apiKey).account();
+        const usage=(v:import("./wire").Usage)=>({ confirmed_bytes:v.confirmed_bytes.toString(),reserved_bytes:v.reserved_bytes.toString(),charged_bytes:v.charged_bytes.toString() });
+        return { ...value,usage:usage(value.usage),global_usage:value.global_usage?usage(value.global_usage):null,limits:{ per_file_bytes:value.limits.per_file_bytes?.toString()??null,storage_bytes:value.limits.storage_bytes?.toString()??null } };
+    });
 }

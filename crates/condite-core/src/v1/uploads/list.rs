@@ -32,7 +32,26 @@ async fn attempt(
     let limit = limit as usize;
     let mut tx = state.sql.transaction().await?;
     let key = auth.lock(&mut tx).await?;
-    let mut query = UploadRecord::filter(UploadRecord::fields().owner_id().eq(key.id));
+    let mut query = UploadRecord::filter(UploadRecord::fields().id().gt(Uuid::nil()));
+    if !auth.1 {
+        if params
+            .owner_id
+            .as_ref()
+            .is_some_and(|owner| owner != &key.id.to_string())
+        {
+            return Err(axum_anyhow::forbidden(
+                "access denied",
+                "cannot select another owner",
+            ));
+        }
+        query = query.filter(UploadRecord::fields().owner_id().eq(key.id));
+    } else if let Some(owner) = &params.owner_id {
+        query = query.filter(
+            UploadRecord::fields().owner_id().eq(owner
+                .parse::<Uuid>()
+                .map_err(|_| bad_request("invalid owner", "owner_id must be a UUID"))?),
+        );
+    }
     if let Some(after) = params.after {
         query = query.filter(
             UploadRecord::fields().id().gt(after

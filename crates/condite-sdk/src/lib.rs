@@ -80,6 +80,55 @@ impl Client {
         let response = Self::checked(request.send().await?).await?;
         serde_json::from_slice(&response.bytes().await?).map_err(|source| Error::Decode { source })
     }
+    pub async fn account(&self) -> Result<Account, Error> {
+        Self::json(self.api.get(self.url(&["v1", "account"])?)).await
+    }
+    pub async fn control(
+        &self,
+        command: &control::ControlCommand,
+    ) -> Result<control::ControlResponse, Error> {
+        Self::json(self.api.post(self.url(&["v1", "control"])?).json(command)).await
+    }
+    pub async fn login(&self, api_key: &str) -> Result<SessionResponse, Error> {
+        Self::json(
+            self.api
+                .post(self.url(&["v1", "sessions"])?)
+                .json(&LoginRequest {
+                    api_key: api_key.into(),
+                }),
+        )
+        .await
+    }
+    pub async fn logout(&self) -> Result<(), Error> {
+        Self::checked(
+            self.api
+                .delete(self.url(&["v1", "sessions", "current"])?)
+                .send()
+                .await?,
+        )
+        .await?;
+        Ok(())
+    }
+    /// The response streams on demand; callers may consume chunks without buffering the file.
+    pub async fn download_stream(
+        &self,
+        id: &str,
+        range: Option<&str>,
+    ) -> Result<reqwest::Response, Error> {
+        let mut request = self.api.get(self.url(&["v1", "uploads", id, "content"])?);
+        if let Some(range) = range {
+            request = request.header(reqwest::header::RANGE, range);
+        }
+        Self::checked(request.send().await?).await
+    }
+    pub async fn download_bytes(&self, id: &str) -> Result<Vec<u8>, Error> {
+        Ok(self
+            .download_stream(id, None)
+            .await?
+            .bytes()
+            .await?
+            .to_vec())
+    }
     pub async fn health(&self) -> Result<HealthStatus, Error> {
         Self::json(self.api.get(self.url(&["v1", "health"])?)).await
     }

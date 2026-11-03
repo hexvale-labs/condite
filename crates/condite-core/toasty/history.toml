@@ -39,3 +39,8 @@ snapshot_name = "0006_snapshot.toml"
 id = 258467307049724229
 name = "0007_private_cleanup_tombstones.sql"
 snapshot_name = "0007_snapshot.toml"
+
+[[migrations]]
+id = 2513754025477763237
+name = "0008_sessions.sql"
+snapshot_name = "0008_snapshot.toml"

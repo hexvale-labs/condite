@@ -18,6 +18,7 @@ import { ContextMenuApi, Menu, Modal, openModal, React, useState } from "@webpac
 
 import { ErrorMessage } from "./ErrorMessage";
 import { UploadManager } from "./manager";
+import { ConfigEditor } from "./shared/ConfigEditor";
 import { type PrivacyReport, retainedLabels } from "./workflow";
 
 const Native = VencordNative.pluginHelpers.Condite as PluginNative<typeof import("./native")>;
@@ -194,7 +195,7 @@ export default definePlugin({
     description: "Upload files to Condite with local privacy options, or decrypt a downloaded file. Desktop only.",
     authors: [{ name: "Condite contributors", id: 955090007335530506n }],
     settings,
-    settingsAboutComponent: () => <div className="vc-condite-form"><Button onClick={() => openModal(props => <UploadManager props={props} apiUrl={settings.store.apiUrl} apiKey={settings.store.apiKey} />)}>Manage uploads</Button><a href="https://github.com/hexvale-labs/condite/blob/main/AI-NOTICE.md" target="_blank" rel="noreferrer">Written with AI assistance</a><Paragraph>API keys are saved locally in Vencord settings.</Paragraph></div>,
+    settingsAboutComponent: () => <div className="vc-condite-form"><ConfigEditor current={()=>({ api_url:settings.store.apiUrl,api_key:settings.store.apiKey,retention_days:settings.store.retentionDays })} importFile={()=>Native.importSettings()} apply={config=>{ if(config.api_url!==undefined)settings.store.apiUrl=config.api_url;if(config.api_key!==undefined)settings.store.apiKey=config.api_key;if(config.retention_days!==undefined)settings.store.retentionDays=config.retention_days; }}/><Button onClick={() => openModal(props => <UploadManager props={props} apiUrl={settings.store.apiUrl} apiKey={settings.store.apiKey} />)}>Manage uploads</Button><a href="https://github.com/hexvale-labs/condite/blob/main/AI-NOTICE.md" target="_blank" rel="noreferrer">Written with AI assistance</a><Paragraph>API keys are saved locally in Vencord settings.</Paragraph></div>,
     chatBarButton: { icon: ConditeIcon, render: ComposerButton },
     stop() { lastUpload = undefined; }
 });

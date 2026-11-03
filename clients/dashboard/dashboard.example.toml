@@ -1,0 +1,4 @@
+core_url = "http://127.0.0.1:8080"
+origins = "http://localhost:4321"
+host = "0.0.0.0"
+port = 4321

@@ -1,0 +1,10 @@
+[package]
+name = "condite-config"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+toml = "1.1"
+url = "2"

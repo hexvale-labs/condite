@@ -1,14 +1,15 @@
 # Agent Guidelines
 
 - Keep documentation short and concise.
+- Keep `docs/client-capabilities.md` updated when changing API/client capabilities or adding clients. Distinguish implemented behavior from plans and document intentional exclusions.
 - Avoid refactoring unrelated code unless explicitly asked.
 - Write clean, readable code and add comments only when they are needed.
 - Keep tests focused; prefer integration tests over unit tests when practical.
 - When working extensively with a library or tool, consult its latest documentation.
 
-- Originals stay private; independent public share links point directly to
-  S3-compatible storage. Condite manages expiry cleanup every minute. Owner-only
-  signed download links expire. See `docs/file-visibility-architecture.md` before changing sharing.
+- Originals stay private; public shares and owner downloads stream through core's
+  API with validation on every request. Preserve legacy copy cleanup records.
+  See `docs/file-visibility-architecture.md` before changing sharing.
 
 ## Project context
 

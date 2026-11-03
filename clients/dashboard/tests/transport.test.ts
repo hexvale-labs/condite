@@ -1,8 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { proxyRequest } from "../src/lib/proxy";
+import { proxyRequest as authenticatedProxy } from "../src/lib/proxy";
 import { formatBytes, safeDownloadUrl } from "../src/lib/format";
+
+const proxyRequest = (request: Request, base: string, key = "test-session") => authenticatedProxy(request, base, key);
+test("proxy requires a session", async () => {
+  assert.equal((await authenticatedProxy(new Request("http://dashboard/api/v1/account"), "http://127.0.0.1:1")).status, 401);
+});
 
 test("proxy preserves u64 JSON and the configured API prefix", async () => {
   const server = createServer((req, res) => {
@@ -202,4 +207,63 @@ test("bodyless SDK mutations accept an empty request stream without Content-Type
     server.closeAllConnections();
     server.close();
   }
+});
+
+test("proxy streams content and range headers using the session credential",async()=>{
+  const server=createServer((req,res)=>{
+    assert.equal(req.url,"/v1/uploads/id/content");
+    assert.equal(req.headers.range,"bytes=1-3");
+    assert.equal(req.headers.authorization,"Bearer session-token");
+    res.writeHead(206,{"content-type":"application/octet-stream","content-range":"bytes 1-3/10","content-length":"3","accept-ranges":"bytes"});
+    res.end("abc");
+  });
+  await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+  try{
+    const {port}=server.address() as {port:number};
+    const response=await proxyRequest(new Request("http://dashboard/api/v1/uploads/id/content",{headers:{Range:"bytes=1-3"}}),`http://127.0.0.1:${port}`,"session-token");
+    assert.equal(response.status,206);assert.equal(response.headers.get("content-range"),"bytes 1-3/10");assert.equal(await response.text(),"abc");
+  }finally{server.closeAllConnections();server.close();}
+});
+
+test("a progressing stream can outlive the initial response deadline",async()=>{
+  const server=createServer((_req,res)=>{
+    res.writeHead(200,{"content-type":"application/octet-stream"});res.flushHeaders();
+    let sent=0;
+    const interval=setInterval(()=>{res.write("x");if(++sent===10){clearInterval(interval);res.end();}},40);
+    res.on("close",()=>clearInterval(interval));
+  });
+  await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+  try{
+    const {port}=server.address() as {port:number};
+    const response=await authenticatedProxy(new Request("http://dashboard/api/v1/uploads/id/content"),`http://127.0.0.1:${port}`,"session",150);
+    assert.equal(response.status,200);
+    assert.equal(await response.text(),"xxxxxxxxxx");
+  }finally{server.closeAllConnections();server.close();}
+});
+
+test("a stalled upstream body is aborted after an idle deadline",async()=>{
+  const server=createServer((_req,res)=>{res.writeHead(200,{"content-type":"application/octet-stream"});res.write("first");});
+  await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+  try{
+    const {port}=server.address() as {port:number};
+    const response=await authenticatedProxy(new Request("http://dashboard/api/v1/uploads/id/content"),`http://127.0.0.1:${port}`,"session",150);
+    assert.equal(response.status,200);
+    await assert.rejects(response.text());
+  }finally{server.closeAllConnections();server.close();}
+});
+
+test("cancelling a proxied download closes its upstream response",async()=>{
+  let resolveClosed!:()=>void;
+  const closed=new Promise<void>(resolve=>{resolveClosed=resolve;});
+  const server=createServer((_req,res)=>{res.writeHead(200,{"content-type":"application/octet-stream"});res.write("first");res.on("close",resolveClosed);});
+  await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  try{
+    const {port}=server.address() as {port:number};
+    const response=await authenticatedProxy(new Request("http://dashboard/api/v1/uploads/id/content"),`http://127.0.0.1:${port}`,"session",1500);
+    const reader=response.body!.getReader();
+    assert.equal(new TextDecoder().decode((await reader.read()).value),"first");
+    await reader.cancel();
+    await Promise.race([closed,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error("upstream did not close")),1500);})]);
+  }finally{clearTimeout(timer);server.closeAllConnections();server.close();}
 });

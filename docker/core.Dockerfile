@@ -28,7 +28,7 @@ FROM gcr.io/distroless/base-nossl-debian13:nonroot
 COPY --from=builder /runtime-libs/ /usr/lib/
 COPY --from=builder --chown=65532:65532 /out/ /app/
 ENV PATH="/app/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-    XDG_RUNTIME_DIR=/app/run SQL_CONN_URL=turso:/app/data/condite.db
+    XDG_RUNTIME_DIR=/app/run
 WORKDIR /app/data
 EXPOSE 8080
 ENTRYPOINT ["/app/bin/condite-core"]

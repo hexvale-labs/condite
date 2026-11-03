@@ -7,7 +7,7 @@ test.beforeEach(async ({ request }) => {
 test("server renders files and service information with JavaScript disabled", async ({
   browser,
 }) => {
-  const context = await browser.newContext({ javaScriptEnabled: false });
+  const context = await browser.newContext({ javaScriptEnabled: false, storageState: {cookies:[{name:"condite_session",value:"fixture-session",domain:"127.0.0.1",path:"/",httpOnly:true,secure:false,sameSite:"Lax",expires:-1}],origins:[]} });
   const page = await context.newPage();
   await page.goto("http://127.0.0.1:4321/en/");
   await expect(
@@ -313,7 +313,7 @@ test("stalled core still renders localized SSR retry states", async ({
   await request.post("http://127.0.0.1:4322/__failure", {
     data: { stalled: true },
   });
-  const context = await browser.newContext({ javaScriptEnabled: false });
+  const context = await browser.newContext({ javaScriptEnabled: false, storageState: {cookies:[{name:"condite_session",value:"fixture-session",domain:"127.0.0.1",path:"/",httpOnly:true,secure:false,sameSite:"Lax",expires:-1}],origins:[]} });
   try {
     const page = await context.newPage();
     await page.goto("/en/", { timeout: 8000 });
@@ -535,4 +535,46 @@ test("share errors show readable text and keyboard-expandable raw details", asyn
     await summary.press("Enter");
     await page.unroute("**/api/v1/uploads/*/shares");
   }
+});
+
+test("login uses an HttpOnly cookie and logout removes it",async({browser})=>{
+  const context=await browser.newContext({storageState:{cookies:[],origins:[]}});
+  const page=await context.newPage();
+  await page.goto("http://127.0.0.1:4321/en/");
+  await expect(page).toHaveURL(/\/login$/);
+  await page.getByLabel("API key").fill("invalid-key");
+  await page.getByRole("button",{name:"Log in",exact:true}).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page.getByLabel("API key").fill("fixture-key");
+  await page.getByRole("button",{name:"Log in",exact:true}).click();
+  await expect(page).toHaveURL(/\/en\/$/);
+  const cookie=(await context.cookies()).find(cookie=>cookie.name==="condite_session");
+  expect(cookie?.httpOnly).toBe(true);expect(cookie?.sameSite).toBe("Lax");
+  await page.getByRole("link",{name:"Account",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Account usage"})).toBeVisible();
+  await page.getByRole("button",{name:"Log out"}).click();
+  await expect(page).toHaveURL(/\/login$/);
+  expect((await context.cookies()).some(cookie=>cookie.name==="condite_session")).toBe(false);
+  await context.close();
+});
+
+test("root key management and confirmed shutdown work through SSR forms",async({browser,request})=>{
+  const context=await browser.newContext({javaScriptEnabled:false,storageState:{cookies:[],origins:[]}});const page=await context.newPage();
+  await page.goto("http://127.0.0.1:4321/en/login");
+  await page.getByLabel("API key").fill("fixture-root-key");
+  await page.getByRole("button",{name:"Log in",exact:true}).click();
+  await page.getByRole("link",{name:"Administration",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"API keys",exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Create key",exact:true}).click();
+  await expect(page.getByRole("status")).toContainText("fixture-generated-copy-once-key");
+  await page.getByRole("button",{name:"Confirm shutdown",exact:true}).click();
+  expect(await (await request.get("http://127.0.0.1:4322/__calls")).json()).not.toContain("CONTROL shutdown");
+  await page.getByLabel("Type SHUTDOWN to stop core").fill("SHUTDOWN");
+  await page.getByRole("button",{name:"Confirm shutdown",exact:true}).click();
+  expect(await (await request.get("http://127.0.0.1:4322/__calls")).json()).toContain("CONTROL shutdown");
+  await context.close();
+});
+
+test("regular sessions cannot open administration",async({request})=>{
+  expect((await request.get("/en/admin")).status()).toBe(403);
 });

@@ -9,7 +9,7 @@ test("every language renders files and service without JavaScript", async ({
   browser,
 }) => {
   test.setTimeout(120_000);
-  const context = await browser.newContext({ javaScriptEnabled: false });
+  const context = await browser.newContext({ javaScriptEnabled: false, storageState: {cookies:[{name:"condite_session",value:"fixture-session",domain:"127.0.0.1",path:"/",httpOnly:true,secure:false,sameSite:"Lax",expires:-1}],origins:[]} });
   const page = await context.newPage();
   for (const locale of locales) {
     for (const section of ["", "service"]) {

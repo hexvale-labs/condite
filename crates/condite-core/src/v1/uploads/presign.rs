@@ -43,10 +43,11 @@ async fn attempt(
     let mut tx = state.sql.transaction().await?;
     let key = auth.lock(&mut tx).await?;
     let reserved = crate::db::sql::api_key::storage_size(&mut tx, key.id, false).await?;
-    if payload.size_bytes > key.per_upload_quota
-        || reserved
-            .checked_add(payload.size_bytes)
-            .is_none_or(|total| total > key.storage_quota)
+    if !auth.1
+        && (payload.size_bytes > key.per_upload_quota
+            || reserved
+                .checked_add(payload.size_bytes)
+                .is_none_or(|total| total > key.storage_quota))
     {
         return Err(crate::auth::quota_error());
     }

@@ -1,0 +1,43 @@
+---
+import { messages, isLocale, direction } from "../../i18n";
+const { locale } = Astro.params;
+if (!locale || !isLocale(locale)) return new Response(null, { status: 404 });
+const t = messages(locale);
+import "../../styles/global.css";
+Astro.response.headers.set("Cache-Control", "no-store");
+---
+
+<!doctype html>
+<html lang={locale} dir={direction(locale)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{t.loginAction} · Condite</title>
+  </head>
+  <body>
+    <main class="mx-auto max-w-md p-8">
+      <h1 class="text-2xl font-semibold">{t.loginTitle}</h1>
+      <p class="my-4">{t.loginDescription}</p>
+      {Astro.url.searchParams.has("error") && (
+        <p role="alert">{t.loginFailed}</p>
+      )}
+      <form action={`/api/login?locale=${locale}`} method="post" class="grid gap-4">
+        <input type="hidden" name="locale" value={locale} />
+        <label>
+          {t.apiKey}
+          <input
+            class="block w-full rounded border p-2"
+            type="password"
+            name="api_key"
+            required
+            maxlength="512"
+            autocomplete="current-password"
+          />
+        </label>
+        <button class="rounded bg-ink p-2 text-white" type="submit">
+          {t.loginAction}
+        </button>
+      </form>
+    </main>
+  </body>
+</html>

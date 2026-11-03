@@ -15,6 +15,60 @@ use crate::{
 async fn execute_attempt(state: &AppState, command: ControlCommand) -> Result<ControlResponse> {
     tracing::debug!(?command, "Executing control command");
     match command {
+        ControlCommand::ListApiKeys { limit, after } => {
+            let limit = limit.unwrap_or(50);
+            if !(1..=100).contains(&limit) {
+                return Ok(control_error(
+                    "invalid_limit",
+                    "limit must be between 1 and 100",
+                ));
+            }
+            let after = match after {
+                Some(id) => match id.parse::<uuid::Uuid>() {
+                    Ok(id) => id,
+                    Err(_) => return Ok(control_error("invalid_cursor", "after must be a UUID")),
+                },
+                None => uuid::Uuid::nil(),
+            };
+            let mut db = state.sql.clone();
+            let mut keys = crate::db::sql::ApiKeyRecord::filter(
+                crate::db::sql::ApiKeyRecord::fields().id().gt(after),
+            )
+            .order_by(crate::db::sql::ApiKeyRecord::fields().id().asc())
+            .limit(limit as usize + 1)
+            .exec(&mut db)
+            .await?;
+            let more = keys.len() > limit as usize;
+            keys.truncate(limit as usize);
+            let next_after = if more {
+                keys.last().map(|key| key.id.to_string())
+            } else {
+                None
+            };
+            let mut summaries = Vec::new();
+            for key in keys {
+                summaries.push(key_summary(state, &mut db, key).await?);
+            }
+            Ok(ControlResponse::Keys(condite_shared::ListKeysResponse {
+                keys: summaries,
+                next_after,
+            }))
+        }
+        ControlCommand::InspectApiKey { id } => {
+            let Ok(id) = id.parse::<uuid::Uuid>() else {
+                return Ok(control_error("invalid_id", "key ID must be a UUID"));
+            };
+            let mut db = state.sql.clone();
+            match crate::db::sql::ApiKeyRecord::get_by_id(&mut db, &id).await {
+                Ok(key) => Ok(ControlResponse::Key(
+                    key_summary(state, &mut db, key).await?,
+                )),
+                Err(e) if e.is_record_not_found() => {
+                    Ok(control_error("not_found", "key not found"))
+                }
+                Err(e) => Err(e.into()),
+            }
+        }
         ControlCommand::Status => Ok(ControlResponse::Status(state.health()?)),
         ControlCommand::SetLogLevel { level } => Ok(match crate::logging::set_filter(&level) {
             Ok(()) => ControlResponse::Success,
@@ -26,28 +80,39 @@ async fn execute_attempt(state: &AppState, command: ControlCommand) -> Result<Co
             },
         }),
         ControlCommand::Reload => {
-            let restart = state.config.restart_required();
-            let restart_message = if restart.is_empty() {
-                String::new()
+            let candidate =
+                match crate::state::app::AppRuntimeConfig::load(&state.config.config_path) {
+                    Ok(candidate) => candidate,
+                    Err(_) => {
+                        return Ok(control_error(
+                            "reload_failed",
+                            "configuration validation failed; active settings retained",
+                        ));
+                    }
+                };
+            let restart = state.config.differences(&candidate);
+            if crate::logging::set_filter(&candidate.log_filter).is_err() {
+                return Ok(control_error(
+                    "reload_failed",
+                    "invalid log filter; active settings retained",
+                ));
+            }
+            *state
+                .root_keys
+                .write()
+                .map_err(|_| anyhow::anyhow!("root configuration lock poisoned"))? =
+                candidate.root_keys;
+            if restart.is_empty() {
+                Ok(ControlResponse::Success)
             } else {
-                format!(
-                    " Restart required for: {}. These settings were not changed.",
-                    restart.join(", ")
-                )
-            };
-            Ok(match crate::logging::reload_from_env() {
-                Err(_) => ControlResponse::Error {
-                    code: "reload_failed".into(),
-                    message: format!(
-                        "RUST_LOG could not be reloaded; the active filter was retained.{restart_message}"
+                Ok(control_error(
+                    "restart_required",
+                    &format!(
+                        "logging and root credentials reloaded; restart required for: {}",
+                        restart.join(", ")
                     ),
-                },
-                Ok(()) if !restart.is_empty() => ControlResponse::Error {
-                    code: "restart_required".into(),
-                    message: format!("RUST_LOG reloaded.{restart_message}"),
-                },
-                Ok(()) => ControlResponse::Success,
-            })
+                ))
+            }
         }
         ControlCommand::Shutdown => {
             tracing::info!("Shutdown requested through control socket");
@@ -106,6 +171,12 @@ async fn execute_attempt(state: &AppState, command: ControlCommand) -> Result<Co
                 }
                 Err(e) => return Err(e.into()),
             };
+            if key.digest.starts_with("root:") {
+                return Ok(control_error(
+                    "managed_by_config",
+                    "root credentials are managed in TOML",
+                ));
+            }
             let per_upload = per_upload_quota.unwrap_or(key.per_upload_quota);
             let storage = storage_quota.unwrap_or(key.storage_quota);
             key.update()
@@ -129,6 +200,12 @@ async fn execute_attempt(state: &AppState, command: ControlCommand) -> Result<Co
                 }
                 Err(e) => return Err(e.into()),
             };
+            if key.digest.starts_with("root:") {
+                return Ok(control_error(
+                    "managed_by_config",
+                    "root credentials are managed in TOML",
+                ));
+            }
             key.update().revoked(true).exec(&mut tx).await?;
             tx.commit().await?;
             Ok(ControlResponse::Success)
@@ -323,4 +400,52 @@ async fn serve_sock(state: &AppState) -> Result<()> {
 
 pub async fn execute_command(state: &AppState, command: ControlCommand) -> Result<ControlResponse> {
     crate::db::sql::retry::control(|| execute_attempt(state, command.clone())).await
+}
+
+async fn key_summary(
+    state: &AppState,
+    db: &mut toasty::Db,
+    key: crate::db::sql::ApiKeyRecord,
+) -> Result<condite_shared::KeySummary> {
+    let root = key.digest.starts_with("root:");
+    let configured = if let Some(name) = key.digest.strip_prefix("root:") {
+        state
+            .root_keys
+            .read()
+            .map_err(|_| anyhow::anyhow!("root configuration lock poisoned"))?
+            .iter()
+            .any(|root| root.name == name)
+    } else {
+        true
+    };
+    Ok(condite_shared::KeySummary {
+        id: key.id.to_string(),
+        label: key.digest.strip_prefix("root:").map(str::to_owned),
+        created_at: key.created_at.to_string(),
+        revoked: key.revoked || !configured,
+        limits: condite_shared::AccountLimits {
+            per_file_bytes: (!root).then_some(key.per_upload_quota),
+            storage_bytes: (!root).then_some(key.storage_quota),
+        },
+        usage: crate::v1::account::usage(db, Some(key.id)).await?,
+    })
+}
+
+pub async fn http_handler(
+    axum::extract::State(state): axum::extract::State<AppState>,
+    auth: crate::auth::AuthenticatedKey,
+    body: axum::body::Bytes,
+) -> axum::response::Response {
+    use axum::response::IntoResponse;
+    if !auth.1 {
+        return axum::http::StatusCode::FORBIDDEN.into_response();
+    }
+    let command = match parse_command(&body) {
+        Ok(command) => command,
+        Err(_) => return axum::http::StatusCode::BAD_REQUEST.into_response(),
+    };
+    match tokio::time::timeout(Duration::from_secs(15), state.bus.execute(command)).await {
+        Ok(Ok(response)) => ([("cache-control", "no-store")], axum::Json(response)).into_response(),
+        _ => axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
 }

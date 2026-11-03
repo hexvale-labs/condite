@@ -27,12 +27,8 @@ backend() {
     printf '\nBackend\n'
     tool cargo 'Install Rust using rustup.'
     tool rustc 'Install Rust using rustup.'
-    local key
-    for key in SQL_CONN_URL S3_ENDPOINT S3_REGION S3_BUCKET S3_ACCESS_KEY S3_SECRET_KEY; do
-        if test -n "${!key:-}" || { test -f crates/condite-core/.env && grep -Eq "^[[:space:]]*(export[[:space:]]+)?${key}=[[:space:]]*[^[:space:]#]" crates/condite-core/.env; }; then
-            ok "$key is configured (value not validated)"
-        else missing "Set $key in crates/condite-core/.env or your environment. See .env.example."; fi
-    done
+    file crates/condite-core/condite.toml 'Copy condite.example.toml and configure core TOML.'
+    printf 'TOML is validated at startup; .env supplies explicit references only.\n'
     printf 'Database connectivity and S3 credentials are not probed.\n'
 }
 sdk() {
@@ -62,7 +58,7 @@ dashboard() {
     file crates/condite-sdk-node/dist/package.json 'Run just build sdk.'
     file crates/condite-sdk-wasm/dist/condite_sdk_bg.wasm 'Run just build sdk.'
     file crates/condite-sdk-wasm/dist/package.json 'Run just build sdk.'
-    printf 'Backend defaults to http://127.0.0.1:8080; override CONDITE_API_URL in clients/dashboard/.env.\n'
+    file clients/dashboard/dashboard.toml 'Copy dashboard.example.toml and configure core_url/origins.'
 }
 vencord() {
     printf '\nVencord\n'

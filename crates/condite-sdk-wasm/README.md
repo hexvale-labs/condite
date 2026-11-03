@@ -88,3 +88,12 @@ follows_upload: true})` for a direct share following file retention.
 `updateRetention(id, {expires_at})` manage shares and file deadlines. Returned
 nullable deadlines are null, and sizes remain bigint. Privacy upload helpers
 preserve the request's retention selection.
+
+`account()` exposes bigint usage and nullable limits; `login()`/`logout()` manage
+core sessions. `controlJson()` exchanges exact JSON text for the complete root
+control protocol. `downloadBytes()` buffers API-streamed bytes; `download()` returns
+an expiring API ticket URL suitable for browser downloads. Programmatic client
+constructors remain available without global TOML files or server secrets.
+
+`control(command)` is the typed interface: quota inputs and usage outputs use
+bigint. `controlJson` remains available for exact raw JSON interoperability.

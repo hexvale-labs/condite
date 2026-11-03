@@ -122,3 +122,14 @@ Electron bridge; `build:web` remains a compilation check only. See
 
 The connection display counts up live with 30-day months and checks availability
 periodically. Its optional clock tick starts muted and stops when hidden/offline.
+
+## TOML and usage
+
+Settings support TOML import/export for `api_url`, `api_key`, `retention_days`,
+`upload_behavior` and `discord_limit_mib`. Import resolves `${NAME}` only in the
+native desktop environment; exports include credentials, so keep them private or
+replace secrets with references. Optional fallback credentials use Electron
+userData/condite.toml. Native executable paths are never imported from renderer
+settings. The upload manager shows confirmed, reserved and charged usage, total
+quota and per-file limits. Root keys work for file access; administration stays
+in the dashboard. Public and owner download URLs now use core's API.

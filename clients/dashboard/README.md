@@ -1,111 +1,40 @@
 # Condite dashboard
 
-Astro SSR administration console with SolidJS **v2 RC** hydration, Tailwind and
-strict TypeScript. Bun is used for development; production runs on Node.
+Astro SSR with SolidJS v2 RC hydration, Tailwind and generated Node/WASM SDKs.
+Use Bun 1.4.4+ for development and Node 22.23.4+ for production. Keep the experimental
+renderer/compiler pins together; validate SSR and hydration on upgrades.
 
-## Run
+Run `just install` here, configure `dashboard.toml` from `dashboard.example.toml`,
+start core separately, then `just run`. TOML contains `core_url`, `origins`, `host`
+and `port`; `${NAME}` expands only explicit environment references. Missing
+variables, unknown fields and invalid URLs fail. For another file, pass
+`--condite-config /path/dashboard.toml`. Production: `node dist/server/entry.mjs`.
+Keep the platform-specific native SDK beside the build.
 
-From this directory:
+Visitors log in at `/en/login` using their own ordinary or root API key. The dashboard
+exchanges it for a core-backed 12-hour session and stores only an HttpOnly,
+SameSite=Lax cookie (Secure over HTTPS). No shared server API key or browser
+localStorage credential is used. Logout revokes the session. Core checks key
+revocation/root rotation on each request; sessions survive restarts and replicas.
+Use HTTPS through a reverse proxy; configure trusted origins in TOML.
 
-```sh
-just install # Installs SDK tooling, builds generated packages, then installs with Bun
-just check tools
-just run
-```
+Ordinary accounts see only their files, usage and limits. Roots see all owners,
+can filter by owner ID, manage keys and use server status, logging, reload,
+administrative deletion and shutdown. Shutdown requires typing SHUTDOWN. Generated
+key secrets are shown only in their creation response. Root credentials remain
+managed in core's TOML.
 
-Start `just run backend` from the repository root in a second terminal after configuring
-`crates/condite-core/.env`. See [local development](../../README.md#local-development)
-and [SDK prerequisites](../../scripts/sdk/README.md).
+Uploads use direct signed PUTs to private storage, requiring appropriate bucket
+CORS. Downloads and public shares stream through core, validating each request;
+owner tickets expire after at most 15 minutes. Sharing and retention controls are
+available in list and grid views. Sizes remain bigint; the proxy forwards raw JSON
+bytes. It restricts routes, request bodies, origins and forwarded stream headers.
 
-Use Bun 1.4.4+ and Node 22.23.4+ (a supported Node LTS is recommended).
-`CONDITE_API_URL` is the private core origin, defaulting to `http://127.0.0.1:8080`.
-Open `/en/` or `/es/`. Set `DASHBOARD_ORIGINS` to comma-separated dashboard
-origins **at runtime** (for example, `https://dashboard.example,https://admin.example`).
-Astro validates each host; loopback development hosts are allowed by default. Restart the server after changing it; no rebuild is needed.
-Whitespace around entries is trimmed. Empty or invalid entries fail startup.
-This setting is independent of future public file URLs. The API proxy stays on the dashboard origin; signed file
-PUTs go directly to storage. Bucket CORS must allow the dashboard origin, PUT and
-the signed Content-Type header. The proxy never rewrites signed storage URLs.
+Checks: `bun run check`, `bun run test:unit`, `bun run build`, `bun run test`,
+`bun run test:dev`. Browser fixtures exercise the built SDKs without a real bucket.
+Live provider, Discord and mobile hardware verification remain separate.
 
-```sh
-bun run check
-bun run test:unit
-bun run build
-bunx playwright install chromium
-bun run test
-bun run test:dev
-HOST=0.0.0.0 PORT=4321 node dist/server/entry.mjs
-```
-
-Browser tests start a local HTTP fixture and the production Node server;
-`test:dev` runs the same checks against Bun development. They use
-the actual compiled native/WASM SDKs; no database or bucket is required. Ports
-4321/4322 must be available. Keep the generated SDK packages and dashboard
-`node_modules` available beside the production artifact; the native addon is an
-external platform-specific dependency. Build it for the target OS/architecture.
-Do not run the standalone production server with Bun.
-
-## Docker deployment
-
-Core and the dashboard serve HTTP only; built-in TLS is not currently planned,
-though it could be added later. Put them behind cloudflared or an HTTPS reverse
-proxy with access control. **Do not expose the dashboard directly to the internet
-on port 80.** See the [Docker Compose examples](../../docker/examples/README.md)
-for internal networking, Caddy and Cloudflare Tunnel.
-
-## Behavior and constraints
-
-- SSR falls back to localized error states after five seconds without a core
-  response. The native SDK does not expose cancellation, so its underlying
-  request may outlive that rendering deadline.
-- Files are SSR-rendered, then hydrated. List/grid is stored in the URL to avoid
-  a hydration jump. Filters apply to the current cursor page. Dates use UTC on
-  both sides; sizes preserve bigint precision.
-- Uploads expose preparation/PUT/confirmation states and preserve failed request
-  IDs. Pending records can be confirmed or deleted. The SDK cannot report byte
-  progress. The API enforces the configured key limits.
-- Uploads start private with 14-day retention. **Upload expiry** selects a custom
-  date, interval or Never before uploading. **Expiry** changes an existing file's
-  deadline; choosing a past deadline requires deletion confirmation.
-- **Share** publishes a separate unsigned direct S3 URL. **Manage links** lists,
-  copies and independently revokes shares. **Download** issues a short-lived
-  owner download. List and grid expose the same controls. Condite cleans expired
-  copies every minute while online; failed cleanup and third-party caches can
-  delay disappearance. See [delivery guarantees](../../docs/file-visibility-architecture.md).
-- File and dialog arrivals use short opacity/transform transitions, with reduced
-  motion support. All actions remain immediately usable. The footer links the
-  project's AI-authorship notice.
-- Set server-only `CONDITE_API_KEY` to a key generated by `condite-ctl`.
-  SSR and the proxy use this key; it is never sent to browser bundles. Keep the
-  dashboard behind trusted access: its proxy uses that key for every visitor,
-  and origin checks do not provide user authentication.
-- To add a locale, extend the [shared catalog](../i18n/README.md).
-  Astro routing and both clients use its locale registry.
-- The renderer/compiler stack is experimental. Keep exact pins and the Bun lock;
-  run SSR and hydration checks on upgrades. Do not use the official v1 adapter.
-- Mobile viewport tests cannot prove real-device keyboard, safe-area or touch
-  behavior; confirm those on hardware before deployment.
-
-## Source map and transport
-
-- `src/pages/[locale]/`: localized SSR files and service pages.
-- `src/components/Files.tsx`: hydrated file actions and upload flow.
-- `src/lib/server.ts`: server-only native SDK and SSR deadline.
-- `src/lib/client.ts`: lazy browser WASM SDK initialization.
-- `src/pages/api/[...path].ts` and `src/lib/proxy.ts`: same-origin API proxy.
-- `tests/transport.test.ts`: proxy/transport checks; `tests/dashboard.spec.ts`:
-  production/development browser coverage using `tests/fixture.ts`.
-
-SSR talks to core through the native SDK. Hydrated actions use the WASM SDK
-through `/api/`; file bytes go straight to the returned signed storage URL.
-The proxy allows only the implemented health/upload routes, requires same-origin
-`Origin` on writes, limits POST/PATCH bodies to 16 KiB and times out upstream requests
-after 15 seconds. It forwards raw JSON bytes to preserve integer precision and
-marks responses `no-store`. When adding an API route, update its allowlist and
-transport tests. It uses the configured server-side key and ignores browser credentials and cookies.
-
-## Translations
-
-All supported locales and messages live in the shared [client catalog](../i18n/README.md).
-The language menu preserves the current page and query string and works without JavaScript.
-Arabic pages use right-to-left direction.
+See [Docker examples](../../docker/examples/README.md),
+[delivery guarantees](../../docs/file-visibility-architecture.md),
+[client capabilities](../../docs/client-capabilities.md) and
+[translations](../i18n/README.md).

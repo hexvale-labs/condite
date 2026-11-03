@@ -3,7 +3,7 @@ Condite development — run these from the repository root
 First time:
   just install             Install all components and the mprocs runner
   just check tools         Find missing tools/configuration (read-only)
-  Edit crates/condite-core/.env with your database and S3 settings.
+  Edit crates/condite-core/condite.toml; keep referenced secrets in .env.
   just run                 Start API (:8080), dashboard (:4321) + temporary CLI shell
   Open http://localhost:4321/en/ (or /es/).
 

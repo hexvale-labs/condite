@@ -18,3 +18,15 @@ crates/condite-sdk-wasm/dist/
 /target
 /crates/condite-sdk-node/dist
 /crates/condite-sdk-wasm/dist
+
+# Local deployment secrets and runtime config
+.env
+condite.toml
+dashboard.toml
+ctl.toml
+
+clients/dashboard/dashboard.test.toml
+
+/clients/vencord-extension/.vencord
+
+!docker/examples/dashboard.toml

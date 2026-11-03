@@ -50,6 +50,7 @@ impl From<UploadRecord> for condite_shared::Upload {
     fn from(record: UploadRecord) -> Self {
         Self {
             id: record.id.to_string(),
+            owner_id: record.owner_id.to_string(),
             filename: record.filename,
             mime_type: record.mime_type,
             size_bytes: record.size_bytes,

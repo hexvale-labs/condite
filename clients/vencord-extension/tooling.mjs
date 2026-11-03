@@ -1,13 +1,14 @@
 import { buildArguments } from "./build-options.mjs";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const repository = fileURLToPath(new URL("../../", import.meta.url));
-const checkout = join(root, ".vencord");
+const checkoutPath = join(root, ".vencord");
+const checkout = existsSync(checkoutPath) ? realpathSync(checkoutPath) : checkoutPath;
 const target = join(checkout, "src/userplugins/condite");
 const marker = join(target, ".condite-managed");
 const pin = JSON.parse(readFileSync(join(root, "vencord.json"), "utf8"));

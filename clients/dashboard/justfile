@@ -9,7 +9,7 @@ install:
     @echo "==> Install: dashboard"
     just --justfile ../../scripts/sdk/justfile install
     just --justfile ../../scripts/sdk/justfile build
-    test -e .env || cp .env.example .env
+    test -e dashboard.toml || cp dashboard.example.toml dashboard.toml
 
 # Build the production dashboard (run install first).
 build:

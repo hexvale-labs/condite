@@ -1,0 +1,4 @@
+core_url = "http://core:8080"
+origins = "http://localhost:4321,https://dashboard.example.com"
+host = "0.0.0.0"
+port = 4321

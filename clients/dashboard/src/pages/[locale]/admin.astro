@@ -1,0 +1,263 @@
+---
+import { parseControlResponse } from "../../lib/control";
+import { formatBytes } from "../../lib/format";
+import type { KeySummary } from "condite-sdk-node";
+import Admin from "../../layouts/Admin.astro";
+import { readBounded } from "../../lib/proxy";
+import { isLocale, messages } from "../../i18n";
+import { serverClient, withSsrDeadline } from "../../lib/server";
+const { locale } = Astro.params;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+if (!Astro.locals.root) return new Response(null, { status: 403 });
+Astro.response.headers.set("Cache-Control", "no-store");
+const t = messages(locale);
+const sdk = serverClient(Astro.locals.session);
+let result: string | undefined;
+if (Astro.request.method === "POST") {
+  if (Astro.request.headers.get("origin") !== Astro.url.origin)
+    return new Response(null, { status: 403 });
+  if (Number(Astro.request.headers.get("content-length")) > 16384)
+    return new Response(null, { status: 413 });
+  // Astro form handlers accept URL-encoded forms only; reject oversized chunked bodies too.
+  let raw: string;
+  try {
+    raw = await readBounded(Astro.request, 16384);
+  } catch {
+    return new Response(null, { status: 413 });
+  }
+  const form = new URLSearchParams(raw);
+  const action = form.get("action");
+  const id = form.get("id") ?? "";
+  const quota = (name: string) => {
+    const value = form.get(name) ?? "";
+    if (!/^\d{1,19}$/.test(value) || BigInt(value) > 9223372036854775807n)
+      throw new Error(t.invalidQuota);
+    return value;
+  };
+  try {
+    let command: string;
+    if (action === "generate_api_key")
+      command = `{"command":"generate_api_key","per_upload_quota":${quota("per_upload_quota")},"storage_quota":${quota("storage_quota")}}`;
+    else if (action === "update_api_key")
+      command = `{"command":"update_api_key","id":${JSON.stringify(id)},"per_upload_quota":${quota("per_upload_quota")},"storage_quota":${quota("storage_quota")}}`;
+    else if (action === "delete_api_key" || action === "delete_upload")
+      command = JSON.stringify({ command: action, id });
+    else if (action === "set_log_level")
+      command = JSON.stringify({ command: action, level: form.get("level") });
+    else if (action === "shutdown") {
+      if (form.get("confirmation") !== "SHUTDOWN")
+        throw new Error(t.shutdownRequired);
+      command = '{"command":"shutdown"}';
+    } else if (action === "reload" || action === "status")
+      command = JSON.stringify({ command: action });
+    else throw new Error("Unknown action");
+    result = await withSsrDeadline(sdk.controlJson(command));
+  } catch (error) {
+    result = error instanceof Error ? error.message : t.requestFailed;
+  }
+}
+let keys = "";
+let summaries: KeySummary[] = [];
+let nextAfter: string | null = null;
+try {
+  keys = await withSsrDeadline(
+    sdk.controlJson(
+      JSON.stringify({
+        command: "list_api_keys",
+        limit: 50,
+        after: Astro.url.searchParams.get("after"),
+      }),
+    ),
+  );
+  const response = parseControlResponse(keys);
+  if (response.type === "keys") {
+    summaries = response.keys;
+    nextAfter = response.next_after;
+  }
+} catch {
+  keys = t.keysUnavailable;
+}
+---
+
+<Admin
+  locale={locale}
+  section="administration"
+  heading={t.administration}
+  description={t.adminDescription}
+>
+  <div class="grid gap-6">
+    {result && (
+      <section class="rounded border border-line bg-white p-5">
+        <h2 class="font-semibold">{t.controlResult}</h2>
+        <p>{t.copyKeyOnce}</p>
+        <pre
+          class="mt-3 overflow-auto whitespace-pre-wrap break-all"
+          role="status"
+        >{result}</pre>
+      </section>
+    )}
+    <section class="rounded border border-line bg-white p-5">
+      <h2 class="text-xl font-semibold">{t.apiKeys}</h2>
+      {summaries.length ? (
+        <div class="my-4 overflow-auto">
+          <table class="w-full text-start text-sm">
+            <thead>
+              <tr>
+                <th class="p-2 text-start">{t.keyIdentity}</th>
+                <th class="p-2 text-start">{t.usageQuota}</th>
+                <th class="p-2 text-start">{t.perFile}</th>
+                <th class="p-2 text-start">{t.status}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaries.map((key) => (
+                <tr class="border-t border-line">
+                  <td class="p-2">
+                    <a
+                      class="underline"
+                      href={`/${locale}/?owner_id=${key.id}`}
+                    >
+                      {key.label ?? key.id}
+                    </a>
+                  </td>
+                  <td class="p-2">
+                    {formatBytes(key.usage.charged_bytes, locale)} /{" "}
+                    {key.limits.storage_bytes === null
+                      ? t.unlimited
+                      : formatBytes(key.limits.storage_bytes, locale)}
+                  </td>
+                  <td class="p-2">
+                    {key.limits.per_file_bytes === null
+                      ? t.unlimited
+                      : formatBytes(key.limits.per_file_bytes, locale)}
+                  </td>
+                  <td class="p-2">
+                    {key.revoked ? t.revokedKey : t.activeKey}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {nextAfter && (
+            <a class="button mt-3" href={`?after=${nextAfter}`}>
+              {t.nextKeys}
+            </a>
+          )}
+        </div>
+      ) : (
+        <p class="my-4">{keys === t.keysUnavailable ? keys : t.noKeys}</p>
+      )}
+      <form class="grid gap-2" method="post">
+        <input type="hidden" name="action" value="generate_api_key" />
+        <label>
+          {t.quotaPerFileBytes}
+          <input
+            class="ms-2 rounded border p-2"
+            name="per_upload_quota"
+            inputmode="numeric"
+            value="104857600"
+            required
+          />
+        </label>
+        <label>
+          {t.quotaStorageBytes}
+          <input
+            class="ms-2 rounded border p-2"
+            name="storage_quota"
+            inputmode="numeric"
+            value="1073741824"
+            required
+          />
+        </label>
+        <button class="w-fit rounded border p-2">{t.createKey}</button>
+      </form>
+      <form class="mt-6 grid gap-2" method="post">
+        <label>
+          {t.keyId}
+          <input class="ms-2 rounded border p-2" name="id" required />
+        </label>
+        <label>
+          {t.perFileBytes}
+          <input
+            class="ms-2 rounded border p-2"
+            name="per_upload_quota"
+            inputmode="numeric"
+          />
+        </label>
+        <label>
+          {t.totalBytes}
+          <input
+            class="ms-2 rounded border p-2"
+            name="storage_quota"
+            inputmode="numeric"
+          />
+        </label>
+        <div class="flex gap-2">
+          <button
+            class="rounded border p-2"
+            name="action"
+            value="update_api_key"
+          >
+            {t.updateLimits}
+          </button>
+          <button
+            class="rounded border p-2"
+            name="action"
+            value="delete_api_key"
+          >
+            {t.revokeKey}
+          </button>
+        </div>
+      </form>
+      <p class="mt-3 text-sm">{t.rootManagedToml}</p>
+    </section>
+    <section class="rounded border border-line bg-white p-5">
+      <h2 class="text-xl font-semibold">{t.serverControl}</h2>
+      <form class="my-4 flex flex-wrap gap-2" method="post">
+        <button class="rounded border p-2" name="action" value="status">
+          {t.serverStatus}
+        </button>
+        <button class="rounded border p-2" name="action" value="reload">
+          {t.reloadConfiguration}
+        </button>
+      </form>
+      <form class="flex gap-2" method="post">
+        <input type="hidden" name="action" value="set_log_level" />
+        <label>
+          {t.logFilter}
+          <input
+            class="ms-2 rounded border p-2"
+            name="level"
+            value="info"
+            required
+          />
+        </label>
+        <button class="rounded border p-2">{t.apply}</button>
+      </form>
+      <form class="mt-4 flex gap-2" method="post">
+        <input type="hidden" name="action" value="delete_upload" />
+        <label>
+          {t.fileId}
+          <input class="ms-2 rounded border p-2" name="id" required />
+        </label>
+        <button class="rounded border p-2">{t.deleteFile}</button>
+      </form>
+      <form class="mt-6 grid gap-2" method="post">
+        <input type="hidden" name="action" value="shutdown" />
+        <label>
+          {t.shutdownInstruction}
+          <input
+            class="ms-2 rounded border p-2"
+            name="confirmation"
+            required
+            pattern="SHUTDOWN"
+            autocomplete="off"
+          />
+        </label>
+        <button class="w-fit rounded border border-red-600 p-2 text-red-700">
+          {t.confirmShutdown}
+        </button>
+      </form>
+    </section>
+  </div>
+</Admin>

@@ -30,7 +30,7 @@ Bun 1.4.4+, and a C toolchain. Then, from the repository root:
 
 ```sh
 just install all                # Backend + SDK tooling/build + dashboard dependencies
-# Edit crates/condite-core/.env with your database and S3 credentials.
+# Configure crates/condite-core/condite.toml and referenced .env secrets.
 just check tools               # Check all prerequisites and configuration
 just run backend              # Terminal 1: API on :8080
 just run dashboard            # Terminal 2: dashboard on :4321 (open /en/ or /es/)
@@ -71,7 +71,7 @@ in [SDK development](scripts/sdk/README.md).
 
 Local justfiles in `crates/condite-core`, `clients/dashboard`, and `scripts/sdk`
 provide `install`, `build`, `check`, `help`, and `run` (apps). Install commands
-preserve existing `.env` files. Run `just` anywhere for the command guide.
+preserve existing TOML and `.env` files. Run `just` anywhere for the command guide.
 
 ## Run the service
 
@@ -80,7 +80,8 @@ bucket, then:
 
 ```sh
 cp crates/condite-core/.env.example crates/condite-core/.env
-# Edit .env with your database URL and real bucket credentials.
+cp crates/condite-core/condite.example.toml crates/condite-core/condite.toml
+# Edit TOML for deployment settings; .env supplies referenced storage/root secrets.
 just run
 ```
 

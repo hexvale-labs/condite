@@ -10,6 +10,7 @@ import {
     React,
     ReactDOM,
     useEffect,
+    useRef,
     useState
 } from "@webpack/common";
 import type { Root } from "react-dom/client";
@@ -30,6 +31,45 @@ export function setPaneOpen(value: boolean) {
 function UploadsNavigation() {
     const { t, locale, dir } = useTranslation();
     const [open, setOpen] = useState(opened);
+    const button = useRef<HTMLButtonElement>(null);
+    useEffect(() => {
+        const element = button.current;
+        if (!element) return;
+        // Use Discord's current row geometry, including density/text-scale changes.
+        const reference = element.parentElement?.querySelector<HTMLElement>('a[href="/store"], a[href="/shop"], a[href="/channels/@me"]')
+            ?? document.querySelector<HTMLElement>('a[href="/store"], a[href="/shop"]');
+        if (!reference) return;
+        const sync = () => {
+            const style = getComputedStyle(reference);
+            const rect = reference.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            for (const name of ["padding", "margin", "border-radius", "font-size", "line-height"])
+                element.style.setProperty(name, style.getPropertyValue(name));
+            element.style.width = `${rect.width}px`;
+            element.style.height = `${rect.height}px`;
+            element.style.minHeight = "0";
+            const icon = reference.querySelector("svg");
+            const target = element.querySelector("svg");
+            if (icon && target) {
+                const bounds = icon.getBoundingClientRect();
+                const parentElement = element.parentElement!;
+                const parent = parentElement.getBoundingClientRect();
+                const parentStyle = getComputedStyle(parentElement);
+                const inset = style.direction === "rtl"
+                    ? parseFloat(parentStyle.paddingRight) + parseFloat(parentStyle.borderRightWidth)
+                    : parseFloat(parentStyle.paddingLeft) + parseFloat(parentStyle.borderLeftWidth);
+                element.style.paddingInlineStart = `${getComputedStyle(reference).direction === "rtl" ? rect.right-bounds.right : bounds.left-rect.left}px`;
+                target.style.width = `${bounds.width}px`;
+                target.style.height = `${bounds.height}px`;
+                target.style.flexBasis = `${bounds.width}px`;
+                element.style.marginInlineStart = `${Math.max(0, style.direction === "rtl" ? parent.right-rect.right-inset : rect.left-parent.left-inset)}px`;
+            }
+        };
+        sync();
+        const observer = new ResizeObserver(sync);
+        observer.observe(reference);
+        return () => observer.disconnect();
+    }, []);
     useEffect(() => {
         subscribers.add(setOpen);
         return () => {
@@ -38,6 +78,7 @@ function UploadsNavigation() {
     }, []);
     return (
         <button
+            ref={button}
             lang={locale}
             dir={dir}
             className="condite-nav"
