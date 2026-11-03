@@ -6,6 +6,8 @@ default-run = "condite-core"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
+tokio-stream = { version = "0.1", features = ["time"] }
+condite-config = { path = "../condite-config" }
 tower-http = { version = "0.6.11", features = ["cors"] }
 getrandom = { workspace = true }
 sha2 = { workspace = true }
@@ -26,7 +28,7 @@ tracing-subscriber = { workspace = true }
 toasty-cli = { workspace = true }
 axum-anyhow = { workspace = true }
 mime2ext = { workspace = true }
-tokio-util = { workspace = true, features = ["rt"] }
+tokio-util = { workspace = true, features = ["rt", "io"] }
 
 [features]
 default = []

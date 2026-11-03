@@ -10,7 +10,7 @@ are unchanged, and this plugin never sends a message.
 Completed uploads show **Copy share link**, expiry and the cleaning report.
 The selectable link remains available if clipboard access fails. The most recent
 result stays in memory under **Last share link** until the plugin stops.
-Links are unsigned direct S3 bearer URLs; anyone holding one can download it. An encrypted
+Links are API-mediated bearer URLs; anyone holding one can download it. An encrypted
 file still needs its passphrase after downloading; share that separately.
 **Decrypt local file** opens a local file picker, requests the passphrase and
 saves a decrypted copy to a location you choose. It makes no network request.
@@ -18,7 +18,7 @@ The encrypted original remains intact; the decrypted filename defaults to
 `decrypted-file` because the encrypted payload does not carry its original name.
 
 Set the API key in Condite settings; Vencord stores it locally. Alternatively,
-provide `CONDITE_API_KEY` and `CONDITE_API_URL` in the desktop launch environment.
+configure `api_key` and matching `api_url` in Electron userData/condite.toml.
 The environment URL must match the plugin setting before its key is used. Keys
 are sent only to the configured API, never to signed storage uploads.
 
@@ -29,7 +29,7 @@ listing, health checks, pending confirmation, owner downloads, deletion, indepen
 share creation/listing/revocation and retention changes, including adding/removing
 intervals. Retention changes to a past date require deletion confirmation.
 
-Each completed upload creates a direct share following its retention; failures
+Each completed upload creates an API share following its retention; failures
 retain the confirmed private upload ID for recovery. Condite removes expired
 uploads and share copies about every minute while online. Downtime or storage
 failures can delay removal; downloaded or cached copies cannot be recalled.
@@ -49,22 +49,19 @@ Discord CSP qualification.
    `src/userplugins/`. Keep all source files, generated `wire.d.ts` and stylesheet together.
 4. In the Vencord checkout run `pnpm install --frozen-lockfile`, `pnpm build`, then
    `pnpm inject`. Fully quit and restart Discord after native code changes.
-5. Launch Discord with `CONDITE_SDK_NODE_PATH` set to the absolute path of your
-   trusted local `crates/condite-sdk-node/dist/index.cjs`. For example on Linux:
-
-   ```sh
-   CONDITE_SDK_NODE_PATH=/opt/condite/crates/condite-sdk-node/dist/index.cjs discord
-   ```
+5. Create `condite.toml` in Electron's userData directory with the absolute
+   `sdk_path` of your trusted local `crates/condite-sdk-node/dist/index.cjs`.
+   See `condite.example.toml`; use `${NAME}` for optional environment references.
 
 6. Enable **Condite** in Vencord’s plugin settings and set its API base URL. Use
    HTTPS for remote servers; localhost HTTP is available for development. If the
    composer icon is hidden, enable Condite in Vencord’s chat-bar button settings.
 
-The SDK path comes from the desktop launch environment rather than renderer IPC;
+The SDK path comes from the trusted local TOML file rather than renderer IPC;
 the plugin cannot load a renderer-supplied module path. Nothing is downloaded
 automatically. Optional media cleaning also requires explicitly installed local
-FFmpeg/ffprobe executables: set both `CONDITE_FFMPEG_PATH` and
-`CONDITE_FFPROBE_PATH` to their absolute paths before starting Discord. Without
+FFmpeg/ffprobe executables: set both `ffmpeg_path` and
+`ffprobe_path` in userData/condite.toml to their absolute paths before starting Discord. Without
 those, media metadata cleaning fails before upload.
 
 Passphrases are masked, confirmed for encryption, cleared from fields when the
@@ -111,3 +108,19 @@ The legacy plugin's uptime display shares its MIT time/audio implementation with
 `clients/shared`; keep `condite.desktop/shared` with copied source. Release ZIPs
 use the maintained [userplugin build](../vencord-extension/README.md), not this
 manual-install prototype. See [releases](../../docs/releases.md).
+
+## TOML configuration and account usage
+
+Native deployment settings now come from `condite.toml` in Electron's userData
+folder; see `condite.example.toml`. Set `sdk_path`, optional `ffmpeg_path` and
+`ffprobe_path`, plus `api_url`/`api_key` for fallback authentication. Old environment
+names are not implicit settings: reference `${NAME}` in TOML to inject secrets
+from the desktop launch environment. Config errors omit resolved values.
+
+Settings retain their existing UI and gain TOML import/export. Imports accept
+client preferences, with environment interpolation in the native process; native
+executable paths must be set in the trusted userData file. Exports contain the
+current API key, so keep them private or replace it with an explicit environment
+reference. File management shows charged storage, pending reservations, confirmed
+bytes, total quota and maximum per-file size. Download links now point through
+core's API. No administrator controls are exposed in Vencord.

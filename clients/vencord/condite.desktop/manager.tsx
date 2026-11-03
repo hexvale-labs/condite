@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Uptime } from "./Uptime";
-import type { HealthStatus } from "./wire";
 import { Button } from "@components/Button";
 import { copyToClipboard } from "@utils/clipboard";
 import type { PluginNative } from "@utils/types";
@@ -13,15 +11,18 @@ import type { RenderModalProps } from "@vencord/discord-types";
 import { Modal, openModal, React, useEffect, useRef, useState } from "@webpack/common";
 
 import { ErrorConfirmModal, ErrorMessage } from "./ErrorMessage";
-import type { Share, Upload } from "./wire";
+import { Uptime } from "./Uptime";
+import type { Account, HealthStatus, Share, Upload } from "./wire";
 
 const Native = VencordNative.pluginHelpers.Condite as PluginNative<typeof import("./native")>;
+type IpcValue<T> = T extends bigint ? string : T extends object ? { [K in keyof T]: IpcValue<T[K]> } : T;
 type Row = Omit<Upload, "size_bytes"> & { size_bytes: string };
 type Operation = Parameters<typeof Native.manage>[2];
 const formatDate = (value: string | null) => value ? new Date(value).toISOString().replace("T", " ") : "Never";
 const safeLink = (value: string) => { const url = new URL(value); if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("Unsupported download URL."); return url.href; };
 
 export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalProps; apiUrl: string; apiKey: string }) {
+    const [usage, setUsage] = useState<IpcValue<Account> | null>(null);
     const [health, setHealth] = useState<HealthStatus | null>(null);
     const [rows, setRows] = useState<Row[]>([]);
     const [next, setNext] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalPro
         const poll = async () => {
             if (pending) return;
             pending = true;
-            try { const value = await call("health"); if (live) setHealth(value); }
+            try { const [value,account] = await Promise.all([call("health"),call("account")]); if (live) { setHealth(value); setUsage(account); } }
             catch { if (live) setHealth(null); }
             finally { pending = false; }
         };
@@ -84,6 +85,7 @@ export function UploadManager({ props, apiUrl, apiKey }: { props: RenderModalPro
         <div className="vc-condite-manager">
             <div className="vc-condite-actions"><Button disabled={busy} onClick={() => void run(() => load())}>Refresh</Button><Button disabled={busy} variant="secondary" onClick={() => void run(async () => { try { setHealth(await call("health")); } catch (error) { setHealth(null); throw error; } })}>Connection</Button></div>
             <Uptime health={health} />
+            {usage&&<div><p>Storage: {BigInt(usage.usage.charged_bytes).toLocaleString()} / {usage.limits.storage_bytes===null?"Unlimited":BigInt(usage.limits.storage_bytes).toLocaleString()} bytes</p><p>Confirmed: {BigInt(usage.usage.confirmed_bytes).toLocaleString()} · Pending: {BigInt(usage.usage.reserved_bytes).toLocaleString()} bytes</p><p>Maximum per file: {usage.limits.per_file_bytes===null?"Unlimited":`${BigInt(usage.limits.per_file_bytes).toLocaleString()} bytes`}</p></div>}
             {!!error && <ErrorMessage error={error} />}
             {notice && <p role="status">{notice}</p>}
             {rows.map(row => <section key={row.id} className="vc-condite-record">

@@ -10,16 +10,18 @@ if (!isLocale(locale)) return new Response(null, { status: 404 });
 Astro.response.headers.set('Cache-Control', 'no-store');
 const view = Astro.url.searchParams.get('view') === 'grid' ? 'grid' : 'list';
 const after = Astro.url.searchParams.get('after');
+const owner = Astro.locals.root ? Astro.url.searchParams.get('owner_id') : null;
+if(owner && !/^[a-fA-F0-9-]{36}$/.test(owner)) return new Response(null,{status:400});
 if (after && !/^[a-fA-F0-9-]{36}$/.test(after)) return new Response(null, { status: 400 });
 let initialError: PresentedError | undefined;
 let initial: ListUploadsResponse | null = null;
 let health: HealthStatus | null = null;
 try {
-  const sdk = serverClient();
-  const [files, status] = await Promise.allSettled([withSsrDeadline(sdk.listUploads({ limit: 50, after: after ?? undefined })), withSsrDeadline(sdk.health())]);
+  const sdk = serverClient(Astro.locals.session);
+  const [files, status] = await Promise.allSettled([withSsrDeadline(sdk.listUploads({ limit: 50, after: after ?? undefined, owner_id: owner ?? undefined })), withSsrDeadline(sdk.health())]);
   if (files.status === 'fulfilled') initial = files.value;
   else initialError = presentError(files.reason, messages(locale));
   if (status.status === 'fulfilled') health = status.value;
 } catch (cause) { initialError = presentError(cause, messages(locale)); }
 ---
-<Admin locale={locale} section="files" health={health}><Files locale={locale} initial={initial} initialError={initialError} failed={!initial} view={view} after={after} client:load /></Admin>
+<Admin locale={locale} section="files" health={health}>{Astro.locals.root && <form class="mb-6 flex flex-wrap gap-2" method="get"><label>{messages(locale).ownerId}<input class="ms-2 rounded border p-2" name="owner_id" value={owner??''}/></label><button class="button" type="submit">{messages(locale).filterOwner}</button><a class="button" href={`/${locale}/`}>{messages(locale).allOwners}</a></form>}<Files owner={owner} locale={locale} initial={initial} initialError={initialError} failed={!initial} view={view} after={after} client:load /></Admin>

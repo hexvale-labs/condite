@@ -11,15 +11,18 @@ use std::{
 #[derive(Parser)]
 #[command(version, about = "Administer Condite through its local Unix socket")]
 struct Cli {
+    /// TOML configuration file (optional for local Unix discovery)
+    #[arg(long, global = true)]
+    config: Option<PathBuf>,
     /// Explicit control socket (otherwise try XDG_RUNTIME_DIR, then /run)
     #[arg(long, global = true)]
     socket: Option<PathBuf>,
     /// Print the response as JSON
     #[arg(long, global = true)]
     json: bool,
-    /// Socket read/write timeout in seconds
-    #[arg(long, global = true, default_value_t = 10, value_parser = clap::value_parser!(u64).range(1..=300))]
-    timeout: u64,
+    /// Control request timeout in seconds
+    #[arg(long, global = true, value_parser = clap::value_parser!(u64).range(1..=300))]
+    timeout: Option<u64>,
     #[command(subcommand)]
     command: Command,
 }
@@ -42,6 +45,15 @@ enum Command {
 }
 #[derive(Subcommand)]
 enum KeyCommand {
+    /// List key identities and usage without exposing credentials
+    List {
+        #[arg(long)]
+        limit: Option<u32>,
+        #[arg(long)]
+        after: Option<String>,
+    },
+    /// Inspect one key
+    Inspect { id: String },
     /// Generate a key; save the secret, which is shown only once
     Generate {
         /// Whole quantity with suffix; MB and MiB both mean 1,048,576 bytes
@@ -118,6 +130,8 @@ fn run(cli: Cli) -> Result<()> {
             command: UploadCommand::Delete { id },
         } => ControlCommand::DeleteUpload { id },
         Command::Apikey { command } => match command {
+            KeyCommand::List { limit, after } => ControlCommand::ListApiKeys { limit, after },
+            KeyCommand::Inspect { id } => ControlCommand::InspectApiKey { id },
             KeyCommand::Generate {
                 max_per_upload_size,
                 max_total_storage_size,
@@ -133,9 +147,87 @@ fn run(cli: Cli) -> Result<()> {
             KeyCommand::Delete { id } => ControlCommand::DeleteApiKey { id },
         },
     };
-    let timeout = Duration::from_secs(cli.timeout);
-    let mut stream = connect(cli.socket.as_deref(), timeout)?;
-    let mut bytes = serde_json::to_vec(&command)?;
+    let _ = dotenv::dotenv();
+    let config_file = cli.config.as_deref().or_else(|| {
+        Path::new("ctl.toml")
+            .exists()
+            .then_some(Path::new("ctl.toml"))
+    });
+    let mut config: CtlConfig = match config_file {
+        Some(path) => condite_config::load(path)?,
+        None => CtlConfig::default(),
+    };
+    if let (Some(path), Some(socket)) = (config_file, config.socket.as_mut())
+        && socket.is_relative()
+    {
+        *socket = path.parent().unwrap_or(Path::new(".")).join(&*socket);
+    }
+    let seconds = cli.timeout.or(config.timeout_seconds).unwrap_or(10);
+    anyhow::ensure!(
+        (1..=300).contains(&seconds),
+        "timeout_seconds must be between 1 and 300"
+    );
+    let timeout = Duration::from_secs(seconds);
+    let response = if let Some(endpoint) = config.endpoint.as_ref().filter(|_| cli.socket.is_none())
+    {
+        condite_config::validate_http_url(endpoint)?;
+        let url = reqwest::Url::parse(endpoint)?;
+        if url.scheme() == "http"
+            && !matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "[::1]"))
+            && !config.allow_insecure_http
+        {
+            bail!(
+                "remote HTTP requires TLS or allow_insecure_http = true for a trusted Docker network"
+            );
+        }
+        let key = config
+            .api_key
+            .as_deref()
+            .context("HTTP transport requires api_key in TOML")?;
+        let client = reqwest::blocking::Client::builder()
+            .timeout(timeout)
+            .redirect(reqwest::redirect::Policy::none())
+            .build()?;
+        let response = client
+            .post(format!("{}/v1/control", endpoint.trim_end_matches('/')))
+            .bearer_auth(key)
+            .json(&command)
+            .send()?
+            .error_for_status()?;
+        let mut bytes = Vec::new();
+        response.take(1_048_577).read_to_end(&mut bytes)?;
+        if bytes.len() > 1_048_576 {
+            bail!("oversized control response");
+        }
+        serde_json::from_slice::<ControlResponse>(&bytes).context("invalid JSON response")?
+    } else {
+        unix_request(
+            cli.socket.as_deref().or(config.socket.as_deref()),
+            timeout,
+            &command,
+        )?
+    };
+    print_response(response, cli.json)
+}
+
+#[derive(Default, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CtlConfig {
+    timeout_seconds: Option<u64>,
+    endpoint: Option<String>,
+    api_key: Option<String>,
+    socket: Option<PathBuf>,
+    #[serde(default)]
+    allow_insecure_http: bool,
+}
+
+fn unix_request(
+    socket: Option<&Path>,
+    timeout: Duration,
+    command: &ControlCommand,
+) -> Result<ControlResponse> {
+    let mut stream = connect(socket, timeout)?;
+    let mut bytes = serde_json::to_vec(command)?;
     bytes.push(b'\n');
     if bytes.len() as u64 > MAX_CONTROL_FRAME {
         bail!("control command exceeds the frame limit");
@@ -172,7 +264,7 @@ fn run(cli: Cli) -> Result<()> {
             .position(|b| *b == b'\n')
             .map(|i| i + 1);
         response.extend_from_slice(&chunk[..end.unwrap_or(count)]);
-        if response.len() as u64 > MAX_CONTROL_FRAME {
+        if response.len() > 1_048_576 {
             bail!("oversized control response");
         }
         if end.is_some() {
@@ -181,6 +273,10 @@ fn run(cli: Cli) -> Result<()> {
     }
     let response: ControlResponse =
         serde_json::from_slice(&response).context("invalid JSON response")?;
+    Ok(response)
+}
+
+fn print_response(response: ControlResponse, json: bool) -> Result<()> {
     match &response {
         ControlResponse::Error { code, message } => bail!("{code}: {message}"),
         ControlResponse::CommandNotImplemented => {
@@ -188,7 +284,7 @@ fn run(cli: Cli) -> Result<()> {
         }
         _ => {}
     }
-    if cli.json {
+    if json {
         println!("{}", serde_json::to_string(&response)?);
     } else {
         match response {
@@ -199,6 +295,8 @@ fn run(cli: Cli) -> Result<()> {
                 status.started_at,
                 condite_ctl::format_uptime(&status.runtime)
             ),
+            ControlResponse::Keys(keys) => println!("{}", serde_json::to_string_pretty(&keys)?),
+            ControlResponse::Key(key) => println!("{}", serde_json::to_string_pretty(&key)?),
             _ => println!("OK"),
         }
     }

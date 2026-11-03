@@ -11,15 +11,17 @@ import { basename, dirname, isAbsolute, join } from "node:path";
 import { dialog, type IpcMainInvokeEvent } from "electron";
 
 import { presentError } from "./errors";
+import { importConfigFile,nativeConfig } from "./shared/native-config";
 import { limits, OperationError, type PrivacyOptions, type Retention, type Sdk, uploadPrepared, validateApiUrl } from "./workflow";
 
 type Reply<T> = ({ status: "ok"; } & T) | { status: "cancelled"; } | { status: "error"; message: string; raw?: string; request_id?: string; stage?: "put" | "confirm" | "share"; };
 let busy = false;
 
 function localSdk(): { sdk: Sdk; media?: { ffmpegPath: string; ffprobePath: string; }; } {
-    const path = process.env.CONDITE_SDK_NODE_PATH;
+    const configuration = nativeConfig();
+    const path = configuration.sdk_path;
     if (!path || !isAbsolute(path) || !path.endsWith(".cjs")) {
-        throw new OperationError("Set CONDITE_SDK_NODE_PATH to the absolute local SDK dist/index.cjs path, then restart Discord.");
+        throw new OperationError("Set sdk_path in condite.toml to the absolute local SDK dist/index.cjs path, then restart Discord.");
     }
     // Module paths come from the trusted desktop launch environment, never IPC.
     let sdk: Sdk;
@@ -28,10 +30,10 @@ function localSdk(): { sdk: Sdk; media?: { ffmpegPath: string; ffprobePath: stri
     if (typeof sdk.Client !== "function" || typeof sdk.MetadataSanitizer !== "function") {
         throw new OperationError("Rebuild the local SDK with MetadataSanitizer support.");
     }
-    const ffmpegPath = process.env.CONDITE_FFMPEG_PATH;
-    const ffprobePath = process.env.CONDITE_FFPROBE_PATH;
+    const ffmpegPath = configuration.ffmpeg_path;
+    const ffprobePath = configuration.ffprobe_path;
     if ((ffmpegPath || ffprobePath) && (!ffmpegPath || !ffprobePath || !isAbsolute(ffmpegPath) || !isAbsolute(ffprobePath))) {
-        throw new OperationError("Set both CONDITE_FFMPEG_PATH and CONDITE_FFPROBE_PATH to absolute local paths, or leave both unset.");
+        throw new OperationError("Set both ffmpeg_path and ffprobe_path to absolute local paths, or leave both unset.");
     }
     return { sdk, media: ffmpegPath && ffprobePath ? { ffmpegPath, ffprobePath } : undefined };
 }
@@ -78,9 +80,10 @@ function apiCredentials(apiUrl: string, suppliedKey?: string) {
         if (typeof suppliedKey !== "string" || suppliedKey.length > 4096 || /[\r\n]/.test(suppliedKey)) throw new OperationError("Invalid API key.");
         return { destination, apiKey: suppliedKey };
     }
-    const apiKey = process.env.CONDITE_API_KEY;
-    if (!apiKey || !process.env.CONDITE_API_URL || validateApiUrl(process.env.CONDITE_API_URL) !== destination) {
-        throw new OperationError("Set the API key in Condite settings, or supply CONDITE_API_KEY with matching CONDITE_API_URL in the desktop environment.");
+    const configuration = nativeConfig();
+    const apiKey = configuration.api_key;
+    if (!apiKey || !configuration.api_url || validateApiUrl(configuration.api_url) !== destination) {
+        throw new OperationError("Set the API key in Condite settings, or configure api_key and matching api_url in userData/condite.toml.");
     }
     return { destination, apiKey };
 }
@@ -143,18 +146,19 @@ export async function chooseDecryptAndSave(_event: IpcMainInvokeEvent, passphras
 }
 
 // Explicit operation allowlist keeps renderer input away from arbitrary SDK methods.
-export async function manage(_event: IpcMainInvokeEvent, apiUrl: string, apiKey: string, operation: "health" | "listUploads" | "confirm" | "delete" | "download" | "createShare" | "listShares" | "revokeShare" | "updateRetention", id = "", request: unknown = {}) {
+export async function manage(_event: IpcMainInvokeEvent, apiUrl: string, apiKey: string, operation: "account" | "health" | "listUploads" | "confirm" | "delete" | "download" | "createShare" | "listShares" | "revokeShare" | "updateRetention", id = "", request: unknown = {}) {
     try {
         const credentials = apiCredentials(apiUrl, apiKey);
         const { sdk } = localSdk();
         type Manager = {
-            health(): Promise<unknown>; listUploads(request: unknown): Promise<unknown>; confirm(id: string): Promise<unknown>;
+            account(): Promise<unknown>; health(): Promise<unknown>; listUploads(request: unknown): Promise<unknown>; confirm(id: string): Promise<unknown>;
             delete(id: string): Promise<unknown>; download(id: string): Promise<unknown>; createShare(id: string, request: unknown): Promise<unknown>;
             listShares(id: string, request: unknown): Promise<unknown>; revokeShare(id: string, share: string): Promise<unknown>; updateRetention(id: string, request: unknown): Promise<unknown>;
         };
         const client = new sdk.Client(credentials.destination, credentials.apiKey) as unknown as Manager;
         let value: unknown;
         switch (operation) {
+            case "account": value = await client.account(); break;
             case "health": value = await client.health(); break;
             case "listUploads": value = await client.listUploads(request); break;
             case "confirm": value = await client.confirm(id); break;
@@ -169,3 +173,5 @@ export async function manage(_event: IpcMainInvokeEvent, apiUrl: string, apiKey:
         return { status: "ok" as const, value: value === undefined ? null : JSON.parse(JSON.stringify(value, (_key, item) => typeof item === "bigint" ? item.toString() : item)) };
     } catch (cause) { return { status: "error" as const, message: presentError(cause).message, raw: presentError(cause).raw }; }
 }
+
+export async function importSettings(_event: IpcMainInvokeEvent) { return importConfigFile(); }

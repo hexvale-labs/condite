@@ -10,7 +10,13 @@ type FilterHandle = reload::Handle<EnvFilter, Registry>;
 static FILTER: OnceLock<FilterHandle> = OnceLock::new();
 
 pub fn init() -> Result<()> {
-    let filter = filter_from_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let _ = dotenv::dotenv();
+    let config = crate::state::app::AppRuntimeConfig::load(&crate::state::app::config_path())?;
+    init_with_filter(&config.log_filter)
+}
+
+pub fn init_with_filter(value: &str) -> Result<()> {
+    let filter = parse_filter(value)?;
     let (layer, handle) = reload::Layer::new(filter);
     tracing_subscriber::registry()
         .with(layer)
@@ -28,15 +34,6 @@ fn parse_filter(value: &str) -> Result<EnvFilter> {
     EnvFilter::try_new(value).context("invalid log filter")
 }
 
-fn filter_from_env() -> Result<EnvFilter> {
-    // Reload reads the process environment; a config.json source could be added here later.
-    match std::env::var("RUST_LOG") {
-        Ok(value) => parse_filter(&value),
-        Err(std::env::VarError::NotPresent) => Ok(EnvFilter::new("info")),
-        Err(error) => Err(error).context("RUST_LOG must be valid Unicode"),
-    }
-}
-
 fn apply(filter: EnvFilter) -> Result<()> {
     FILTER
         .get()
@@ -47,8 +44,4 @@ fn apply(filter: EnvFilter) -> Result<()> {
 
 pub fn set_filter(value: &str) -> Result<()> {
     apply(parse_filter(value)?)
-}
-
-pub fn reload_from_env() -> Result<()> {
-    apply(filter_from_env()?)
 }

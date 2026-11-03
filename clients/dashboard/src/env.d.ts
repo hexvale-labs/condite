@@ -5,3 +5,6 @@ declare module "astro-solid-next" {
     exclude?: string | string[];
   }): AstroIntegration;
 }
+declare namespace App {
+  interface Locals { session?: string; root?: boolean }
+}

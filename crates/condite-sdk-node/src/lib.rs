@@ -70,6 +70,8 @@ impl From<sdk::PresignResponse> for PresignResponse {
 
 #[napi(object)]
 pub struct Upload {
+    #[napi(js_name = "owner_id")]
+    pub owner_id: String,
     #[napi(js_name = "id")]
     pub id: String,
     #[napi(js_name = "filename")]
@@ -92,6 +94,7 @@ impl From<sdk::Upload> for Upload {
     fn from(value: sdk::Upload) -> Self {
         Self {
             id: value.id,
+            owner_id: value.owner_id,
             filename: value.filename,
             mime_type: value.mime_type,
             size_bytes: value.size_bytes.into(),
@@ -109,6 +112,8 @@ impl From<sdk::Upload> for Upload {
 
 #[napi(object)]
 pub struct ListUploadsRequest {
+    #[napi(js_name = "owner_id")]
+    pub owner_id: Option<String>,
     #[napi(js_name = "limit")]
     pub limit: Option<u32>,
     #[napi(js_name = "after")]
@@ -266,6 +271,42 @@ impl NativeClient {
         })
     }
     #[napi]
+    pub async fn account(&self) -> Result<Account> {
+        self.inner.account().await.map(Into::into).map_err(error)
+    }
+    /// Raw JSON retains u64 precision; use bigint-aware parsing at the call site.
+    #[napi]
+    pub async fn control_json(&self, command: String) -> Result<String> {
+        let command = serde_json::from_str(&command)
+            .map_err(|_| napi::Error::from_reason("invalid control command"))?;
+        let response = self.inner.control(&command).await.map_err(error)?;
+        serde_json::to_string(&response)
+            .map_err(|_| napi::Error::from_reason("invalid control response"))
+    }
+    #[napi]
+    pub async fn login(&self, api_key: String) -> Result<SessionResponse> {
+        self.inner
+            .login(&api_key)
+            .await
+            .map(|v| SessionResponse {
+                token: v.token,
+                expires_at: v.expires_at,
+            })
+            .map_err(error)
+    }
+    #[napi]
+    pub async fn logout(&self) -> Result<()> {
+        self.inner.logout().await.map_err(error)
+    }
+    #[napi]
+    pub async fn download_bytes(&self, id: String) -> Result<Buffer> {
+        self.inner
+            .download_bytes(&id)
+            .await
+            .map(Buffer::from)
+            .map_err(error)
+    }
+    #[napi]
     pub async fn health(&self) -> Result<HealthStatus> {
         self.inner.health().await.map(Into::into).map_err(error)
     }
@@ -281,6 +322,7 @@ impl NativeClient {
     pub async fn list_uploads(&self, request: ListUploadsRequest) -> Result<ListUploadsResponse> {
         self.inner
             .list_uploads(&sdk::ListUploadsRequest {
+                owner_id: request.owner_id,
                 limit: request.limit,
                 after: request.after,
             })
@@ -337,6 +379,7 @@ impl NativeClient {
             .list_shares(
                 &id,
                 &sdk::ListUploadsRequest {
+                    owner_id: query.owner_id,
                     limit: query.limit,
                     after: query.after,
                 },
@@ -376,4 +419,73 @@ impl NativeClient {
             .map(Into::into)
             .map_err(error)
     }
+}
+
+#[napi(object)]
+pub struct Usage {
+    #[napi(js_name = "confirmed_bytes")]
+    pub confirmed_bytes: BigInt,
+    #[napi(js_name = "reserved_bytes")]
+    pub reserved_bytes: BigInt,
+    #[napi(js_name = "charged_bytes")]
+    pub charged_bytes: BigInt,
+}
+impl From<sdk::Usage> for Usage {
+    fn from(v: sdk::Usage) -> Self {
+        Self {
+            confirmed_bytes: v.confirmed_bytes.into(),
+            reserved_bytes: v.reserved_bytes.into(),
+            charged_bytes: v.charged_bytes.into(),
+        }
+    }
+}
+#[napi(object)]
+pub struct AccountLimits {
+    #[napi(js_name = "per_file_bytes")]
+    pub per_file_bytes: Either<BigInt, Null>,
+    #[napi(js_name = "storage_bytes")]
+    pub storage_bytes: Either<BigInt, Null>,
+}
+#[napi(object)]
+pub struct Account {
+    pub id: String,
+    pub role: String,
+    pub usage: Usage,
+    pub limits: AccountLimits,
+    #[napi(js_name = "global_usage")]
+    pub global_usage: Either<Usage, Null>,
+}
+impl From<sdk::Account> for Account {
+    fn from(v: sdk::Account) -> Self {
+        Self {
+            id: v.id,
+            role: match v.role {
+                sdk::AccountRole::Key => "key".into(),
+                sdk::AccountRole::Root => "root".into(),
+            },
+            usage: v.usage.into(),
+            limits: AccountLimits {
+                per_file_bytes: v
+                    .limits
+                    .per_file_bytes
+                    .map(|n| Either::A(n.into()))
+                    .unwrap_or(Either::B(Null)),
+                storage_bytes: v
+                    .limits
+                    .storage_bytes
+                    .map(|n| Either::A(n.into()))
+                    .unwrap_or(Either::B(Null)),
+            },
+            global_usage: v
+                .global_usage
+                .map(|u| Either::A(u.into()))
+                .unwrap_or(Either::B(Null)),
+        }
+    }
+}
+#[napi(object)]
+pub struct SessionResponse {
+    pub token: String,
+    #[napi(js_name = "expires_at")]
+    pub expires_at: String,
 }

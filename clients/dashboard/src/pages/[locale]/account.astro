@@ -1,0 +1,72 @@
+---
+import Admin from "../../layouts/Admin.astro";
+import { isLocale, messages } from "../../i18n";
+import { serverClient, withSsrDeadline } from "../../lib/server";
+import { formatBytes } from "../../lib/format";
+const { locale } = Astro.params;
+if (!isLocale(locale)) return new Response(null, { status: 404 });
+const t = messages(locale);
+const account = await withSsrDeadline(
+  serverClient(Astro.locals.session).account(),
+);
+const bytes = (value: bigint | null) =>
+  value === null ? t.unlimited : formatBytes(value, locale);
+const limit = account.limits.storage_bytes;
+const percent =
+  limit === null
+    ? null
+    : limit === 0n
+      ? account.usage.charged_bytes === 0n
+        ? 0
+        : 100
+      : Number((account.usage.charged_bytes * 10000n) / limit) / 100;
+---
+
+<Admin
+  locale={locale}
+  section="account"
+  heading={t.account}
+  description={t.accountDescription}
+>
+  <section class="rounded border border-line bg-white p-6">
+    <h2 class="text-xl font-semibold">{t.accountUsage}</h2>
+    <p class="my-2 break-all">
+      {account.role} · {account.id}
+    </p>
+    <dl class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <dt>{t.accountStorageUsed}</dt>
+        <dd>
+          {bytes(account.usage.charged_bytes)} / {bytes(limit)}
+        </dd>
+      </div>
+      <div>
+        <dt>{t.accountConfirmed}</dt>
+        <dd>{bytes(account.usage.confirmed_bytes)}</dd>
+      </div>
+      <div>
+        <dt>{t.accountReserved}</dt>
+        <dd>{bytes(account.usage.reserved_bytes)}</dd>
+      </div>
+      <div>
+        <dt>{t.accountPerFile}</dt>
+        <dd>{bytes(account.limits.per_file_bytes)}</dd>
+      </div>
+    </dl>
+    {percent !== null && (
+      <p class="mt-4">
+        {Math.min(percent, 100).toFixed(2)}% {t.quotaUsed}
+      </p>
+    )}
+    {account.global_usage && (
+      <div class="mt-6 border-t border-line pt-4">
+        <h3 class="font-semibold">{t.allAccounts}</h3>
+        <p>
+          {t.charged}: {bytes(account.global_usage.charged_bytes)} ·{" "}
+          {t.accountConfirmed}: {bytes(account.global_usage.confirmed_bytes)} ·{" "}
+          {t.pending}: {bytes(account.global_usage.reserved_bytes)}
+        </p>
+      </div>
+    )}
+  </section>
+</Admin>

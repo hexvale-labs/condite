@@ -21,7 +21,7 @@ const previousFfprobe = process.env.CONDITE_FFPROBE_PATH;
 
 // Electron's dialogs and the separately loaded SDK are host boundaries. File I/O
 // and the plugin's complete native handlers run unchanged.
-mock.module("electron", () => ({ dialog: {
+mock.module("electron", () => ({ app: { getPath: () => folder }, dialog: {
     async showOpenDialog() { pickerCalls++; return selected; },
     async showSaveDialog() { return { canceled: false, filePath: destination }; }
 } }));
@@ -61,6 +61,7 @@ const native = await import("../condite.desktop/native");
 const event = {} as Parameters<typeof native.chooseAndUpload>[0];
 
 beforeEach(async () => {
+    await writeFile(join(folder,"condite.toml"), 'sdk_path = "${CONDITE_SDK_NODE_PATH}"\napi_url = "${CONDITE_API_URL}"\napi_key = "${CONDITE_API_KEY}"');
     process.env.CONDITE_API_KEY = "test-key";
     process.env.CONDITE_API_URL = "https://condite.example";
     process.env.CONDITE_SDK_NODE_PATH = sdkPath;
@@ -183,5 +184,16 @@ test("HTTP upload failures retain readable problem details across IPC", async ()
         expect(reply.message).toContain("Sharing unavailable: Configure storage");
         expect(reply.raw).toContain("raw-canary");
         expect(reply.request_id).toBe("pending-id");
+    }
+});
+
+test("missing credentials point to the TOML configuration source",async()=>{
+    await writeFile(join(folder,"condite.toml"),`sdk_path = ${JSON.stringify(sdkPath)}\napi_url = 'https://condite.example'`);
+    const reply=await native.manage(event,"https://condite.example","","health");
+    expect(reply.status).toBe("error");
+    if(reply.status==="error"){
+        expect(reply.message).toContain("condite.toml");
+        expect(reply.message).toContain("api_key");
+        expect(reply.message).not.toContain("CONDITE_API_KEY");
     }
 });

@@ -34,6 +34,18 @@ pub async fn cleaner_task_supervisor(state: AppState) {
 pub async fn clean_records(state: &AppState) -> Result<()> {
     let now = Timestamp::now();
     let mut db = state.sql.clone();
+    super::SessionRecord::filter(super::SessionRecord::fields().expires_at().le(now))
+        .delete()
+        .exec(&mut db)
+        .await?;
+    // Retire pre-cutover direct copies using their recorded bucket/key. Keep
+    // ambiguous publication tombstones retrying so late storage writes are removed.
+    ShareRecord::filter(ShareRecord::fields().public_bucket().ne(""))
+        .filter(ShareRecord::fields().status().eq("Active"))
+        .update()
+        .cleanup_at(Some(now))
+        .exec(&mut db)
+        .await?;
     let mut after = Uuid::nil();
     loop {
         if state.ct.is_cancelled() {

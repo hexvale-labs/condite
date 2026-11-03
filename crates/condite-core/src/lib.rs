@@ -52,6 +52,9 @@ pub fn app_router(state: state::app::AppState) -> Router {
             "/v1/uploads",
             routing::post(presign::handler).get(list::handler),
         )
+        .route("/v1/uploads/{id}/content", routing::get(download::content))
+        .route("/v1/downloads/{token}", routing::get(download::ticket))
+        .route("/v1/shares/{token}", routing::get(shares::download))
         .route("/v1/uploads/{id}", routing::delete(delete::handler))
         .route("/v1/uploads/{id}/confirm", routing::post(confirm::handler))
         .route(
@@ -70,14 +73,29 @@ pub fn app_router(state: state::app::AppState) -> Router {
             "/v1/uploads/{id}/shares/{share_id}",
             routing::delete(shares::revoke),
         )
+        .route(
+            "/v1/sessions",
+            routing::post(v1::sessions::login).layer(axum::extract::DefaultBodyLimit::max(2048)),
+        )
+        .route(
+            "/v1/sessions/current",
+            routing::delete(v1::sessions::logout),
+        )
+        .route(
+            "/v1/control",
+            routing::post(control::http_handler)
+                .layer(axum::extract::DefaultBodyLimit::max(16_384)),
+        )
+        .route("/v1/account", routing::get(v1::account::handler))
         .route("/v1/health", routing::get(health::handler))
         .with_state(state)
         .layer(cors)
+        .layer(axum::middleware::from_fn(no_store))
 }
 
 async fn serve_http(state: state::app::AppState) -> std::io::Result<()> {
     let app = app_router(state.clone());
-    let lis = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
+    let lis = tokio::net::TcpListener::bind(state.config.bind).await?;
     tracing::info!(address = %lis.local_addr()?, "HTTP server listening");
     // Axum drains its own connection tasks before this returns.
     axum::serve(lis, app)
@@ -109,4 +127,16 @@ fn cors_layer(origins: Option<&str>) -> tower_http::cors::CorsLayer {
         .allow_origin(origins)
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
+}
+
+async fn no_store(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let mut response = next.run(request).await;
+    response.headers_mut().insert(
+        axum::http::header::CACHE_CONTROL,
+        axum::http::HeaderValue::from_static("no-store"),
+    );
+    response
 }

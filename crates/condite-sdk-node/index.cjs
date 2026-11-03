@@ -34,6 +34,42 @@ class Client {
       throw normalize(error);
     }
   }
+  account() {
+    return this.#call("account");
+  }
+  async control(command) {
+    try {
+      const payload = JSON.stringify(command, (_key, value) =>
+        typeof value === "bigint" ? JSON.rawJSON(value.toString()) : value,
+      );
+      return JSON.parse(
+        await this.controlJson(payload),
+        (key, value, context) => {
+          if (typeof value === "number" && key.endsWith("_bytes")) {
+            if (context?.source) return BigInt(context.source);
+            if (Number.isSafeInteger(value)) return BigInt(value);
+            throw new Error("Runtime cannot decode exact byte quantities");
+          }
+          return value;
+        },
+      );
+    } catch (error) {
+      if (error?.code) throw error;
+      throw normalize(error);
+    }
+  }
+  controlJson(command) {
+    return this.#call("controlJson", command);
+  }
+  login(apiKey) {
+    return this.#call("login", apiKey);
+  }
+  logout() {
+    return this.#call("logout");
+  }
+  downloadBytes(id) {
+    return this.#call("downloadBytes", id);
+  }
   health() {
     return this.#call("health");
   }

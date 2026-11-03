@@ -24,3 +24,7 @@ Check translations in context; key parity cannot prove linguistic quality.
 `errors.ts` formats SDK errors for both clients. The standalone desktop plugin
 ships an MIT copy in `../vencord/condite.desktop/errors.ts`; its parity test
 requires updating both together. Raw details retain the original response text.
+
+New account/login/administration labels have English and Spanish translations.
+Other catalogs currently use English for those new labels; keep their keys aligned
+and replace those fallback strings when translating.

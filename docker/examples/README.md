@@ -1,97 +1,33 @@
-# Dashboard behind a proxy
+# Docker ingress examples
 
-Condite core and the dashboard currently serve **plain HTTP only**. Built-in TLS
-is not currently planned, though it could be added eventually. For deployments
-in 2026, put Condite behind cloudflared or a reverse proxy that handles HTTPS.
-**Exposing the dashboard directly to the internet on port 80 is a horrible idea:**
-traffic is unencrypted, and every visitor can use the dashboard's configured API
-key. HTTPS alone does not restrict who can use that key; protect the dashboard
-with authentication or trusted private access.
+Copy core's `.env.example` to `.env` and supply real storage credentials and a
+random root credential of at least 32 characters. Configure `core.toml` and
+`dashboard.toml` here: the core public API URL and dashboard origins must match
+externally reachable HTTPS URLs. These TOML files mount read-only. Compose
+`env_file` explicitly injects referenced core secrets into the container; Compose's
+own `.env` interpolation alone does not do this. Never commit resolved credentials.
 
-These examples publish no core or dashboard ports. Docker DNS connects the
-proxy to `dashboard:4321`, and the dashboard's server-side API proxy connects to
-`core:8080` on an `internal: true` network. Only core and the ingress container
-also join an outbound-capable network. Do not combine these files with
-[`../compose.yaml`](../compose.yaml), which publishes development ports.
-
-The request path is browser → HTTPS ingress → HTTP dashboard → HTTP core.
-File uploads/downloads still go directly between the browser and S3 using signed
-URLs. Keep browser-facing storage URLs HTTPS and configure bucket CORS for the
-public dashboard origin; the ingress does not rewrite those URLs. See the
-[dashboard README](../../clients/dashboard/README.md).
-
-## Prepare
-
-Run commands from the repository root. Configure `crates/condite-core/.env` from
-its example, including real storage settings. Choose a hostname you control:
+For Caddy, set your hostname in `Caddyfile` and both TOML files, point DNS at the
+server, then run from the repository root:
 
 ```sh
-export DASHBOARD_HOST=dashboard.example.com
-export DASHBOARD_ORIGINS="https://$DASHBOARD_HOST"
-# Bootstrap core without publishing any ports.
-docker compose -f docker/examples/compose.yaml run -d --name condite-bootstrap core
-docker exec condite-bootstrap ctl apikey generate
-# Save the generated key privately, then remove the bootstrap container.
-docker stop condite-bootstrap
-docker rm condite-bootstrap
-read -rsp 'Dashboard API key: ' CONDITE_API_KEY; echo
-export CONDITE_API_KEY
+docker compose -f docker/examples/compose.yaml -f docker/examples/compose.caddy.yaml up -d
 ```
 
-`DASHBOARD_ORIGINS` is a comma-separated **runtime** list of trusted dashboard
-origins. These examples use published images; changing the origin requires recreating the dashboard container,
-not rebuilding the image. Keep keys and tunnel tokens out of Git. Back up the
-persistent core volume before upgrading; startup applies database migrations.
+Caddy terminates HTTPS and routes `/v1/*` to core and other paths to the dashboard.
+Root and ordinary users log in with their own API keys; no bootstrap dashboard
+key or separate administrator password is needed. Core enforces API access.
+Public share paths must remain reachable without dashboard login. Preserve Host
+and trusted forwarded headers, and avoid caching authenticated/API responses.
 
-## Caddy: HTTPS and password protection
+The isolated backend network connects dashboard, core and ingress; core also has
+outbound access for S3. These production examples publish only ingress ports.
+Do not combine them with `docker/compose.yaml`, which publishes development ports.
+Signed PUT uploads go directly to private storage, requiring HTTPS and bucket
+CORS for the dashboard origin. Downloads stream through core.
 
-Point the hostname's DNS at the server and allow inbound TCP 80/443 to **Caddy**.
-Port 80 serves Caddy's HTTPS redirect/certificate handling, not the dashboard.
-Generate a password hash interactively:
-
-```sh
-docker run --rm -it caddy:2 caddy hash-password
-read -rp 'Caddy password hash: ' DASHBOARD_PASSWORD_HASH
-export DASHBOARD_PASSWORD_HASH
-docker compose -f docker/examples/compose.yaml \
-  -f docker/examples/compose.caddy.yaml up -d
-```
-
-Open `https://dashboard.example.com/en/` and sign in as `admin` with the password
-you hashed. [Caddy automatically obtains and renews certificates](https://caddyserver.com/docs/automatic-https).
-Its [basic_auth](https://caddyserver.com/docs/caddyfile/directives/basic_auth)
-protects SSR pages and API requests. The [reverse proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy)
-preserves the public host and sets forwarded headers so dashboard write-origin
-checks see the HTTPS origin. Do not cache SSR or authenticated API responses.
-
-For an existing Docker reverse proxy, attach it to this stack's backend network
-(or use a dedicated shared ingress network), target `http://dashboard:4321`,
-preserve the public Host, and overwrite forwarded host/protocol headers with
-trusted values. Keep core private and enforce authentication at the proxy.
-No Docker socket mount or automatic container discovery is needed here.
-
-## Cloudflare Tunnel: no inbound ports
-
-As an alternative to Caddy, create a remotely managed
-[Cloudflare Tunnel](https://developers.cloudflare.com/tunnel/get-started/).
-**Before publishing it**, configure a Cloudflare Access self-hosted application
-for the dashboard hostname with an allow policy limited to your users. A tunnel
-alone does not authenticate visitors.
-
-Set the tunnel's published application hostname to `dashboard.example.com` and
-its service URL to `http://dashboard:4321`. Preserve the public HTTP Host header
-(do not override it with the Docker service name). Use the same public HTTPS
-origin configured in `DASHBOARD_ORIGINS`.
-
-```sh
-read -rsp 'Tunnel token: ' TUNNEL_TOKEN; echo
-export TUNNEL_TOKEN
-docker compose -f docker/examples/compose.yaml \
-  -f docker/examples/compose.cloudflared.yaml up -d
-```
-
-Open `https://dashboard.example.com/en/` through Access. This variant publishes
-**no host ports**; cloudflared connects outbound to Cloudflare, which terminates
-public HTTPS. HTTP stays on the private Docker hop to the dashboard. The tunnel
-and Caddy variants are alternatives; run only one. Pin ingress images to tested
-versions or digests for reproducible production deployments.
+The tunnel example remains available for an existing Cloudflare Tunnel. Configure
+its ingress to route `/v1/*` to core and dashboard pages to dashboard. If Access
+also protects the dashboard, exclude public share/ticket routes from that extra
+login. Keep tunnel credentials private. Back up SQL before upgrades and allow
+legacy public-copy cleanup to finish; old storage links cannot be redirected.

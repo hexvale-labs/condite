@@ -68,6 +68,35 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith("/prefix/")) {
       assert.equal(req.headers.authorization, "Bearer contract-key");
     }
+    if (url.pathname === "/prefix/v1/account")
+      return json(
+        '{"id":"key","role":"root","usage":{"confirmed_bytes":18446744073709551615,"reserved_bytes":0,"charged_bytes":18446744073709551615},"limits":{"per_file_bytes":null,"storage_bytes":null},"global_usage":null}',
+      );
+    if (url.pathname === "/prefix/v1/control") {
+      if (bytes.toString().includes('"list_api_keys"'))
+        return json(
+          '{"type":"keys","keys":[{"id":"key","label":null,"created_at":"now","revoked":false,"limits":{"per_file_bytes":null,"storage_bytes":null},"usage":{"confirmed_bytes":18446744073709551615,"reserved_bytes":0,"charged_bytes":18446744073709551615}}],"next_after":null}',
+        );
+      if (bytes.toString().includes('"generate_api_key"'))
+        assert(
+          bytes.toString().includes('"per_upload_quota":9007199254740993'),
+        );
+      return json({ type: "success" });
+    }
+    if (url.pathname === "/prefix/v1/sessions")
+      return json({
+        token: "fixture-session",
+        expires_at: "2099-01-01T00:00:00Z",
+      });
+    if (url.pathname === "/prefix/v1/sessions/current") {
+      res.writeHead(204).end();
+      return;
+    }
+    if (url.pathname === "/prefix/v1/uploads/id/content") {
+      res.setHeader("content-type", "application/octet-stream");
+      res.end("streamed file");
+      return;
+    }
     if (req.method === "GET" && url.pathname === "/prefix/v1/health")
       return json({
         healthy: true,

@@ -5,6 +5,7 @@ import {
   readFileSync,
   writeFileSync,
   statSync,
+  existsSync,
 } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { resolve } from "node:path";
@@ -49,6 +50,12 @@ if (
     "Shared TypeScript declarations are stale; regenerate bindings.d.ts with export-types",
   );
 }
+for (const clientWire of [
+  "clients/vencord/condite.desktop/wire.d.ts",
+  "clients/vencord-extension/src/wire.d.ts",
+]) {
+  if (existsSync(clientWire)) writeFileSync(clientWire, types.stdout);
+}
 const privacyDeclarations = `
 export interface PrivacyConfig {
   maxInputBytes?: bigint; maxOutputBytes?: bigint; maxInflatedBytes?: bigint;
@@ -85,6 +92,13 @@ export interface SdkError extends Error {
 }
 export class Client {
   constructor(baseUrl: string, apiKey?: string);
+  account(): Promise<Account>;
+  control(command: ControlCommand): Promise<ControlResponse>;
+  /** JSON command/response preserve all u64 integers without a Number conversion. */
+  controlJson(command: string): Promise<string>;
+  login(apiKey: string): Promise<SessionResponse>;
+  logout(): Promise<void>;
+  downloadBytes(id: string): Promise<Uint8Array>;
   health(): Promise<HealthStatus>;
   presign(request: PresignRequest): Promise<PresignResponse>;
   listUploads(request?: ListUploadsRequest): Promise<ListUploadsResponse>;

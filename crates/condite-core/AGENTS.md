@@ -1,8 +1,7 @@
 # Core guidance
 
-- Runtime configuration is loaded by `state/app.rs::AppRuntimeConfig::load_sync`.
-  `state/config.rs` is not the active startup configuration; trace imports before
-  changing settings. `lib.rs::app_router` is the HTTP route registry.
+- Runtime configuration uses `condite-config::CoreConfig` and TOML;
+  `state/config.rs` re-exports that type. `lib.rs::app_router` is the HTTP route registry.
 - Wire DTOs belong in `condite-shared`; handlers re-export them. Preserve SDK
   compatibility and keep AWS/Toasty dependencies out of shared types and SDKs.
 - SQL and S3 writes are separate operations. Preserve retry recovery: confirmation
@@ -17,4 +16,4 @@
 - Background work must observe the shared cancellation token and use the task
   tracker so shutdown can drain work and clean up the Unix socket.
 - Prefer extending `tests/uploads.rs`: it exercises the router and Rust SDK with
-  an in-memory database and fake S3. Run `just check-rust` from the root.
+  an in-memory database and fake S3. Run `just check rust` from the root.

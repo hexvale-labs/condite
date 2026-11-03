@@ -1,0 +1,8 @@
+# Native deployment settings live at Electron userData/condite.toml.
+sdk_path = "/absolute/path/to/condite/crates/condite-sdk-node/dist/index.cjs"
+api_url = "https://files.example"
+api_key = "${CONDITE_API_KEY}"
+retention_days = 14
+# Optional local media executables:
+# ffmpeg_path = "/usr/bin/ffmpeg"
+# ffprobe_path = "/usr/bin/ffprobe"

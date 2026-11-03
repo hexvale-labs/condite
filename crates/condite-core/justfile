@@ -9,14 +9,15 @@ install:
     @echo "==> Install: backend"
     cargo fetch --locked
     test -e .env || cp .env.example .env
-    @echo 'Configure .env with your database and S3 settings, then run just run.'
+    test -e condite.toml || cp condite.example.toml condite.toml
+    @echo 'Configure condite.toml and referenced .env secrets, then run just run.'
 
 # Build the backend using locked dependencies.
 build:
     @echo "==> Build: backend"
     cargo build --locked --bin condite-core
 
-# Start the API on port 8080 using this directory's .env.
+# Start the API on port 8080 using this directory's condite.toml.
 run:
     cargo run --locked --bin condite-core
 

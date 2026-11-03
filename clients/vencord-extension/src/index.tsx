@@ -7,7 +7,7 @@
 import "./styles.css";
 
 import { Button } from "@components/Button";
-import definePlugin from "@utils/types";
+import definePlugin, { type PluginNative } from "@utils/types";
 import type { CloudUpload } from "@vencord/discord-types";
 import { find, findByPropsLazy } from "@webpack";
 import {
@@ -34,6 +34,7 @@ import { navigationPatch, uploadPatch } from "./patches";
 import { UploadRouter } from "./routing";
 import { uploadFile } from "./sdk";
 import { settings } from "./settings";
+import { ConfigEditor } from "./shared/ConfigEditor";
 
 const DraftActions = findByPropsLazy("saveDraft", "clearDraft") as {
     saveDraft(channelId: string, content: string, draftType: number): void;
@@ -76,6 +77,10 @@ export default definePlugin({
         const { t: text } = useTranslation();
         return (
             <div className="condite-actions">
+                <ConfigEditor current={()=>({ api_url:settings.store.apiBase,api_key:settings.store.apiKey,retention_days:settings.store.retentionDays,upload_behavior:settings.store.uploadBehavior,discord_limit_mib:settings.store.discordLimitMiB })}
+                    importFile={()=>(VencordNative.pluginHelpers.Condite as PluginNative<typeof import("./native")>).importSettings()}
+                    apply={config=>{ if(config.api_url!==undefined)settings.store.apiBase=config.api_url;if(config.api_key!==undefined)settings.store.apiKey=config.api_key;if(config.retention_days!==undefined)settings.store.retentionDays=config.retention_days;if(config.upload_behavior!==undefined)settings.store.uploadBehavior=config.upload_behavior;if(config.discord_limit_mib!==undefined)settings.store.discordLimitMiB=config.discord_limit_mib; }}/>
+
                 <Button onClick={() => setPaneOpen(true)}>
                     {text.openUploads}
                 </Button>

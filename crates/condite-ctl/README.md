@@ -30,3 +30,12 @@ Use `just build ctl`, `just check ctl` (format, Clippy and existing CLI tests),
 shell). `just run` includes this shell alongside the API and dashboard in mprocs.
 Select **control** and press Ctrl-a to interact. Exiting the shell does not stop
 other processes. All processes share the same development control socket.
+
+For remote control, copy `ctl.example.toml` to `ctl.toml` and set `endpoint` and
+`api_key = "${CONDITE_OPERATOR_KEY}"`. Pass `--config /path/ctl.toml` to select
+another file. `.env` supplies referenced secrets only. HTTP requires a root key;
+Unix discovery remains the default when no endpoint is configured. Remote HTTP
+requires HTTPS, or explicit `allow_insecure_http = true` on a trusted Docker
+network. Requests are bounded and time out. `apikey list` and `apikey inspect ID`
+show identities, limits and usage without existing key credentials. Root
+credentials are managed in core's TOML.

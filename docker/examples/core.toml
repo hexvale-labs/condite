@@ -1,0 +1,12 @@
+bind = "0.0.0.0:8080"
+public_api_url = "http://localhost:8080"
+log_filter = "info"
+sql_conn_uri = "turso:/app/data/condite.db"
+s3_endpoint = "${S3_ENDPOINT}"
+s3_region = "${S3_REGION}"
+s3_bucket = "${S3_BUCKET}"
+s3_access_key = "${S3_ACCESS_KEY}"
+s3_secret_key = "${S3_SECRET_KEY}"
+[[root_keys]]
+name = "operator"
+key = "${CONDITE_OPERATOR_KEY}"

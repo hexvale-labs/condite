@@ -7,7 +7,6 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use crate::{
     control::CommandBus,
     db::{s3::connection::obtain_s3_conn, sql::connection::obtain_sql_conn},
-    state::env::{EnvironmentVariable, env_var_required},
 };
 
 #[derive(Debug)]
@@ -29,67 +28,21 @@ impl Default for AppRuntimeDetails {
     }
 }
 
-#[derive(Debug)]
-pub struct AppRuntimeConfig {
-    pub sql_conn_uri: String,
-    pub cors_origins: Option<String>,
-    pub s3_endpoint: String,
-    pub s3_region: String,
-    pub s3_bucket: String,
-    pub s3_access_key: String,
-    pub s3_secret_key: String,
-    pub s3_public_bucket: Option<String>,
-    pub public_object_base_url: Option<String>,
-}
+pub use condite_config::CoreConfig as AppRuntimeConfig;
 
-impl AppRuntimeConfig {
-    /// Compare restart-only settings without exposing their values.
-    pub fn restart_required(&self) -> Vec<&'static str> {
-        [
-            ("SQL_CONN_URL", &self.sql_conn_uri),
-            ("S3_ENDPOINT", &self.s3_endpoint),
-            ("S3_REGION", &self.s3_region),
-            ("S3_BUCKET", &self.s3_bucket),
-            ("S3_ACCESS_KEY", &self.s3_access_key),
-            ("S3_SECRET_KEY", &self.s3_secret_key),
-        ]
-        .into_iter()
-        .filter_map(|(name, current)| (std::env::var(name).as_ref() != Ok(current)).then_some(name))
-        .chain(
-            [
-                ("S3_PUBLIC_BUCKET", &self.s3_public_bucket),
-                ("CORS_ALLOWED_ORIGINS", &self.cors_origins),
-                ("PUBLIC_OBJECT_BASE_URL", &self.public_object_base_url),
-            ]
-            .into_iter()
-            .filter_map(|(name, value)| {
-                (std::env::var(name).ok().as_ref() != value.as_ref()).then_some(name)
-            }),
-        )
-        .collect()
-    }
-
-    pub fn load_sync() -> Self {
-        if dotenv::dotenv().is_ok() {
-            tracing::info!("loaded .env file")
-        }
-
-        Self {
-            cors_origins: std::env::var("CORS_ALLOWED_ORIGINS").ok(),
-            sql_conn_uri: env_var_required(EnvironmentVariable::SqlConnUrl),
-            s3_endpoint: env_var_required(EnvironmentVariable::S3Endpoint),
-            s3_region: env_var_required(EnvironmentVariable::S3Region),
-            s3_bucket: env_var_required(EnvironmentVariable::S3Bucket),
-            s3_access_key: env_var_required(EnvironmentVariable::S3AccessKey),
-            s3_secret_key: env_var_required(EnvironmentVariable::S3SecretKey),
-            s3_public_bucket: std::env::var("S3_PUBLIC_BUCKET").ok(),
-            public_object_base_url: std::env::var("PUBLIC_OBJECT_BASE_URL").ok(),
-        }
-    }
+pub fn config_path() -> std::path::PathBuf {
+    std::env::args_os()
+        .skip(1)
+        .collect::<Vec<_>>()
+        .windows(2)
+        .find(|pair| pair[0] == "--config")
+        .map(|pair| pair[1].clone().into())
+        .unwrap_or_else(|| "condite.toml".into())
 }
 
 #[derive(Clone)]
 pub struct AppState {
+    pub root_keys: Arc<std::sync::RwLock<Vec<condite_config::RootKey>>>,
     pub config: Arc<AppRuntimeConfig>,
     pub details: Arc<AppRuntimeDetails>,
 
@@ -107,7 +60,8 @@ pub use condite_shared::HealthStatus;
 
 impl AppState {
     pub async fn init() -> Result<Self> {
-        let config = AppRuntimeConfig::load_sync();
+        let _ = dotenv::dotenv();
+        let config = AppRuntimeConfig::load(&config_path())?;
         let details = AppRuntimeDetails::new();
 
         let (sql, s3) = tokio::try_join!(obtain_sql_conn(&config), obtain_s3_conn(&config))?;
@@ -117,6 +71,7 @@ impl AppState {
         let tasks = TaskTracker::new();
 
         let state = Self {
+            root_keys: Arc::new(std::sync::RwLock::new(config.root_keys.clone())),
             config: Arc::new(config),
             details: Arc::new(details),
             sql,

@@ -54,6 +54,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
     const [busy, setBusy] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState<unknown>(null);
+    const [account, setAccount] = useState<Awaited<ReturnType<ReturnType<typeof createClient>["account"]>> | null>(null);
     const [health, setHealth] = useState<HealthStatus | null>(null);
     const [notice, setNotice] = useState("");
     const [filter, setFilter] = useState("all");
@@ -83,7 +84,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
         const poll = async () => {
             if (pending) return;
             pending = true;
-            try { const value = await sdk.health(); if (live) setHealth(value); }
+            try { const [value,usage] = await Promise.all([sdk.health(),sdk.account()]); if (live) { setHealth(value); setAccount(usage); } }
             catch { if (live) setHealth(null); }
             finally { pending = false; }
         };
@@ -338,6 +339,7 @@ export function FileManager({ onClose }: { onClose(): void }) {
                     <span className="condite-muted">{t.fileLimit}</span>
                 </div>
                 <Uptime health={health} />
+                {account&&<div className="condite-usage"><p>{t.accountStorageUsed}: {bytes(BigInt(account.usage.charged_bytes),locale)} / {account.limits.storage_bytes===null?t.unlimited:bytes(BigInt(account.limits.storage_bytes),locale)}</p><p>{t.accountConfirmed}: {bytes(BigInt(account.usage.confirmed_bytes),locale)} · {t.pending}: {bytes(BigInt(account.usage.reserved_bytes),locale)}</p><p>{t.accountPerFile}: {account.limits.per_file_bytes===null?t.unlimited:bytes(BigInt(account.limits.per_file_bytes),locale)}</p></div>}
                 <ExpiryPicker value={retention} onChange={setRetention} date={retentionDate} onDate={setRetentionDate} />
                 <div role="status" aria-live="polite">
                     {busy ? t.working : notice}

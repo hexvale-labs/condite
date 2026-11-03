@@ -42,7 +42,7 @@ async fn intent(
         Err(e) if e.is_record_not_found() => return Err(missing()),
         Err(e) => return Err(e.into()),
     };
-    if auth.is_some_and(|a| a.0 != initial.owner_id) {
+    if auth.is_some_and(|a| !a.1 && a.0 != initial.owner_id) {
         return Err(missing());
     }
     let mut tx = db.transaction().await?;
@@ -120,7 +120,9 @@ async fn finish(state: &AppState, id: Uuid) -> ApiResult<()> {
             .exec(&mut tx)
             .await?;
         for share in &shares {
-            if matches!(share.status.as_str(), "Creating" | "Reconciling") {
+            if !share.public_bucket.is_empty()
+                && matches!(share.status.as_str(), "Creating" | "Reconciling")
+            {
                 ShareRecord::filter_by_id(share.id)
                     .update()
                     .status("Reconciling")
@@ -128,13 +130,15 @@ async fn finish(state: &AppState, id: Uuid) -> ApiResult<()> {
                     .exec(&mut tx)
                     .await?;
             }
-            state
-                .s3
-                .delete_object()
-                .bucket(&share.public_bucket)
-                .key(&share.object_key)
-                .send()
-                .await?;
+            if !share.public_bucket.is_empty() {
+                state
+                    .s3
+                    .delete_object()
+                    .bucket(&share.public_bucket)
+                    .key(&share.object_key)
+                    .send()
+                    .await?;
+            }
             after = share.id;
         }
         if shares.len() < 100 {

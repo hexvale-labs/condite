@@ -26,6 +26,7 @@ RUN cargo chef cook --locked --profile sdk --recipe-path recipe.json -p condite-
 RUN cargo chef cook --locked --profile sdk --target wasm32-unknown-unknown --recipe-path recipe.json -p condite-sdk-wasm
 COPY package.json bun.lock ./
 COPY clients/dashboard/package.json clients/dashboard/package.json
+COPY clients/config/package.json clients/config/package.json
 COPY clients/vencord/package.json clients/vencord/package.json
 COPY clients/vencord-extension/package.json clients/vencord-extension/package.json
 COPY crates/condite-sdk-node/package.json crates/condite-sdk-node/package.json
@@ -39,11 +40,14 @@ RUN bun run build:sdk:release
 COPY clients/dashboard clients/dashboard
 COPY clients/i18n clients/i18n
 COPY clients/shared clients/shared
+COPY clients/config clients/config
 RUN bun run build:dashboard
 # Install only runtime dependencies into a separate tree. Bun workspace links
 # stay valid because package directories and generated SDKs travel together.
-RUN mkdir -p /runtime/clients/dashboard /runtime/crates/condite-sdk-node /runtime/crates/condite-sdk-wasm \
+RUN mkdir -p /runtime/clients/config /runtime/clients/shared /runtime/clients/dashboard /runtime/crates/condite-sdk-node /runtime/crates/condite-sdk-wasm \
     && cp package.json bun.lock /runtime/ \
+    && cp -a clients/config/. /runtime/clients/config/ \
+    && cp -a clients/shared/. /runtime/clients/shared/ \
     && cp -a clients/dashboard/dist clients/dashboard/package.json /runtime/clients/dashboard/ \
     && mkdir -p /runtime/clients/vencord /runtime/clients/vencord-extension \
     && cp clients/vencord/package.json /runtime/clients/vencord/ \
@@ -53,7 +57,7 @@ RUN mkdir -p /runtime/clients/dashboard /runtime/crates/condite-sdk-node /runtim
     && find /runtime -type d -name node_modules -prune -exec rm -rf '{}' + \
     && cd /runtime && bun install --production --frozen-lockfile \
     && find /runtime/clients/dashboard -mindepth 1 -maxdepth 1 ! -name dist ! -name node_modules ! -name package.json -exec rm -rf '{}' + \
-    && rm -rf /runtime/clients/vencord /runtime/clients/vencord-extension /runtime/clients/i18n /runtime/clients/shared
+    && rm -rf /runtime/clients/vencord /runtime/clients/vencord-extension /runtime/clients/i18n
 
 FROM gcr.io/distroless/nodejs22-debian13:nonroot
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=4321

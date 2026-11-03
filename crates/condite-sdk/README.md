@@ -60,3 +60,12 @@ follow file retention; otherwise `expires_at` chooses a deadline or Never.
 A share never outlives its underlying file. `list_shares` accepts cursor pagination;
 `revoke_share` removes only that share's public copy. Cleanup is asynchronous;
 see [delivery guarantees](../../docs/file-visibility-architecture.md).
+
+`account()` returns role, own usage, nullable unlimited limits and (for roots)
+global usage. `control()` exposes the full root-only shared control protocol;
+`login()`/`logout()` manage opaque sessions. `download()` preserves its metadata
+contract but returns a validated API ticket URL; `download_stream()` returns an
+authenticated streaming HTTP response with optional single-range support, and
+`download_bytes()` buffers the result when appropriate. API credentials remain
+separate from signed PUT storage requests. SDK constructors stay programmatic;
+applications own TOML discovery rather than SDKs reading global configuration.

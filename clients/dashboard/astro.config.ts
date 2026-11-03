@@ -1,5 +1,8 @@
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig, fontProviders } from "astro/config";
 import node, { getAdapter } from "@astrojs/node";
+import { dashboardConfig } from "./server/config";
 import { allowedDomains } from "./server/origin";
 import solid from "astro-solid-next";
 import tailwind from "@tailwindcss/vite";
@@ -12,7 +15,7 @@ export default defineConfig({
     name: "condite-runtime-origin",
     hooks: {
       "astro:config:setup": ({ command, updateConfig }) => {
-        if (command === "dev") updateConfig({ security: { allowedDomains: allowedDomains(process.env.DASHBOARD_ORIGINS) } });
+        if (command === "dev") updateConfig({ security: { allowedDomains: allowedDomains(dashboardConfig().origins) } });
       },
       "astro:config:done": ({ setAdapter }) => setAdapter({
         ...getAdapter({ staticHeaders: false }),
@@ -43,5 +46,5 @@ export default defineConfig({
       },
     },
   ],
-  vite: { plugins: [tailwind()], ssr: { external: ["condite-sdk-node"] } },
+  vite: { server: { fs: { allow: [fileURLToPath(new URL("../../", import.meta.url)), realpathSync(fileURLToPath(new URL("../../node_modules", import.meta.url)))] } }, plugins: [tailwind()], ssr: { external: ["condite-sdk-node"], noExternal: ["@condite/config"] } },
 });

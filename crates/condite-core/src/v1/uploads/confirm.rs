@@ -1,5 +1,5 @@
 use crate::{
-    db::sql::{UploadRecord, UploadStatus, get_s3_key},
+    db::sql::{UploadStatus, get_s3_key},
     state::app::AppState,
 };
 use axum::{
@@ -27,27 +27,13 @@ async fn attempt(
 ) -> ApiResult<Json<Response>> {
     let mut tx = state.sql.transaction().await?;
     let key = auth.lock(&mut tx).await?;
-    let mut upload = match UploadRecord::filter_by_id(id)
-        .filter(UploadRecord::fields().owner_id().eq(key.id))
-        .get(&mut tx)
-        .await
-    {
-        Ok(upload) => upload,
-        Err(e) if e.is_record_not_found() => {
-            tracing::debug!("Upload record not found");
-            return Err(not_found(
-                "upload not found",
-                "upload record does not exist",
-            ));
-        }
-        Err(e) => return Err(e.into()),
-    };
+    let mut upload = super::retention::owned(&mut tx, auth, id).await?;
     super::retention::ensure_available(&upload)?;
     let pending = get_s3_key(&id, &upload.mime_type, &UploadStatus::Pending);
     let confirmed = get_s3_key(&id, &upload.mime_type, &UploadStatus::Confirmed);
     if upload.status == UploadStatus::Pending {
         let reserved = crate::db::sql::api_key::storage_size(&mut tx, key.id, false).await?;
-        if upload.size_bytes > key.per_upload_quota || reserved > key.storage_quota {
+        if !auth.1 && (upload.size_bytes > key.per_upload_quota || reserved > key.storage_quota) {
             return Err(crate::auth::quota_error());
         }
         tracing::debug!("Checking pending object metadata before confirmation");

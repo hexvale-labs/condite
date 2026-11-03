@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { build } from "../.vencord/node_modules/esbuild/lib/main.js";
 
 const output = fileURLToPath(new URL("../.vencord/dist/condite-native-test.cjs", import.meta.url));
-await build({ entryPoints: [fileURLToPath(new URL("../src/native.ts", import.meta.url))], outfile: output, bundle: true, format: "cjs", platform: "node" });
+await build({ entryPoints: [fileURLToPath(new URL("../.vencord/src/userplugins/condite/native.ts", import.meta.url))], outfile: output, bundle: true, format: "cjs", platform: "node", plugins:[{name:"electron-fixture",setup(build){build.onResolve({filter:/^electron$/},()=>({path:"electron",namespace:"fixture"}));build.onLoad({filter:/.*/,namespace:"fixture"},()=>({contents:'export const app={getPath:()=>"/nonexistent-condite-test-config"};export const dialog={};'}));}}] });
 const native = createRequire(import.meta.url)(output);
 
 test("packaged Electron SDK bridge exercises every SDK method and preserves u64 precision", async () => {
@@ -19,6 +19,7 @@ test("packaged Electron SDK bridge exercises every SDK method and preserves u64 
         requests.push(`${req.method} ${url.pathname}`);
         if (url.pathname.startsWith("/api/")) assert.equal(req.headers.authorization, "Bearer fixture-key");
         const json = value => { res.setHeader("content-type", "application/json"); res.end(typeof value === "string" ? value : JSON.stringify(value)); };
+        if (url.pathname === "/api/v1/account") return json('{"id":"key","role":"key","usage":{"confirmed_bytes":18446744073709551615,"reserved_bytes":0,"charged_bytes":18446744073709551615},"limits":{"per_file_bytes":null,"storage_bytes":null},"global_usage":null}');
         if (url.pathname === "/api/v1/health") return json({ healthy: true, started_at: "2026-10-31T00:00:00Z", runtime: "PT1S" });
         if (req.method === "GET" && url.pathname === "/api/v1/uploads") {
             assert.equal(url.searchParams.get("after"), "cursor&value");
@@ -47,6 +48,9 @@ test("packaged Electron SDK bridge exercises every SDK method and preserves u64 
     const value = async promise => { const response = await promise; assert.equal(response.ok, true, JSON.stringify(response)); return response.value; };
     try {
         assert.equal((await value(native.health(null, base, "fixture-key"))).healthy, true);
+        const account = await value(native.account(null, base, "fixture-key"));
+        assert.equal(account.usage.charged_bytes, "18446744073709551615");
+        assert.equal(account.limits.per_file_bytes, null);
         const page = await value(native.listUploads(null, base, { limit: 2, after: "cursor&value" }, "fixture-key"));
         assert.equal(page.uploads[0].size_bytes, "18446744073709551615");
         const signed = await value(native.presign(null, base, "a.txt", "text/plain", "3", "fixture-key", {expires_at:null}));

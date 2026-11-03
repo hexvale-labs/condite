@@ -16,3 +16,6 @@ pub use share::ShareRecord;
 
 mod object_cleanup;
 pub use object_cleanup::ObjectCleanupRecord;
+
+mod session;
+pub use session::SessionRecord;

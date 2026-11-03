@@ -3,7 +3,7 @@ use toasty_cli::{Config, ToastyCli};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let runtime_config = AppRuntimeConfig::load_sync();
+    let runtime_config = AppRuntimeConfig::load(&condite_core::state::app::config_path())?;
     let config = Config::load()?;
     let db = obtain_sql_conn(&runtime_config).await?;
 

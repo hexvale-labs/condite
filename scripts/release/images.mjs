@@ -19,7 +19,7 @@ export function imageFingerprint(info) {
 }
 export function fingerprint(component, ref = 'HEAD', directory = root) {
   const common = ['Cargo.toml', 'Cargo.lock', '.cargo/', 'docker/', '.dockerignore', 'scripts/release/', '.github/workflows/images.yml'];
-  const inputs = component === 'core' ? ['crates/condite-core/', 'crates/condite-ctl/', 'crates/condite-shared/'] : ['crates/', 'clients/dashboard/', 'clients/i18n/', 'clients/shared/', 'scripts/sdk/', 'package.json', 'bun.lock'];
+  const inputs = component === 'core' ? ['crates/condite-core/', 'crates/condite-ctl/', 'crates/condite-shared/', 'crates/condite-config/'] : ['crates/', 'clients/dashboard/', 'clients/config/', 'clients/i18n/', 'clients/shared/', 'scripts/sdk/', 'package.json', 'bun.lock'];
   const entries = execFileSync('git', ['ls-tree', '-r', ref], { cwd: directory, encoding: 'utf8' }).split('\n').filter(line => {
     const path = line.split('\t')[1];
     if (!path) return false;

@@ -270,3 +270,86 @@ fn status_formats_uptime_without_changing_json() {
     );
     assert!(String::from_utf8_lossy(&output.stdout).contains("1mo 1d 0h 1m 1s"));
 }
+
+#[test]
+fn http_transport_reads_toml_credentials_and_sends_the_shared_protocol() {
+    use std::net::TcpListener;
+    let dir = tempfile::tempdir().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let config = dir.path().join("ctl.toml");
+    std::fs::write(
+        &config,
+        format!(
+            "endpoint = 'http://{}'\napi_key = '${{CTL_TEST_SECRET}}'\ntimeout_seconds = 2",
+            listener.local_addr().unwrap()
+        ),
+    )
+    .unwrap();
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(3)))
+            .unwrap();
+        let mut reader = BufReader::new(stream.try_clone().unwrap());
+        let mut header = String::new();
+        let mut length = 0;
+        loop {
+            let mut line = String::new();
+            reader.read_line(&mut line).unwrap();
+            if line == "\r\n" {
+                break;
+            }
+            if let Some(value) = line.to_lowercase().strip_prefix("content-length:") {
+                length = value.trim().parse::<usize>().unwrap();
+            }
+            header.push_str(&line);
+        }
+        assert!(header.starts_with("POST /v1/control HTTP/1.1"));
+        assert!(
+            header
+                .to_lowercase()
+                .contains("authorization: bearer fixture-root-secret")
+        );
+        let mut body = vec![0u8; length];
+        std::io::Read::read_exact(&mut reader, &mut body).unwrap();
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&body).unwrap()["command"],
+            "status"
+        );
+        stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 18\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"type\":\"success\"}").unwrap();
+    });
+    let output = Command::new(env!("CARGO_BIN_EXE_condite-ctl"))
+        .env("CTL_TEST_SECRET", "fixture-root-secret")
+        .args(["--config", config.to_str().unwrap(), "--json", "status"])
+        .output()
+        .unwrap();
+    server.join().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&output.stdout).unwrap()["type"],
+        "success"
+    );
+}
+
+#[test]
+fn http_transport_requires_tls_for_remote_hosts_without_disclosing_secrets() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = dir.path().join("ctl.toml");
+    std::fs::write(
+        &config,
+        "endpoint = 'http://core:8080'\napi_key = 'fixture-never-log-this-secret'",
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_condite-ctl"))
+        .args(["--config", config.to_str().unwrap(), "status"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let error = String::from_utf8_lossy(&output.stderr);
+    assert!(error.contains("requires TLS"));
+    assert!(!error.contains("fixture-never-log-this-secret"));
+}

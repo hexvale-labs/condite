@@ -1,0 +1,6 @@
+endpoint = "https://files.example"
+api_key = "${CONDITE_OPERATOR_KEY}"
+# For service DNS over a private Docker network only:
+# allow_insecure_http = true
+# Or omit endpoint/api_key and set socket = "/run/condite/condite.sock"
+timeout_seconds = 10

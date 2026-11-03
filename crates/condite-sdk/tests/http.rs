@@ -88,6 +88,7 @@ async fn all_operations_preserve_prefix_wire_types_and_storage_isolation() {
     assert!(client.health().await.unwrap().healthy);
     let page = client
         .list_uploads(&ListUploadsRequest {
+            owner_id: None,
             limit: Some(2),
             after: Some("a&b".into()),
         })
@@ -137,6 +138,7 @@ async fn rejects_invalid_upload_and_page_inputs_before_network() {
     assert!(
         client
             .list_uploads(&ListUploadsRequest {
+                owner_id: None,
                 limit: Some(0),
                 after: None
             })
