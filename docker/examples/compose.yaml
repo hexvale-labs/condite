@@ -1,0 +1,28 @@
+# Use with exactly one ingress example; see README.md.
+services:
+  core:
+    image: ghcr.io/hexvale-labs/condite/core:${CORE_VERSION:-0.1.0}
+    env_file: ../../crates/condite-core/.env
+    environment:
+      SQL_CONN_URL: turso:/app/data/condite.db
+    volumes:
+      - core-data:/app/data
+    networks: [backend, egress]
+    restart: unless-stopped
+    stop_grace_period: 30s
+  dashboard:
+    # Build this image for DASHBOARD_ORIGIN first (see README.md).
+    image: condite-dashboard:local
+    environment:
+      CONDITE_API_URL: http://core:8080
+      CONDITE_API_KEY: ${CONDITE_API_KEY:?Set a dashboard API key}
+    networks: [backend]
+    depends_on: [core]
+    restart: unless-stopped
+networks:
+  backend:
+    internal: true
+  # Core needs outbound access to S3; ingress needs certificates or tunnel access.
+  egress: {}
+volumes:
+  core-data:

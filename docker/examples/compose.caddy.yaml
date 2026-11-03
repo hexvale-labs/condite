@@ -1,0 +1,19 @@
+services:
+  caddy:
+    image: caddy:2
+    environment:
+      DASHBOARD_HOST: ${DASHBOARD_HOST:?Set the public dashboard hostname}
+      DASHBOARD_PASSWORD_HASH: ${DASHBOARD_PASSWORD_HASH:?Set a Caddy password hash}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [backend, egress]
+    depends_on: [dashboard]
+    restart: unless-stopped
+volumes:
+  caddy-data:
+  caddy-config:

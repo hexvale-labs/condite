@@ -71,6 +71,10 @@ Local builds: `docker build -f docker/core.Dockerfile -t condite-core .` and
 `docker build -f docker/dashboard.Dockerfile --build-arg DASHBOARD_ORIGIN=https://dashboard.example -t condite-dashboard .`.
 Run `bash scripts/release/smoke-images.sh COMPONENT IMAGE` before using them.
 
+See the [dashboard ingress examples](../docker/examples/README.md) for private
+Docker networking with Caddy or Cloudflare Tunnel. Core and dashboard have no
+built-in TLS; do not expose their HTTP listeners directly to the internet.
+
 ## Vencord assets
 
 Publishing a GitHub release for a matching umbrella or Vencord SemVer tag builds

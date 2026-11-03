@@ -1,0 +1,6 @@
+{$DASHBOARD_HOST} {
+	basic_auth {
+		admin {$DASHBOARD_PASSWORD_HASH}
+	}
+	reverse_proxy dashboard:4321
+}
