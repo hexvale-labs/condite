@@ -139,5 +139,8 @@
   "conflictError": "A solicitação conflita com o estado atual. Atualize e tente novamente.",
   "rateLimitError": "Muitas solicitações. Tente novamente mais tarde.",
   "httpError": "A solicitação falhou (HTTP {status}).",
-  "unknownError": "Ocorreu um problema. Tente novamente."
+  "unknownError": "Ocorreu um problema. Tente novamente.",
+  "doomClock": "Tempo até o fim (subindo)",
+  "enableTick": "Ativar tique-taque",
+  "muteTick": "Silenciar tique-taque"
 }

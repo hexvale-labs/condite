@@ -139,5 +139,8 @@
   "conflictError": "请求与当前状态冲突。请刷新后重试。",
   "rateLimitError": "请求过多。请稍后重试。",
   "httpError": "请求失败（HTTP {status}）。",
-  "unknownError": "出错了。请重试。"
+  "unknownError": "出错了。请重试。",
+  "doomClock": "末日时钟（正向计时）",
+  "enableTick": "启用滴答声",
+  "muteTick": "静音滴答声"
 }

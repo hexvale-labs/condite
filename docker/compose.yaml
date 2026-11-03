@@ -1,0 +1,24 @@
+services:
+  core:
+    image: ghcr.io/hexvale-labs/condite/core:${CORE_VERSION:-0.1.0}
+    env_file: ../crates/condite-core/.env
+    environment:
+      SQL_CONN_URL: turso:/app/data/condite.db
+    volumes:
+      - core-data:/app/data
+    ports:
+      - '8080:8080'
+    restart: unless-stopped
+    stop_grace_period: 30s
+  dashboard:
+    image: ghcr.io/hexvale-labs/condite/dashboard:${DASHBOARD_VERSION:-0.1.0}
+    environment:
+      CONDITE_API_URL: http://core:8080
+      CONDITE_API_KEY: ${CONDITE_API_KEY:-}
+    ports:
+      - '4321:4321'
+    restart: unless-stopped
+    depends_on:
+      - core
+volumes:
+  core-data:

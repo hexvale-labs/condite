@@ -19,6 +19,8 @@ run_check "Rust formatting" cargo fmt --all -- --check
 run_check "Clippy (all targets and features; warnings are errors)" \
     cargo clippy --workspace --locked --all-targets --all-features -- -D warnings
 
+run_check "Rustls dependency audit" bash scripts/release/check-tls.sh
+
 run_check "Rust tests" cargo test --workspace --locked --all-targets --all-features
 
 exit "$status"

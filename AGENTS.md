@@ -41,3 +41,16 @@
   justfiles use the same verbs with their local component implicit.
 - Keep implementations in one place; update help, docs and CI callers when
   changing commands. Use `just check tools [component]` for setup diagnostics.
+
+## Resource usage
+
+- Before heavy work, check the CPU model, available cores, free RAM and disk
+  space. Choose concurrency and resource limits that fit the machine, leaving
+  headroom for the user and other services.
+- Be conservative on shared machines: run heavy builds and checks one at a time.
+  Do not overlap Docker builds, Rust workspace checks, or other compiler-heavy jobs.
+- Set compiler workers and CPU/memory limits to suit that capacity; start with
+  one Cargo worker on small/shared machines. Worker counts alone do not cap all
+  subprocesses. Keep the machine responsive and monitor long jobs.
+- Reuse cached artifacts and completed validation. Avoid duplicate builds; stop
+  superseded jobs before starting replacements. Report slow or blocked checks.

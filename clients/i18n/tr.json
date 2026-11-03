@@ -139,5 +139,8 @@
   "conflictError": "İstek mevcut durumla çakışıyor. Yenileyip tekrar deneyin.",
   "rateLimitError": "Çok fazla istek. Daha sonra tekrar deneyin.",
   "httpError": "İstek başarısız oldu (HTTP {status}).",
-  "unknownError": "Bir sorun oluştu. Lütfen tekrar deneyin."
+  "unknownError": "Bir sorun oluştu. Lütfen tekrar deneyin.",
+  "doomClock": "Sona kalan süre (artıyor)",
+  "enableTick": "Saat sesini aç",
+  "muteTick": "Saat sesini kapat"
 }

@@ -1,0 +1,25 @@
+default: help
+
+help:
+    @just --justfile ../../justfile help
+
+install:
+    cargo install --path . --locked
+
+build:
+    cargo build --locked -p condite-ctl
+
+run:
+    @bash ../../scripts/dev/ctl-shell.sh
+
+check target="all":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case {{quote(target)}} in
+        tools) just --justfile ../../justfile check tools ctl ;;
+        all)
+            cargo fmt -p condite-ctl -- --check
+            cargo clippy --locked -p condite-ctl --all-targets -- -D warnings
+            cargo test --locked -p condite-ctl ;;
+        *) echo 'Use check [all|tools]' >&2; exit 2 ;;
+    esac

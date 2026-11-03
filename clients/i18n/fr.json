@@ -139,5 +139,8 @@
   "conflictError": "La requête est en conflit avec l’état actuel. Actualisez et réessayez.",
   "rateLimitError": "Trop de requêtes. Réessayez plus tard.",
   "httpError": "La requête a échoué (HTTP {status}).",
-  "unknownError": "Un problème est survenu. Réessayez."
+  "unknownError": "Un problème est survenu. Réessayez.",
+  "doomClock": "Avant la fin (ça monte)",
+  "enableTick": "Activer le tic-tac",
+  "muteTick": "Couper le tic-tac"
 }

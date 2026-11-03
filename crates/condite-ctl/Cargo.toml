@@ -5,6 +5,7 @@ edition = "2024"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
+jiff = { workspace = true }
 socket2 = "0.6"
 anyhow = { workspace = true }
 clap = { workspace = true }

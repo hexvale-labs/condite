@@ -139,5 +139,8 @@
   "conflictError": "The request conflicts with the current state. Refresh and try again.",
   "rateLimitError": "Too many requests. Please try again later.",
   "httpError": "The request failed (HTTP {status}).",
-  "unknownError": "Something went wrong. Please try again."
+  "unknownError": "Something went wrong. Please try again.",
+  "doomClock": "Time until doom (counting up)",
+  "enableTick": "Enable clock ticking",
+  "muteTick": "Mute clock ticking"
 }

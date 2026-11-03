@@ -139,5 +139,8 @@
   "conflictError": "Yêu cầu xung đột với trạng thái hiện tại. Hãy làm mới và thử lại.",
   "rateLimitError": "Quá nhiều yêu cầu. Vui lòng thử lại sau.",
   "httpError": "Yêu cầu thất bại (HTTP {status}).",
-  "unknownError": "Đã xảy ra lỗi. Vui lòng thử lại."
+  "unknownError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+  "doomClock": "Thời gian đến tận thế (đếm lên)",
+  "enableTick": "Bật tiếng tích tắc",
+  "muteTick": "Tắt tiếng tích tắc"
 }

@@ -12,3 +12,9 @@
 node_modules/
 crates/condite-sdk-node/dist/
 crates/condite-sdk-wasm/dist/
+# Also ignore a symlink to an external dependency directory.
+/node_modules
+/release-assets/
+/target
+/crates/condite-sdk-node/dist
+/crates/condite-sdk-wasm/dist

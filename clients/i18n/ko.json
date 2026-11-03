@@ -139,5 +139,8 @@
   "conflictError": "요청이 현재 상태와 충돌합니다. 새로고침 후 다시 시도하세요.",
   "rateLimitError": "요청이 너무 많습니다. 나중에 다시 시도하세요.",
   "httpError": "요청에 실패했습니다(HTTP {status}).",
-  "unknownError": "문제가 발생했습니다. 다시 시도하세요."
+  "unknownError": "문제가 발생했습니다. 다시 시도하세요.",
+  "doomClock": "종말까지 (올라가는 중)",
+  "enableTick": "시계 소리 켜기",
+  "muteTick": "시계 소리 끄기"
 }

@@ -244,3 +244,29 @@ fn update_and_delete_commands_send_key_ids_and_preserve_unspecified_limits() {
         );
     }
 }
+
+#[test]
+fn status_formats_uptime_without_changing_json() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("control.sock");
+    let listener = UnixListener::bind(&path).unwrap();
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut command = String::new();
+        BufReader::new(stream.try_clone().unwrap())
+            .read_line(&mut command)
+            .unwrap();
+        stream.write_all(b"{\"type\":\"status\",\"healthy\":true,\"started_at\":\"2026-01-01T00:00:00Z\",\"runtime\":\"PT2678461.123456S\"}\n").unwrap();
+    });
+    let output = Command::new(env!("CARGO_BIN_EXE_condite-ctl"))
+        .args(["--socket", path.to_str().unwrap(), "status"])
+        .output()
+        .unwrap();
+    server.join().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stdout).contains("1mo 1d 0h 1m 1s"));
+}

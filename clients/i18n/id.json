@@ -139,5 +139,8 @@
   "conflictError": "Permintaan bertentangan dengan status saat ini. Muat ulang dan coba lagi.",
   "rateLimitError": "Terlalu banyak permintaan. Coba lagi nanti.",
   "httpError": "Permintaan gagal (HTTP {status}).",
-  "unknownError": "Terjadi kesalahan. Coba lagi."
+  "unknownError": "Terjadi kesalahan. Coba lagi.",
+  "doomClock": "Waktu menuju akhir (bertambah)",
+  "enableTick": "Aktifkan detak jam",
+  "muteTick": "Bisukan detak jam"
 }

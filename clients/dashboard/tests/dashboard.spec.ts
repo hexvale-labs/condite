@@ -17,7 +17,7 @@ test("server renders files and service information with JavaScript disabled", as
   ).toBeVisible();
   await expect(page.getByText("16 EiB", { exact: true })).toBeVisible();
   await page.goto("http://127.0.0.1:4321/en/service");
-  await expect(page.getByText("fixture", { exact: true })).toBeVisible();
+  await expect(page.locator(".condite-uptime")).toBeVisible();
   await context.close();
 });
 
@@ -288,7 +288,7 @@ test("localized service refresh reports outages, and invalid routes fail", async
   request,
 }) => {
   await page.goto("/es/service");
-  await expect(page.getByText("fixture", { exact: true })).toBeVisible();
+  await expect(page.locator(".condite-uptime")).toBeVisible();
   await request.post("http://127.0.0.1:4322/__failure", {
     data: { unavailable: true },
   });

@@ -4,19 +4,22 @@ First time:
   just install             Install all components and the mprocs runner
   just check tools         Find missing tools/configuration (read-only)
   Edit crates/condite-core/.env with your database and S3 settings.
-  just run                 Start API (:8080) + dashboard (:4321) in one terminal
+  just run                 Start API (:8080), dashboard (:4321) + temporary CLI shell
   Open http://localhost:4321/en/ (or /es/).
 
 Everyday commands (omitting a target means all):
-  just install [backend|dashboard|vencord|sdk|runner|all]
-  just build   [backend|dashboard|vencord|sdk|all]
-  just run     [backend|dashboard|all]
-  just check   [rust|backend|dashboard|vencord|sdk|wasm|all]
-  just check tools [backend|dashboard|sdk|vencord|all]
+  just install [backend|dashboard|vencord|sdk|ctl|runner|all]
+  just build   [backend|dashboard|vencord|sdk|ctl|all]
+  just run     [backend|dashboard|ctl|all]
+  just check   [rust|backend|dashboard|vencord|sdk|ctl|wasm|all]
+  just check tools [backend|dashboard|sdk|vencord|ctl|all]
+  just version COMPONENT VERSION  Sync manifests and lockfiles (core|sdk|dashboard|vencord|umbrella)
+  just check versions      Verify manifest and lockfile version alignment
   just migrate NAME        Generate a database migration for review
 
 Examples:
   just install dashboard   Install workspace deps and build SDKs for the UI
+  just run ctl             Open a shell with condite-ctl on PATH
   just run backend         Run only the API
   just build sdk           Regenerate shared types and native/browser packages
   just check rust          Format check, Clippy, and tests across the workspace
@@ -29,7 +32,7 @@ The backend still needs a reachable database and S3 bucket; neither is started h
 SDKs are libraries. Vencord runs inside Discord: build it, inject it, and restart
 Discord following clients/vencord-extension/README.md. Neither has a dev server.
 Vencord installation requires Git, Node 22+ and pnpm 12.15.0.
-Build all includes Vencord; run all starts only the backend and dashboard.
+Build all includes Vencord; run all starts backend, dashboard and a temporary CLI shell.
 Dashboard checks include unit tests and production/development browser tests.
 
 Component directories also provide just help, install, build, and check;

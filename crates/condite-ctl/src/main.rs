@@ -195,7 +195,9 @@ fn run(cli: Cli) -> Result<()> {
             ControlResponse::ApiKey { id, api_key } => println!("Key ID: {id}\nAPI key: {api_key}"),
             ControlResponse::Status(status) => println!(
                 "Healthy: {}\nStarted: {}\nRuntime: {}",
-                status.healthy, status.started_at, status.runtime
+                status.healthy,
+                status.started_at,
+                condite_ctl::format_uptime(&status.runtime)
             ),
             _ => println!("OK"),
         }

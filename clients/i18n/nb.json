@@ -139,5 +139,8 @@
   "conflictError": "Forespørselen er i konflikt med gjeldende tilstand. Oppdater og prøv igjen.",
   "rateLimitError": "For mange forespørsler. Prøv igjen senere.",
   "httpError": "Forespørselen mislyktes (HTTP {status}).",
-  "unknownError": "Noe gikk galt. Prøv igjen."
+  "unknownError": "Noe gikk galt. Prøv igjen.",
+  "doomClock": "Tid til slutten (teller opp)",
+  "enableTick": "Slå på tikking",
+  "muteTick": "Demp tikking"
 }

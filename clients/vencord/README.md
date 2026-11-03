@@ -106,3 +106,8 @@ Discord upload or message was performed during development.
 The plugin and tests are GPL-3.0-or-later; the bundled error formatter retains its MIT license. They use Vencord APIs and dynamically
 load the separate MIT-licensed Condite Node SDK. No Vencord implementation was
 copied into this directory. See [COPYING](COPYING).
+
+The legacy plugin's uptime display shares its MIT time/audio implementation with
+`clients/shared`; keep `condite.desktop/shared` with copied source. Release ZIPs
+use the maintained [userplugin build](../vencord-extension/README.md), not this
+manual-install prototype. See [releases](../../docs/releases.md).

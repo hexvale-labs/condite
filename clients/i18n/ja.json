@@ -139,5 +139,8 @@
   "conflictError": "リクエストが現在の状態と競合しています。更新して再試行してください。",
   "rateLimitError": "リクエストが多すぎます。後でもう一度お試しください。",
   "httpError": "リクエストに失敗しました（HTTP {status}）。",
-  "unknownError": "問題が発生しました。もう一度お試しください。"
+  "unknownError": "問題が発生しました。もう一度お試しください。",
+  "doomClock": "終末まで（カウントアップ）",
+  "enableTick": "時計の音を有効にする",
+  "muteTick": "時計の音を消す"
 }

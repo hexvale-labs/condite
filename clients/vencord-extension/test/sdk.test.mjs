@@ -1,10 +1,11 @@
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "../.vencord/node_modules/esbuild/lib/main.js";
 
 globalThis.conditeSettings = { store: { apiBase: "http://origin.test" } };
 const built = await build({
-    entryPoints: [new URL("../.vencord/src/userplugins/condite/sdk.ts", import.meta.url).pathname], bundle: true, write: false, format: "esm", platform: "node",
+    entryPoints: [fileURLToPath(new URL("../.vencord/src/userplugins/condite/sdk.ts", import.meta.url))], bundle: true, write: false, format: "esm", platform: "node",
     plugins: [{ name: "settings-fixture", setup(build) {
         build.onResolve({ filter: /^\.\/settings$/ }, () => ({ path: "settings", namespace: "fixture" }));
         build.onResolve({ filter: /^@webpack\/common$/ }, () => ({ path: "common", namespace: "fixture" }));

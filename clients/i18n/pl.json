@@ -139,5 +139,8 @@
   "conflictError": "Żądanie jest niezgodne z bieżącym stanem. Odśwież i spróbuj ponownie.",
   "rateLimitError": "Zbyt wiele żądań. Spróbuj ponownie później.",
   "httpError": "Żądanie nie powiodło się (HTTP {status}).",
-  "unknownError": "Coś poszło nie tak. Spróbuj ponownie."
+  "unknownError": "Coś poszło nie tak. Spróbuj ponownie.",
+  "doomClock": "Czas do zagłady (rośnie)",
+  "enableTick": "Włącz tykanie",
+  "muteTick": "Wycisz tykanie"
 }

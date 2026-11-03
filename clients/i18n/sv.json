@@ -139,5 +139,8 @@
   "conflictError": "Begäran strider mot det aktuella tillståndet. Uppdatera och försök igen.",
   "rateLimitError": "För många förfrågningar. Försök igen senare.",
   "httpError": "Begäran misslyckades (HTTP {status}).",
-  "unknownError": "Något gick fel. Försök igen."
+  "unknownError": "Något gick fel. Försök igen.",
+  "doomClock": "Tid till slutet (räknar upp)",
+  "enableTick": "Aktivera tickande",
+  "muteTick": "Stäng av tickande"
 }

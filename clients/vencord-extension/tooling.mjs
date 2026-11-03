@@ -1,7 +1,8 @@
+import { buildArguments } from "./build-options.mjs";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -34,6 +35,7 @@ function sync() {
     rmSync(target, { recursive: true });
   }
   cpSync(join(root, "src"), target, { recursive: true });
+  cpSync(join(repository, "clients/shared"), join(target, "shared"), { recursive: true, filter: source => !source.endsWith(".test.ts") });
   cpSync(join(repository, "clients/i18n"), join(target, "translations"), { recursive: true, filter: source => !source.endsWith(".test.ts") });
   cpSync(join(repository, "crates/condite-shared/bindings.d.ts"), join(target, "wire.d.ts"));
   writeFileSync(marker, "Managed by clients/vencord-extension/tooling.mjs\n");
@@ -54,16 +56,17 @@ function checkTypes() {
   }, null, 2) + "\n");
   run(pnpm, ["exec", "tsc", "--noEmit", "--project", config]);
   // Generated wire types and MIT translations retain their own upstream notices.
-  run(pnpm, ["exec", "eslint", target, "--ignore-pattern", "**/translations/**", "--ignore-pattern", "**/wire.d.ts"]);
+  run(pnpm, ["exec", "eslint", target, "--ignore-pattern", "**/translations/**", "--ignore-pattern", "**/wire.d.ts", "--ignore-pattern", "**/shared/**"]);
 }
 
 function buildSdk() {
-  run("cargo", ["build", "--locked", "-p", "condite-sdk-node", "--profile", "sdk", "--target-dir", join(repository, "target")], repository);
+  const cargoTarget = resolve(repository, process.env.CARGO_TARGET_DIR || "target");
+  run("cargo", ["build", "--locked", "-p", "condite-sdk-node", "--profile", "sdk", "--target-dir", cargoTarget], repository);
   const library = process.platform === "win32" ? "condite_sdk_node.dll"
     : process.platform === "darwin" ? "libcondite_sdk_node.dylib" : "libcondite_sdk_node.so";
   const destination = join(checkout, "dist/condite-sdk");
   mkdirSync(destination, { recursive: true });
-  cpSync(join(repository, "target/sdk", library), join(destination, "condite-sdk.node"));
+  cpSync(join(cargoTarget, "sdk", library), join(destination, "condite-sdk.node"));
   cpSync(join(repository, "crates/condite-sdk-node/index.cjs"), join(destination, "index.cjs"));
   cpSync(join(repository, "crates/condite-sdk-node/LICENSE"), join(destination, "LICENSE"));
   writeFileSync(join(destination, "platform.json"), JSON.stringify({ platform: process.platform, arch: process.arch }) + "\n");
@@ -85,10 +88,10 @@ try {
   } else if (action === "sdk:build") {
     verifyCheckout();
     buildSdk();
-  } else if (["sync", "check", "build", "build:web"].includes(action)) {
+  } else if (["sync", "check", "build", "build:standalone", "build:web"].includes(action)) {
     sync();
     if (action === "check") checkTypes();
-    if (action === "build") { run(pnpm, ["build"]); buildSdk(); }
+    if (action === "build" || action === "build:standalone") { run(pnpm, buildArguments(action === "build:standalone")); buildSdk(); }
     if (action === "build:web") run(pnpm, ["buildWeb"]);
   } else {
     throw new Error("Usage: node tooling.mjs setup|sync|check|build|build:web|sdk:build");

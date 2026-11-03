@@ -1,0 +1,36 @@
+name: Release tooling checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  tooling:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7.1.0
+        with: { node-version: 22 }
+      - name: Install checksum-verified Actionlint
+        run: |
+          case "$RUNNER_ARCH" in
+            X64) arch=amd64 ;;
+            ARM64) arch=arm64 ;;
+            *) echo "Unsupported runner architecture: $RUNNER_ARCH" >&2; exit 1 ;;
+          esac
+          version=1.7.12
+          archive="actionlint_${version}_linux_${arch}.tar.gz"
+          base="https://github.com/rhysd/actionlint/releases/download/v${version}"
+          cd "$RUNNER_TEMP"
+          curl --fail --silent --show-error --location --retry 3 -O "$base/$archive"
+          curl --fail --silent --show-error --location --retry 3 -O "$base/actionlint_${version}_checksums.txt"
+          grep "  ${archive}$" "actionlint_${version}_checksums.txt" | sha256sum --check
+          tar -xzf "$archive" actionlint
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - run: actionlint
+      - run: node scripts/release/version.mjs check
+      - run: node --test scripts/release/*.test.mjs scripts/dev/task.test.mjs
+      - run: python3 scripts/release/zip-vencord.test.py
+      - run: bash -n scripts/dev/*.sh scripts/release/*.sh

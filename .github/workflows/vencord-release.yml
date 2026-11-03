@@ -1,0 +1,96 @@
+name: Vencord release ZIPs
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+concurrency:
+  group: vencord-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+jobs:
+  metadata:
+    if: startsWith(github.event.release.tag_name, 'vencord/v') || startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with: { node-version: 22 }
+      - id: matrix
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: echo "value=$(node scripts/release/vencord.mjs matrix "$RELEASE_TAG")" >> "$GITHUB_OUTPUT"
+  build:
+    needs: metadata
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.metadata.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          architecture: ${{ matrix.arch }}
+      - uses: actions/setup-python@v6
+        with: { python-version: '3.13' }
+      - uses: pnpm/action-setup@v6.1.0
+        with: { version: '12.15.0', package_json_file: clients/vencord-extension/package.json }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable-${{ matrix.rustHost }}
+      - uses: actions/cache@v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: vencord-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', 'crates/**', 'Cargo.toml') }}
+          restore-keys: vencord-${{ runner.os }}-${{ runner.arch }}-
+      - name: Fetch pinned upstream and dependencies
+        run: node clients/vencord-extension/tooling.mjs setup
+      - name: Check and test integration
+        shell: bash
+        run: |
+          node clients/vencord-extension/tooling.mjs check
+          node clients/vencord-extension/tooling.mjs sdk:build
+          node --test --test-concurrency=4 clients/vencord-extension/test/*.test.mjs
+      - name: Build and ZIP both desktop variants
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          CARGO_BUILD_JOBS: 2
+        shell: bash
+        run: node scripts/release/vencord.mjs package "$RELEASE_TAG"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: vencord-${{ matrix.os }}-${{ matrix.arch }}
+          path: release-assets/*
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { pattern: 'vencord-*', path: release-assets, merge-multiple: true }
+      - name: Attach verified ZIPs and checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd release-assets
+          sha256sum --check ./*.sha256
+          test "$(find . -name '*.zip' | wc -l)" -eq 12
+          gh release upload "$RELEASE_TAG" ./*.zip ./*.sha256

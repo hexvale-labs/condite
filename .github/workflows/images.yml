@@ -1,0 +1,117 @@
+name: Tagged images
+on:
+  push:
+    tags: ['v*', 'core/v*', 'dashboard/v*']
+permissions:
+  contents: read
+concurrency:
+  group: image-publication
+  cancel-in-progress: false
+jobs:
+  metadata:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7.1.0
+        with: { node-version: 22 }
+      - id: matrix
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: echo "value=$(node scripts/release/images.mjs matrix "$RELEASE_TAG")" >> "$GITHUB_OUTPUT"
+  build:
+    needs: metadata
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.metadata.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7.1.0
+        with: { node-version: 22 }
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: prepare
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          COMPONENT: ${{ matrix.component }}
+          DASHBOARD_ORIGIN: ${{ vars.DASHBOARD_ORIGIN || 'http://localhost:4321' }}
+        run: node scripts/release/images.mjs prepare "$RELEASE_TAG" "$COMPONENT"
+      - uses: docker/build-push-action@v7
+        if: steps.prepare.outputs.build == 'true'
+        with:
+          context: .
+          file: docker/${{ matrix.component }}.Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          tags: ${{ steps.prepare.outputs.image }}:build-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}
+          build-args: |
+            DASHBOARD_ORIGIN=${{ vars.DASHBOARD_ORIGIN || 'http://localhost:4321' }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.prepare.outputs.version }}
+            io.condite.inputs=${{ steps.prepare.outputs.fingerprint }}
+          cache-from: type=gha,scope=${{ matrix.component }}-${{ matrix.arch }}
+          cache-to: type=gha,scope=${{ matrix.component }}-${{ matrix.arch }},mode=max
+      - name: Smoke-test before pushing
+        if: steps.prepare.outputs.build == 'true'
+        env:
+          COMPONENT: ${{ matrix.component }}
+          IMAGE: ${{ steps.prepare.outputs.image }}:build-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}
+        run: |
+          bash scripts/release/smoke-images.sh "$COMPONENT" "$IMAGE"
+          docker image inspect --format '{{.Size}}' "$IMAGE" >> "$GITHUB_STEP_SUMMARY"
+          docker push "$IMAGE"
+      - name: Record digest
+        env:
+          BUILD: ${{ steps.prepare.outputs.build }}
+          EXISTING: ${{ steps.prepare.outputs.digest }}
+          IMAGE: ${{ steps.prepare.outputs.image }}:build-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}
+        run: |
+          mkdir -p digests
+          if [[ "$BUILD" == true ]]; then
+            docker buildx imagetools inspect "$IMAGE" --format '{{json .Manifest}}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["digest"])' > digests/${{ matrix.component }}-${{ matrix.arch }}
+          else
+            printf '%s\n' "$EXISTING" > digests/${{ matrix.component }}-${{ matrix.arch }}
+          fi
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: digest-${{ matrix.component }}-${{ matrix.arch }}
+          path: digests/*
+          retention-days: 1
+  publish:
+    needs: [metadata, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7.1.0
+        with: { node-version: 22 }
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v8
+        with: { pattern: 'digest-*', path: digests, merge-multiple: true }
+      - name: Publish immutable versions and umbrella aliases
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          DASHBOARD_ORIGIN: ${{ vars.DASHBOARD_ORIGIN || 'http://localhost:4321' }}
+        run: node scripts/release/publish-images.mjs "$RELEASE_TAG"
