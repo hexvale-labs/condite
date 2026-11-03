@@ -23,7 +23,9 @@ jobs:
       - id: matrix
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: echo "value=$(node scripts/release/vencord.mjs matrix "$RELEASE_TAG")" >> "$GITHUB_OUTPUT"
+        run: |
+          value=$(node scripts/release/vencord.mjs matrix "$RELEASE_TAG")
+          echo "value=$value" >> "$GITHUB_OUTPUT"
   build:
     needs: metadata
     runs-on: ${{ matrix.runner }}
