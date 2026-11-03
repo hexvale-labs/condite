@@ -46,8 +46,9 @@ process per container and scale replicas externally. A reverse proxy can handle
 TLS/compression and cache fingerprinted static assets; keep authenticated API
 responses and SSR pages out of shared caches.
 
-Set runtime environment variable `DASHBOARD_ORIGIN` to the public dashboard
-origin. The same image supports any origin; restart after changing the variable.
+Set runtime environment variable `DASHBOARD_ORIGINS` to comma-separated public dashboard
+origins (for example, `https://dashboard.example,https://admin.example`).
+The same image supports any origin; restart after changing the variable.
 Without it, only loopback development hosts are trusted.
 The API URL and optional API key stay server-side runtime variables.
 

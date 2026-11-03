@@ -3,7 +3,7 @@
 import { manifest } from "virtual:astro:manifest";
 import { allowedDomains } from "./origin";
 
-manifest.allowedDomains = allowedDomains(process.env.DASHBOARD_ORIGIN);
+manifest.allowedDomains = allowedDomains(process.env.DASHBOARD_ORIGINS);
 const server = await import("@astrojs/node/server.js");
 export const handler = server.handler;
 export const startServer = server.startServer;

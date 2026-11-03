@@ -27,7 +27,7 @@ its example, including real storage settings. Choose a hostname you control:
 
 ```sh
 export DASHBOARD_HOST=dashboard.example.com
-export DASHBOARD_ORIGIN="https://$DASHBOARD_HOST"
+export DASHBOARD_ORIGINS="https://$DASHBOARD_HOST"
 # Bootstrap core without publishing any ports.
 docker compose -f docker/examples/compose.yaml run -d --name condite-bootstrap core
 docker exec condite-bootstrap ctl apikey generate
@@ -38,8 +38,8 @@ read -rsp 'Dashboard API key: ' CONDITE_API_KEY; echo
 export CONDITE_API_KEY
 ```
 
-`DASHBOARD_ORIGIN` is a **runtime** host-validation setting. These examples use
-published images; changing the origin requires recreating the dashboard container,
+`DASHBOARD_ORIGINS` is a comma-separated **runtime** list of trusted dashboard
+origins. These examples use published images; changing the origin requires recreating the dashboard container,
 not rebuilding the image. Keep keys and tunnel tokens out of Git. Back up the
 persistent core volume before upgrading; startup applies database migrations.
 
@@ -81,7 +81,7 @@ alone does not authenticate visitors.
 Set the tunnel's published application hostname to `dashboard.example.com` and
 its service URL to `http://dashboard:4321`. Preserve the public HTTP Host header
 (do not override it with the Docker service name). Use the same public HTTPS
-origin configured in `DASHBOARD_ORIGIN`.
+origin configured in `DASHBOARD_ORIGINS`.
 
 ```sh
 read -rsp 'Tunnel token: ' TUNNEL_TOKEN; echo

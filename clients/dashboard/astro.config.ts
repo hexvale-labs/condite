@@ -12,7 +12,7 @@ export default defineConfig({
     name: "condite-runtime-origin",
     hooks: {
       "astro:config:setup": ({ command, updateConfig }) => {
-        if (command === "dev") updateConfig({ security: { allowedDomains: allowedDomains(process.env.DASHBOARD_ORIGIN) } });
+        if (command === "dev") updateConfig({ security: { allowedDomains: allowedDomains(process.env.DASHBOARD_ORIGINS) } });
       },
       "astro:config:done": ({ setAdapter }) => setAdapter({
         ...getAdapter({ staticHeaders: false }),
