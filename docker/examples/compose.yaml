@@ -11,9 +11,9 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
   dashboard:
-    # Build this image for DASHBOARD_ORIGIN first (see README.md).
-    image: condite-dashboard:local
+    image: ghcr.io/hexvale-labs/condite/dashboard:${DASHBOARD_VERSION:-0.1.0}
     environment:
+      DASHBOARD_ORIGINS: ${DASHBOARD_ORIGINS:?Set the public dashboard origins}
       CONDITE_API_URL: http://core:8080
       CONDITE_API_KEY: ${CONDITE_API_KEY:?Set a dashboard API key}
     networks: [backend]

@@ -44,7 +44,15 @@ test('multiarch registry configs require matching fingerprints on both Linux pla
   assert.throws(() => imageFingerprint({ 'linux/amd64': config('abc') }), /platform/);
   assert.throws(() => imageFingerprint({ 'linux/amd64': config('abc'), 'linux/arm64': config('other') }), /fingerprint/);
 });
-test('effective dashboard build origin participates in immutable inputs', () => {
-  assert.notEqual(fingerprint('dashboard', 'HEAD', undefined, 'https://one.example'), fingerprint('dashboard', 'HEAD', undefined, 'https://two.example'));
-  assert.equal(fingerprint('core', 'HEAD', undefined, 'https://one.example'), fingerprint('core', 'HEAD', undefined, 'https://two.example'));
+test('runtime dashboard origin does not affect immutable inputs', () => {
+  const previous = process.env.DASHBOARD_ORIGINS;
+  try {
+    process.env.DASHBOARD_ORIGINS = 'https://one.example';
+    const initial = fingerprint('dashboard');
+    process.env.DASHBOARD_ORIGINS = 'https://two.example';
+    assert.equal(fingerprint('dashboard'), initial);
+  } finally {
+    if (previous === undefined) delete process.env.DASHBOARD_ORIGINS;
+    else process.env.DASHBOARD_ORIGINS = previous;
+  }
 });

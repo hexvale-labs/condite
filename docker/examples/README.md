@@ -27,13 +27,7 @@ its example, including real storage settings. Choose a hostname you control:
 
 ```sh
 export DASHBOARD_HOST=dashboard.example.com
-export DASHBOARD_ORIGIN="https://$DASHBOARD_HOST"
-# Check CPU/RAM/disk first; this builds the Rust SDKs as well as the dashboard.
-docker build -f docker/dashboard.Dockerfile \
-  --build-arg CARGO_BUILD_JOBS=1 \
-  --build-arg DASHBOARD_ORIGIN="$DASHBOARD_ORIGIN" \
-  -t condite-dashboard:local .
-
+export DASHBOARD_ORIGINS="https://$DASHBOARD_HOST"
 # Bootstrap core without publishing any ports.
 docker compose -f docker/examples/compose.yaml run -d --name condite-bootstrap core
 docker exec condite-bootstrap ctl apikey generate
@@ -44,11 +38,10 @@ read -rsp 'Dashboard API key: ' CONDITE_API_KEY; echo
 export CONDITE_API_KEY
 ```
 
-`DASHBOARD_ORIGIN` is a **build-time** host-validation setting. Setting it only at
-runtime does not work; rebuild when changing the public origin. The published
-image may have been built for a different origin, so these examples use a local
-build. Keep keys and tunnel tokens out of Git. Back up the persistent core volume
-before upgrading; startup applies database migrations.
+`DASHBOARD_ORIGINS` is a comma-separated **runtime** list of trusted dashboard
+origins. These examples use published images; changing the origin requires recreating the dashboard container,
+not rebuilding the image. Keep keys and tunnel tokens out of Git. Back up the
+persistent core volume before upgrading; startup applies database migrations.
 
 ## Caddy: HTTPS and password protection
 
@@ -88,7 +81,7 @@ alone does not authenticate visitors.
 Set the tunnel's published application hostname to `dashboard.example.com` and
 its service URL to `http://dashboard:4321`. Preserve the public HTTP Host header
 (do not override it with the Docker service name). Use the same public HTTPS
-origin that was compiled into the dashboard.
+origin configured in `DASHBOARD_ORIGINS`.
 
 ```sh
 read -rsp 'Tunnel token: ' TUNNEL_TOKEN; echo

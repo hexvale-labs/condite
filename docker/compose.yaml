@@ -13,6 +13,7 @@ services:
   dashboard:
     image: ghcr.io/hexvale-labs/condite/dashboard:${DASHBOARD_VERSION:-0.1.0}
     environment:
+      DASHBOARD_ORIGINS: ${DASHBOARD_ORIGINS:-http://localhost:4321}
       CONDITE_API_URL: http://core:8080
       CONDITE_API_KEY: ${CONDITE_API_KEY:-}
     ports:

@@ -48,7 +48,6 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
           COMPONENT: ${{ matrix.component }}
-          DASHBOARD_ORIGIN: ${{ vars.DASHBOARD_ORIGIN || 'http://localhost:4321' }}
         run: node scripts/release/images.mjs prepare "$RELEASE_TAG" "$COMPONENT"
       - uses: docker/build-push-action@v7
         if: steps.prepare.outputs.build == 'true'
@@ -58,8 +57,6 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           load: true
           tags: ${{ steps.prepare.outputs.image }}:build-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}
-          build-args: |
-            DASHBOARD_ORIGIN=${{ vars.DASHBOARD_ORIGIN || 'http://localhost:4321' }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -115,5 +112,4 @@ jobs:
       - name: Publish immutable versions and umbrella aliases
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-          DASHBOARD_ORIGIN: ${{ vars.DASHBOARD_ORIGIN || 'http://localhost:4321' }}
         run: node scripts/release/publish-images.mjs "$RELEASE_TAG"

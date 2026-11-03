@@ -13,6 +13,7 @@ export default defineConfig({
       env: {
         ASTRO_DEV_BACKGROUND: "0",
         HOST: "127.0.0.1",
+        DASHBOARD_ORIGINS: " https://dashboard.example:8443 , https://other.example:9443 ",
         PORT: "4321",
         CONDITE_API_URL: "http://127.0.0.1:4322",
       },
