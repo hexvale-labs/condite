@@ -24,5 +24,5 @@
 - For transport changes, read `src/lib/proxy.ts`: route allowlist, write-origin
   checks, body limit and raw-byte forwarding are intentional. Update focused
   transport tests alongside new routes; never JSON-round-trip u64 values.
-- Keep `CONDITE_API_URL` server-side. `DASHBOARD_ORIGIN` is a build-time host
+- Keep `CONDITE_API_URL` server-side. `DASHBOARD_ORIGIN` is a runtime host
   validation setting, not a storage URL or authentication mechanism.

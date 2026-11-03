@@ -17,7 +17,7 @@ export function imageFingerprint(info) {
   if (!labels[0] || !labels.every(value => value === labels[0])) throw new Error('Published image has inconsistent input fingerprints');
   return labels[0];
 }
-export function fingerprint(component, ref = 'HEAD', directory = root, dashboardOrigin = process.env.DASHBOARD_ORIGIN || 'http://localhost:4321') {
+export function fingerprint(component, ref = 'HEAD', directory = root) {
   const common = ['Cargo.toml', 'Cargo.lock', '.cargo/', 'docker/', '.dockerignore', 'scripts/release/', '.github/workflows/images.yml'];
   const inputs = component === 'core' ? ['crates/condite-core/', 'crates/condite-ctl/', 'crates/condite-shared/'] : ['crates/', 'clients/dashboard/', 'clients/i18n/', 'clients/shared/', 'scripts/sdk/', 'package.json', 'bun.lock'];
   const entries = execFileSync('git', ['ls-tree', '-r', ref], { cwd: directory, encoding: 'utf8' }).split('\n').filter(line => {
@@ -26,7 +26,7 @@ export function fingerprint(component, ref = 'HEAD', directory = root, dashboard
     if (component === 'dashboard' && (path.startsWith('crates/condite-core/') || path.startsWith('crates/condite-ctl/'))) return false;
     return [...common, ...inputs].some(p => p.endsWith('/') ? path.startsWith(p) : path === p);
   });
-  return createHash('sha256').update(entries.join('\n')).update(component === 'dashboard' ? new URL(dashboardOrigin).origin : '').digest('hex');
+  return createHash('sha256').update(entries.join('\n')).digest('hex');
 }
 function docker(args, options = {}) { return execFileSync('docker', args, { encoding: 'utf8', ...options }).trim(); }
 export function inspectImage(image) {

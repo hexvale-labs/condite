@@ -46,9 +46,9 @@ process per container and scale replicas externally. A reverse proxy can handle
 TLS/compression and cache fingerprinted static assets; keep authenticated API
 responses and SSR pages out of shared caches.
 
-Set repository variable `DASHBOARD_ORIGIN` to the public dashboard origin before
-building releases (defaults to `http://localhost:4321`). Astro's allowed host is
-compiled into the build; changing only the runtime environment cannot change it.
+Set runtime environment variable `DASHBOARD_ORIGIN` to the public dashboard
+origin. The same image supports any origin; restart after changing the variable.
+Without it, only loopback development hosts are trusted.
 The API URL and optional API key stay server-side runtime variables.
 
 ```sh
@@ -68,7 +68,7 @@ Check available CPU, RAM and disk first; use `--build-arg CARGO_BUILD_JOBS=1`
 on constrained machines and run builds sequentially.
 
 Local builds: `docker build -f docker/core.Dockerfile -t condite-core .` and
-`docker build -f docker/dashboard.Dockerfile --build-arg DASHBOARD_ORIGIN=https://dashboard.example -t condite-dashboard .`.
+`docker build -f docker/dashboard.Dockerfile -t condite-dashboard .`.
 Run `bash scripts/release/smoke-images.sh COMPONENT IMAGE` before using them.
 
 See the [dashboard ingress examples](../docker/examples/README.md) for private

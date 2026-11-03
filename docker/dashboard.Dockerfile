@@ -39,8 +39,6 @@ RUN bun run build:sdk:release
 COPY clients/dashboard clients/dashboard
 COPY clients/i18n clients/i18n
 COPY clients/shared clients/shared
-ARG DASHBOARD_ORIGIN=http://localhost:4321
-ENV DASHBOARD_ORIGIN=$DASHBOARD_ORIGIN
 RUN bun run build:dashboard
 # Install only runtime dependencies into a separate tree. Bun workspace links
 # stay valid because package directories and generated SDKs travel together.

@@ -20,8 +20,10 @@ and [SDK prerequisites](../../scripts/sdk/README.md).
 Use Bun 1.4.4+ and Node 22.23.4+ (a supported Node LTS is recommended).
 `CONDITE_API_URL` is the private core origin, defaulting to `http://127.0.0.1:8080`.
 Open `/en/` or `/es/`. Set `DASHBOARD_ORIGIN` to the deployed dashboard
-origin **before building** so Astro validates its host; loopback development hosts
-are allowed by default. This setting is independent of future public file URLs. The API proxy stays on the dashboard origin; signed file
+origin **at runtime** so Astro validates its host; loopback development hosts
+are allowed by default. Restart the server after changing it; no rebuild is needed.
+Invalid origins fail startup.
+This setting is independent of future public file URLs. The API proxy stays on the dashboard origin; signed file
 PUTs go directly to storage. Bucket CORS must allow the dashboard origin, PUT and
 the signed Content-Type header. The proxy never rewrites signed storage URLs.
 

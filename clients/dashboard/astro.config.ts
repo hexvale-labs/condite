@@ -1,17 +1,25 @@
 import { defineConfig, fontProviders } from "astro/config";
-import node from "@astrojs/node";
+import node, { getAdapter } from "@astrojs/node";
+import { allowedDomains } from "./server/origin";
 import solid from "astro-solid-next";
 import tailwind from "@tailwindcss/vite";
 import { locales } from "../i18n";
-const origin = process.env.DASHBOARD_ORIGIN ? new URL(process.env.DASHBOARD_ORIGIN) : null;
 export default defineConfig({
-  security: { allowedDomains: [
-    { hostname: "localhost" }, { hostname: "127.0.0.1" },
-    ...(origin ? [{ hostname: origin.hostname, protocol: origin.protocol.slice(0, -1) as "http" | "https", port: origin.port }] : []),
-  ] },
+  security: { allowedDomains: allowedDomains(undefined) },
   output: "server",
   adapter: node({ mode: "standalone" }),
-  integrations: [solid()],
+  integrations: [solid(), {
+    name: "condite-runtime-origin",
+    hooks: {
+      "astro:config:setup": ({ command, updateConfig }) => {
+        if (command === "dev") updateConfig({ security: { allowedDomains: allowedDomains(process.env.DASHBOARD_ORIGIN) } });
+      },
+      "astro:config:done": ({ setAdapter }) => setAdapter({
+        ...getAdapter({ staticHeaders: false }),
+        serverEntrypoint: new URL("./server/entrypoint.ts", import.meta.url),
+      }),
+    },
+  }],
   i18n: {
     defaultLocale: "en",
     locales,
