@@ -1,3 +1,10 @@
+# Archived for the time being
+
+The main purpose I've been developing this is so that I could bypass discord's upload limit. However, discord has announced phoenix, their rewrite of the discord client in rust.
+This leaves me currently with little incentive to continue developing conndite.
+
+This could change as people find ways to load extensions into the new client. I could also see a future where I develop something that collapses into system tray and/or into the context menu and makes it trivial to upload things to S3 and hands you links you can paste in anywhere. Currently, however, I have no incentive to do this.
+
 # Condite
 
 Self-hosted file storage backed by your own S3-compatible bucket. The current
